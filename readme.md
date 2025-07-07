@@ -1,7 +1,7 @@
 
 # Saleté Sincère
 
-Une plateforme « mur vocal » pour partager vos petites victoires »Wafer« et »Charbon« du quotidien, voter pour vos coups de coeur, et faire naître des épisodes longs.
+Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "Charbon" du quotidien, voter pour vos coups de coeur, et faire naître des épisodes longs.
 
 ---
 
