@@ -1,7 +1,7 @@
 {
   "name": "saletesincere",
   "build": {
-    "script": "pnpm --workspace-root run build"
+    "script": "npm run build"
   },
   "deploy": {
     "git_url": "<repo_url>"
@@ -10,6 +10,11 @@
     "scaling": "S"
   },
   "env": {
-    "DATABASE_URL": "${CLEVER_POSTGRESQL_ADDON_URI}"
+    "DATABASE_URL": "${CLEVER_POSTGRESQL_ADDON_URI}",
+    "NODE_ENV": "production",
+    "PORT": "${PORT}"
+  },
+  "hooks": {
+    "postDeploy": "echo 'Deployed successfully'"
   }
 }
