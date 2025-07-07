@@ -27,4 +27,4 @@ app.get("/", (req, reply) =>
 // Health
 app.get("/health", () => ({ ok: true }));
 
-await app.listen({ host: "0.0.0.0", port: 3000 });
+await app.listen({ host: "0.0.0.0", port: process.env.PORT || 3000 });
