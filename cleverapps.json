@@ -1,0 +1,15 @@
+{
+  "name": "saletesincere",
+  "build": {
+    "script": "pnpm --workspace-root run build"
+  },
+  "deploy": {
+    "git_url": "<repo_url>"
+  },
+  "instances": {
+    "scaling": "S"
+  },
+  "env": {
+    "DATABASE_URL": "${CLEVER_POSTGRESQL_ADDON_URI}"
+  }
+}

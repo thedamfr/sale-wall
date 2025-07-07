@@ -1,0 +1,56 @@
+# Dépendances
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Fichiers de lock
+package-lock.json
+pnpm-lock.yaml
+
+# Build output
+server/dist/
+client/dist/
+dist/
+build/
+
+# Fichiers d'environnement
+.env
+.env.*
+.envrc
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# IDEs et éditeurs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Docker
+/docker-compose.override.yml
+
+# Couverture de tests
+coverage/
+*.lcov
+
+# Caches divers
+**/.cache/
+**/.tmp/
+
+# Playwright/Cypress (si utilisés)
+.playwright/
+cypress/
+
+# Autres fichiers temporaires
+*.tsbuildinfo
