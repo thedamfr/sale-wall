@@ -8,27 +8,25 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 ## 🚀 Pourquoi Saleté Sincère ?
 
 > **Solo-builder** – je code le soir quand mon fils dort, je garde l’essentiel.  
-> **Pragmatique** – Fastify 5 + Svelte 5 SSR pour des perfs fulgurantes.  
+> **Pragmatique** – Fastify 5 + Pug pour un rendu serveur léger et performant.
 > **Souverain** – tout tourne sur Clever Cloud (Node 24, PostgreSQL, Cellar S3).  
 > **Ouvert** – code MIT, contributions bienvenues.
 
 ---
+
 
 ## 📦 Structure du projet
 
 ```
 
 salete-sincere/
-├── client/               # Front Svelte 5 + Tailwind
-│   ├── index.html        # Entrée Vite
-│   └── src/              # Composants & pages
-├── server/               # API Fastify 5 + SSR
-│   ├── server.js         # Point d’entrée
-│   └── dist/             # Build SSR & assets
-├── Dockerfile            # Multi-stage build monorepo
+├── server/               # API Fastify 5 et templates Pug
+│   ├── server.js         # Point d’entrée Fastify
+│   └── views/            # Templates Pug (layout.pug, index.pug, error.pug)
+├── Dockerfile            # Multi-stage build
 ├── docker-compose.yml    # Postgres + MinIO + API (dev local)
 ├── .env.docker.example   # Vars d’env local Docker
-├── package.json          # Workspaces npm (client + server)
+├── package.json          # Workspaces npm (server)
 └── README.md             # Ce fichier
 
 ````
@@ -48,8 +46,8 @@ salete-sincere/
 
 1. **Clone**  
    ```bash
-   git clone git@github.com:<votre-utilisateur>/salete-sincere.git
-   cd salete-sincere
+   git clone git@github.com:<votre-utilisateur>/sale-wall.git
+   cd sale-wall
 ````
 
 2. **Env local Docker**
@@ -99,7 +97,7 @@ salete-sincere/
 * **Deployment Clever Cloud**
 
   1. `npm run build`
-  2. `git push clever main`
+  2. `git push main` -> Clever écoute main
   3. Vérifie dans le dashboard que Node 24, PG et Cellar sont configurés.
   4. Cloudflare gère le cache & le SSL.
 
@@ -127,7 +125,6 @@ PORT=3000
 ## 📚 Ressources & liens
 
 * **Docs Fastify** 5 → [https://www.fastify.io](https://www.fastify.io)
-* **Docs Svelte** 5 → [https://svelte.dev](https://svelte.dev)
 * **Clever Cloud** → [https://www.clever-cloud.com](https://www.clever-cloud.com)
 * **Cloudflare DNS & CDN** → [https://dash.cloudflare.com](https://dash.cloudflare.com)
 

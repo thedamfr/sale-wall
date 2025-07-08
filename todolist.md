@@ -9,25 +9,23 @@
 ---
 
 ## Bloc 1 — Domaine, DNS & Cloudflare
-- [ ] ⏱ 15′ Acheter **saletesincere.fr** chez Gandi / OVH  
-- [ ] ⏱ 15′ Ajouter le domaine dans **Cloudflare** (plan Free)  
-- [ ] ⏱ 10′ Changer les *nameservers* chez le registrar → Cloudflare  
+- [x] ⏱ 15′ Acheter **saletesincere.fr** chez Gandi / OVH  
+- [x] ⏱ 15′ Ajouter le domaine dans **Cloudflare** (plan Free)  
+- [x] ⏱ 10′ Changer les *nameservers* chez le registrar → Cloudflare  
 - [ ] ⏱ 10′ Activer **DNSSEC** (copier l’enregistrement DS)  
-- [ ] ⏱ 10′ Créer les enregistrements :  
-  - `saletesincere.fr` → **CNAME flattené** `app-preview.cleverapps.io`  
-  - `api.` → même cible  
+- [x] ⏱ 10′ Créer les enregistrements : CNAME
 - [ ] ⏱ 5′ Ajouter **CAA = letsencrypt.org**  
 - [ ] ⏱ 5′ Vérifier la propagation : `dig +trace saletesincere.fr`
 
 ---
 
 ## Bloc 2 — Environnement Clever Cloud (Node 24)
-- [ ] ⏱ 10′ Créer l’**addon PostgreSQL** (plan XS)  
-- [ ] ⏱ 10′ Créer le **bucket Cellar** (S3-compatible)  
-- [ ] ⏱ 10′ Générer clé/secret Cellar + copier `DATABASE_URL`  
-- [ ] ⏱ 10′ Créer une **app Node 24** (runtime natif)  
-- [ ] ⏱ 5′ Ajouter les variables d’env (`DATABASE_URL`, `CELLAR_*`) dans Clever  
-- [ ] ⏱ 15′ Pousser un **hello-world** → `git push clever main`  
+- [x] ⏱ 10′ Créer l’**addon PostgreSQL** (plan XS)  
+- [x] ⏱ 10′ Créer le **bucket Cellar** (S3-compatible)  
+- [x] ⏱ 10′ Générer clé/secret Cellar + copier `DATABASE_URL`  
+- [x] ⏱ 10′ Créer une **app Node 24** (runtime natif)  
+- [x] ⏱ 5′ Ajouter les variables d’env (`DATABASE_URL`, `CELLAR_*`) dans Clever  
+- [x] ⏱ 15′ Pousser un **hello-world** → `git push clever main`  - en fait on est en synchro directe avec github qui est ouvert
 - [ ] ⚠︎ 10′ Vérifier dans les logs que Clever détecte **Node v24.x**
 
 ---
