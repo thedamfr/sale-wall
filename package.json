@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "nodemon --watch . --ext js,pug,css server.js",
+    "dev:css": "postcss ./style.css -o ./public/style.css --watch",
     "build": "npm run build:css && npm run build:views",
     "build:css": "postcss ./style.css -o ./public/style.css",
     "build:views": "echo 'No-op for Pug views'",
@@ -23,5 +24,9 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "devDependencies": {
+    "dotenv": "^17.1.0",
+    "nodemon": "^3.1.10"
   }
 }

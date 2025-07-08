@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import path from "node:path";
 import Fastify from "fastify";
 import fastifyView from "@fastify/view";
@@ -10,7 +11,7 @@ const app = Fastify({ logger: true });
 // Views (Pug)
 await app.register(fastifyView, {
   engine: { pug },
-  root: path.join(__dirname, "views")
+  root: path.join(__dirname, "server/views")
 });
 
 // Static (CSS)

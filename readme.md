@@ -1,144 +1,146 @@
-
 # Saleté Sincère
 
 Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "Charbon" du quotidien, voter pour vos coups de coeur, et faire naître des épisodes longs.
 
 ---
 
-## 🚀 Pourquoi Saleté Sincère ?
+## 🚀 Stack technique
 
-> **Solo-builder** – je code le soir quand mon fils dort, je garde l’essentiel.  
-> **Pragmatique** – Fastify 5 + Pug pour un rendu serveur léger et performant.
-> **Souverain** – tout tourne sur Clever Cloud (Node 24, PostgreSQL, Cellar S3).  
-> **Ouvert** – code MIT, contributions bienvenues.
+- **Backend** : Fastify 5.x + Pug (SSR)
+- **Styling** : Tailwind CSS v4 + PostCSS
+- **Base de données** : PostgreSQL
+- **Stockage** : S3 (MinIO en dev)
+- **Déploiement** : CleverCloud
+- **Dev** : Nodemon + Docker Compose
 
 ---
-
 
 ## 📦 Structure du projet
 
 ```
-
 salete-sincere/
-├── server/               # API Fastify 5 et templates Pug
-│   ├── server.js         # Point d’entrée Fastify
-│   └── views/            # Templates Pug (layout.pug, index.pug, error.pug)
-├── Dockerfile            # Multi-stage build
-├── docker-compose.yml    # Postgres + MinIO + API (dev local)
-├── .env.docker.example   # Vars d’env local Docker
-├── package.json          # Workspaces npm (server)
-└── README.md             # Ce fichier
-
-````
-
----
-
-## ⚙️ Prérequis
-
-- **Node.js 24+** (via nvm ou Homebrew)  
-- **Docker & Docker Compose** (Docker Desktop ou Colima)  
-- **Clever Cloud CLI** (pour déployer)  
-- **git & GitHub** (repo public MIT)
-
----
-
-## 🛠 Installation & Dev
-
-1. **Clone**  
-   ```bash
-   git clone git@github.com:<votre-utilisateur>/sale-wall.git
-   cd sale-wall
-````
-
-2. **Env local Docker**
-
-   ```bash
-   cp .env.docker.example .env.docker
-   # (ajuste si tu veux modifier les ports / credentials)
-   ```
-
-3. **Lancer la stack**
-
-   ```bash
-   docker compose up --build -d
-   # ↳ Postgres + MinIO + API  
-   ```
-
-4. **Tester**
-
-   * API health : `curl http://localhost:3000/health`
-   * Front SSR : [http://localhost:3000](http://localhost:3000)
-   * Console MinIO : [http://localhost:9001](http://localhost:9001) (salete / salete123)
-
-5. **Dev mode**
-
-   ```bash
-   npm install           # monorepo
-   npm run dev           # lance server dev (Fastify) + Vite HMR
-   ```
-
----
-
-## 📦 Build & Production
-
-* **Local build**
-
-  ```bash
-  npm run build         # build client + server
-  ```
-
-* **Docker image**
-
-  ```bash
-  docker compose build api
-  docker compose up -d
-  ```
-
-* **Deployment Clever Cloud**
-
-  1. `npm run build`
-  2. `git push main` -> Clever écoute main
-  3. Vérifie dans le dashboard que Node 24, PG et Cellar sont configurés.
-  4. Cloudflare gère le cache & le SSL.
-
----
-
-## 📝 Configuration
-
-Crée dans le dashboard Clever Cloud ou `.env.docker` :
-
-```dotenv
-# PostgreSQL
-DATABASE_URL=postgres://salete:salete@db:5432/salete
-# MinIO / Cellar S3
-S3_ENDPOINT=http://s3:9000
-S3_ACCESS_KEY=salete
-S3_SECRET_KEY=salete123
-S3_BUCKET=salete-media
-# Node
-NODE_ENV=development
-PORT=3000
+├── server.js            # Serveur Fastify principal
+├── server/
+│   └── views/           # Templates Pug
+├── public/              # Assets statiques (CSS compilé)
+├── routes/              # Routes API
+├── style.css            # CSS source (Tailwind)
+├── .env                 # Variables d'environnement (dev local)
+├── docker-compose.yml   # PostgreSQL + MinIO
+├── Dockerfile           # Build production
+└── package.json         # Dépendances et scripts
 ```
 
 ---
 
-## 📚 Ressources & liens
+## ⚙️ Développement local
 
-* **Docs Fastify** 5 → [https://www.fastify.io](https://www.fastify.io)
-* **Clever Cloud** → [https://www.clever-cloud.com](https://www.clever-cloud.com)
-* **Cloudflare DNS & CDN** → [https://dash.cloudflare.com](https://dash.cloudflare.com)
+### 1. Installation
+```bash
+git clone <repo>
+cd salete-sincere
+npm install
+```
+
+### 2. Configuration
+```bash
+# Copier et adapter les variables d'environnement
+cp .env.example .env
+```
+
+### 3. Lancer les services (PostgreSQL + S3)
+```bash
+docker compose up db s3 -d
+```
+
+### 4. Lancer le serveur de dev
+```bash
+npm run dev          # Serveur avec live reload
+npm run dev:css      # Watch CSS (optionnel, terminal séparé)
+```
+
+### 5. Accéder à l'application
+- **App** : http://localhost:3000
+- **S3 Console** : http://localhost:9001 (admin/password: salete/salete123)
+
+---
+
+## 🏗️ Scripts disponibles
+
+```bash
+npm run dev          # Développement avec nodemon
+npm run dev:css      # Watch compilation CSS
+npm run build        # Build complet (CSS + views)
+npm run build:css    # Compilation CSS seule
+npm start            # Production
+```
+
+---
+
+## 🐳 Production Docker
+
+```bash
+# Build et lancement complet
+docker compose build --no-cache
+docker compose up -d
+
+# Accès : http://localhost:3000
+```
+
+---
+
+## 🚀 Déploiement CleverCloud
+
+### 1. Configuration
+```bash
+# Créer une app Node.js sur CleverCloud
+clever create --type node
+
+# Ajouter PostgreSQL
+clever addon create postgresql-addon
+
+# Variables d'environnement (voir cleverapps.json)
+```
+
+### 2. Déploiement
+```bash
+git push clever main
+```
+
+---
+
+## 🧪 Développement
+
+### Technologies utilisées
+- **Fastify 5.x** : Framework web rapide
+- **Pug** : Moteur de templates
+- **Tailwind CSS v4** : Framework CSS utilitaire
+- **PostCSS** : Processeur CSS
+- **Nodemon** : Live reload en développement
+
+### Structure du code
+- Serveur principal dans `server.js`
+- Templates Pug dans `server/views/`
+- Routes API dans `routes/`
+- CSS source dans `style.css` (compilé vers `public/style.css`)
+
+### Tips de dev
+- Gardez les DevTools ouverts avec cache désactivé
+- Utilisez `npm run dev` pour le live reload
+- Les variables d'env sont dans `.env` pour le dev local
 
 ---
 
 ## 🤝 Contribution
 
-1. Ouvre une issue ou un PR
-2. Respecte les tests & le linter
-3. Utilise des branches `feature/…`
-4. Amuse-toi bien ! 🎉
+1. Fork le projet
+2. Créez une branche feature (`git checkout -b feature/nouvelle-fonctionnalite`)
+3. Committez vos changements (`git commit -am 'Ajout nouvelle fonctionnalité'`)
+4. Push sur la branche (`git push origin feature/nouvelle-fonctionnalite`)
+5. Ouvrez une Pull Request
 
 ---
 
-© 2025 Saleté Sincère – code MIT
+## 📄 Licence
 
-```
+MIT License - voir le fichier [LICENSE](LICENSE) pour plus de détails.
