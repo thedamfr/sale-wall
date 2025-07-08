@@ -30,13 +30,13 @@
 
 ---
 
-## Bloc 3 — Monorepo Fastify 5 + Vite (Svelte 5)
-- [ ] ⏱ 15′ Installer **pnpm** + init *workspaces*  
-- [ ] ⏱ 30′ Générer squelette **Fastify 5** `@fastify/vite` preset `svelte5`  
-- [ ] ⏱ 20′ Créer **client Svelte 5** (`pnpm create svelte@next`)  
-- [ ] ⏱ 10′ Ajouter **Tailwind CSS** + purge config  
-- [ ] ⏱ 10′ Configurer **ESLint / Prettier** + scripts `dev | build | start`  
-- [ ] ⏱ 15′ Test local : `pnpm dev` → page SSR s’affiche
+## Bloc 3 — Monorepo Fastify 5 + Pug
+- [x] ⏱ 15′ Installer **pnpm** et initialiser les *workspaces*  
+- [x] ⏱ 30′ Générer le squelette **Fastify 5** avec **@fastify/view** (Pug)  
+- [x] ⏱ 20′ Créer le dossier `src/server/views/` et ajouter les templates de base Pug (`layout.pug`, `index.pug`, `error.pug`)  
+- [ ] ⏱ 10′ Ajouter **Tailwind CSS** + config Purge  
+- [ ] ⏱ 10′ Configurer **ESLint & Prettier** et définir les scripts `dev | build | start`  
+- [ ] ⏱ 15′ Tester en local : `npm dev` → vérifier que la page SSR Pug s’affiche  
 
 ---
 
