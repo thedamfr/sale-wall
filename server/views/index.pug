@@ -9,12 +9,18 @@ block header
 
 block content
   // Hero
-  section(class="bg-[#F2F2EF] mx-6 rounded-xl p-8 text-center space-y-4 text-[#0B0B0B]")
-    h1(class="text-xl md:text-2xl font-brush font-bold") Vos histoires méritent d'être entendues.
-    p.italic Brutes, sincères, sans filtre.
-    button(class="mt-4 px-6 py-3 bg-[#D6B977] hover:bg-[#B99E5A] rounded-full text-[#0B0B0B] font-semibold hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#D6B977] transition")
-      | + Enregistrer votre histoire
-    p.text-sm.font-medium 1 234 récits partagés · 567 écoutes ce mois-ci
+  section.relative.mx-6.rounded-xl.overflow-hidden.min-h-96.bg-ivoire-sale
+    // Background image
+    .absolute.inset-0(style="background-image: url('/images/charbon-wafer-kintsugi.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat;")
+    // Semi-transparent overlay for text readability
+    .absolute.inset-0(style="background-color: rgba(0, 0, 0, 0.4);")
+    // Content
+    .relative.z-10.p-8.text-center.space-y-4
+      h1(class="text-xl md:text-2xl font-brush font-bold text-white drop-shadow-lg") Vos histoires méritent d'être entendues.
+      p(class="italic text-white drop-shadow-md") Brutes, sincères, sans filtre.
+      button(class="mt-4 px-6 py-3 bg-or-kintsugi hover:bg-or-kintsugi-hover rounded-full text-noir-charbon font-semibold hover:scale-105 focus:outline-none focus:ring-2 focus:ring-or-kintsugi transition shadow-lg")
+        | + Enregistrer votre histoire
+      p(class="text-sm font-medium text-white drop-shadow-md") 1 234 récits partagés · 567 écoutes ce mois-ci
 
   // Filters
   nav.flex.justify-center.gap-4.mt-6
