@@ -3,9 +3,8 @@ extends layout
 block header
   // Header
   header.flex.items-center.justify-between.px-6.py-4
-    .flex.items-center.space-x-4
-      h1(class="text-2xl font-brush font-bold text-[#F2F2EF]") Saleté Sincère
-      a(class="text-sm text-[#D6B977] underline hover:text-[#B99E5A] transition", href="/manifeste") Manifeste
+    a(href="/", class="text-2xl font-brush font-bold text-[#F2F2EF] hover:text-[#D6B977] transition") Saleté Sincère
+    a(class="text-sm text-[#D6B977] underline hover:text-[#B99E5A] transition", href="/manifeste") Manifeste
     button(class="p-2 focus:outline-none focus:ring-2 focus:ring-[#D6B977] text-[#F2F2EF] hover:scale-105 transition", aria-label="Menu")
       svg.w-6.h-6(fill="none", stroke="currentColor")
         path(d="M4 6h16M4 12h16M4 18h16")
@@ -13,7 +12,7 @@ block header
 block content
   // Hero
   section(class="bg-[#F2F2EF] mx-6 rounded-xl p-8 text-center space-y-4 text-[#0B0B0B]")
-    p(class="text-xl md:text-2xl font-serif font-bold") Vos histoires méritent d'être entendues.
+    h1(class="text-xl md:text-2xl font-brush font-bold") Vos histoires méritent d'être entendues.
     p.italic Brutes, sincères, sans filtre.
     button(class="mt-4 px-6 py-3 bg-[#D6B977] hover:bg-[#B99E5A] rounded-full text-[#0B0B0B] font-semibold hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#D6B977] transition")
       | + Enregistrer votre histoire
@@ -33,7 +32,7 @@ block content
           svg(class="w-5 h-5 text-[#D6B977]", fill="currentColor")
             path(d="M9 19V6l12-2v15")
         div
-          h2(class="font-brush font-bold text-xl text-[#F2F2EF]") Un jour de boîte à jouet
+          h2(class="font-serif font-bold text-xl text-[#F2F2EF]") Un jour de boîte à jouet
           p(class="text-base text-gray-400")
             | 0:30 · 
             span(class="px-2 py-0.5 bg-gradient-to-r from-[#E6D4A6] via-[#F2E8C8] to-[#E6D4A6] text-[#0B0B0B] rounded-full text-xs font-medium") Wafer
@@ -48,7 +47,7 @@ block content
           svg(class="w-5 h-5 text-[#D6B977]", fill="currentColor")
             path(d="M9 19V6l12-2v15")
         div
-          h2(class="font-brush font-bold text-xl text-[#F2F2EF]") Quand j'ai croisé un chaton
+          h2(class="font-serif font-bold text-xl text-[#F2F2EF]") Quand j'ai croisé un chaton
           p(class="text-base text-gray-400")
             | 0:45 · 
             span(class="px-2 py-0.5 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full text-xs font-medium") Charbon

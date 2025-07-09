@@ -503,6 +503,13 @@
       }
     }
   }
+  .hover\:text-\[\#D6B977\] {
+    &:hover {
+      @media (hover: hover) {
+        color: #D6B977;
+      }
+    }
+  }
   .hover\:shadow-lg {
     &:hover {
       @media (hover: hover) {
