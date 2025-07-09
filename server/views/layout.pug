@@ -4,10 +4,13 @@ html(lang="fr")
     meta(charset="UTF-8")
     meta(name="viewport", content="width=device-width,initial-scale=1")
     title #{title} – Saleté Sincère
+    link(rel="preconnect", href="https://fonts.googleapis.com")
+    link(rel="preconnect", href="https://fonts.gstatic.com", crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap", rel="stylesheet")
     link(rel="stylesheet", href="/style.css")
-  body.bg-gray-900.text-gray-100.font-sans
+  body(class="bg-[#0B0B0B] text-[#F2F2EF] font-sans")
     // Top Banner
-    .bg-yellow-300.text-black.text-center.p-2
+    div(class="bg-[#D6B977] text-[#0B0B0B] text-center p-2")
       | ⚠️ Prototype en travaux. Certaines fonctionnalités ne sont pas encore disponibles.
     
     block header

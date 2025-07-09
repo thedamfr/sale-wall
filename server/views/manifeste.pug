@@ -3,14 +3,14 @@ extends layout
 block header
   // Header with back link
   header.flex.items-center.justify-between.px-6.py-4
-    a.text-cream.underline(href="/") ← Accueil
-    h1.text-2xl.font-serif.text-gray-100 Manifeste
+    a(class="text-[#D6B977] underline hover:text-[#B99E5A] transition", href="/") ← Accueil
+    h1(class="text-2xl font-serif font-black text-[#F2F2EF]") Manifeste
     div
 
 block content
   // Manifesto content
-  main.mx-6.my-8.bg-gray-800.rounded-lg.p-6
-    p.text-lg.font-serif.text-cream.mb-4 Manifeste Saleté Sincère
-    p.text-gray-200
+  main(class="mx-6 my-8 bg-[#0B0B0B] border border-gray-800 rounded-lg p-6")
+    p(class="text-lg font-serif font-bold text-[#D6B977] mb-4") Manifeste Saleté Sincère
+    p(class="text-[#F2F2EF] leading-relaxed")
       | Saleté Sincère est un espace où chaque récit compte. Ici, on célèbre la poésie du quotidien, sans filtre ni fioritures.
       | Que vos histoires soient légères comme un souffle ou profondes comme une braise, elles méritent d'être entendues.
