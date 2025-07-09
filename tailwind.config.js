@@ -2,7 +2,11 @@
 module.exports = {
   content: ["./server/**/*.pug"],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        cream: 'rgba(245, 230, 196, 1)',
+      },
+    },
   },
   plugins: [],
 }

@@ -17,12 +17,17 @@ await app.register(fastifyView, {
 // Static (CSS)
 app.register(fastifyStatic, {
   root: path.join(__dirname, "public"),
-  prefix: "/public/"
+  prefix: "/"
 });
 
 // Route home
 app.get("/", (req, reply) =>
   reply.view("index.pug", { title: "Saleté Sincère" })
+);
+
+// Route manifeste
+app.get("/manifeste", (req, reply) =>
+  reply.view("manifeste.pug", { title: "Manifeste" })
 );
 
 // Health
