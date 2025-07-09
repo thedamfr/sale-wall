@@ -16,6 +16,8 @@ module.exports = {
       fontFamily: {
         'serif': ['Playfair Display', 'serif'],
         'sans': ['Inter', 'sans-serif'],
+        'brush': ['Brushup', 'Kalam', 'Caveat', 'Patrick Hand', 'cursive'], // Police Brushup en premier
+        'brushup': ['Brushup', 'Kalam', 'Caveat', 'cursive'],
       },
     },
   },

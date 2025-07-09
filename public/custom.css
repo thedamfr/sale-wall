@@ -1,0 +1,37 @@
+/* Custom CSS pour Saleté Sincère */
+
+/* Font Brushup */
+@font-face {
+  font-family: 'Brushup';
+  src: url('/fonts/brushup.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Animations et effets spéciaux */
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(214, 185, 119, 0.4);
+}
+
+/* Effet de pulse pour les CTA */
+.pulse-kintsugi {
+  animation: pulse-kintsugi 2s infinite;
+}
+
+@keyframes pulse-kintsugi {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(214, 185, 119, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(214, 185, 119, 0);
+  }
+}
+
+/* Gradient texte pour les titres spéciaux */
+.text-gradient-wafer {
+  background: linear-gradient(135deg, #E6D4A6, #F2E8C8, #E6D4A6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
