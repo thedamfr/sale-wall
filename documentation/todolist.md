@@ -12,7 +12,7 @@
 - [x] ⏱ 15′ Acheter **saletesincere.fr** chez Gandi / OVH  
 - [x] ⏱ 15′ Ajouter le domaine dans **Cloudflare** (plan Free)  
 - [x] ⏱ 10′ Changer les *nameservers* chez le registrar → Cloudflare  
-- [ ] ⏱ 10′ Activer **DNSSEC** (copier l’enregistrement DS)  
+- [x] ⏱ 10′ Activer **DNSSEC** (copier l’enregistrement DS)  
 - [x] ⏱ 10′ Créer les enregistrements : CNAME
 - [ ] ⏱ 5′ Ajouter **CAA = letsencrypt.org**  
 - [ ] ⏱ 5′ Vérifier la propagation : `dig +trace saletesincere.fr`
@@ -34,15 +34,14 @@
 - [x] ⏱ 15′ Installer **pnpm** et initialiser les *workspaces*  
 - [x] ⏱ 30′ Générer le squelette **Fastify 5** avec **@fastify/view** (Pug)  
 - [x] ⏱ 20′ Créer le dossier `src/server/views/` et ajouter les templates de base Pug (`layout.pug`, `index.pug`, `error.pug`)  
-- [ ] ⏱ 10′ Ajouter **Tailwind CSS** + config Purge  
-- [ ] ⏱ 10′ Configurer **ESLint & Prettier** et définir les scripts `dev | build | start`  
-- [ ] ⏱ 15′ Tester en local : `npm dev` → vérifier que la page SSR Pug s’affiche  
+- [x] ⏱ 10′ Ajouter **Tailwind CSS** + config Purge  
+- [x] ⏱ 10′ Configurer **ESLint & Prettier** et définir les scripts `dev | build | start`  
+- [x] ⏱ 15′ Tester en local : `npm dev` → vérifier que la page SSR Pug s’affiche  
 
 ---
 
 ## Bloc 4 — Front SSR & Pages
-- [ ] ⏱ 30′ Landing **/** (Tailwind, responsive)  
-- [ ] ⏱ 20′ Page **/mur** (liste Wafer / Charbon, filtres)  
+- [x] ⏱ 20′ Page **/mur** (liste Wafer / Charbon, filtres)  
 - [ ] ⏱ 15′ Composant **Vote +1** (fetch POST, re-render)  
 - [ ] ⏱ 15′ SEO : `<title>`, OpenGraph, favicon  
 - [ ] ⚠︎ 15′ Vérifier **Lighthouse LCP < 1 s**
@@ -51,9 +50,9 @@
 
 ## Bloc 5 — Upload & Stockage
 - [ ] ⏱ 20′ Script SQL : tables `recordings` & `votes`  
-- [ ] ⏱ 20′ Route **POST /api/recordings** → URL signée Cellar  
-- [ ] ⏱ 15′ Client : **MediaRecorder** → upload direct S3  
-- [ ] ⏱ 10′ Limiter la durée à **90 s** côté client  
+- [x] ⏱ 20′ Route **POST /api/recordings** → URL signée Cellar  
+- [x] ⏱ 15′ Client : **MediaRecorder** → upload direct S3  
+- [x] ⏱ 10′ Limiter la durée à **90 s** côté client  
 - [ ] ⏱ 15′ Route **GET /api/recordings?status=published** (liste)
 
 ---

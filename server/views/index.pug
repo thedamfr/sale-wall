@@ -18,9 +18,57 @@ block content
     .relative.z-10.p-8.text-center.space-y-4
       h1(class="text-xl md:text-2xl font-brush font-bold text-white drop-shadow-lg") Vos histoires méritent d'être entendues.
       p(class="italic text-white drop-shadow-md") Brutes, sincères, sans filtre.
-      button(class="mt-4 px-6 py-3 bg-or-kintsugi hover:bg-or-kintsugi-hover rounded-full text-noir-charbon font-semibold hover:scale-105 focus:outline-none focus:ring-2 focus:ring-or-kintsugi transition shadow-lg")
+      
+      // Toggle button
+      button#toggle-record(class="mt-4 px-6 py-3 bg-or-kintsugi hover:bg-or-kintsugi-hover rounded-full text-noir-charbon font-semibold hover:scale-105 focus:outline-none focus:ring-2 focus:ring-or-kintsugi transition shadow-lg")
         | + Enregistrer votre histoire
-      p(class="text-sm font-medium text-white drop-shadow-md") 1 234 récits partagés · 567 écoutes ce mois-ci
+      
+      // Recording form (hidden by default)
+      #recording-form.mt-6.max-w-md.mx-auto.p-6.bg-noir-charbon.bg-opacity-90.backdrop-blur-sm.rounded-lg.border.border-or-kintsugi.border-opacity-50.hidden
+        form#voice-form.space-y-4
+          // Title field
+          div
+            label(for="title", class="block text-sm font-medium text-ivoire-sale mb-2") Titre de votre histoire
+            input#title(type="text", name="title", required, class="w-full px-3 py-2 bg-ivoire-sale bg-opacity-20 border border-or-kintsugi border-opacity-50 rounded-lg text-ivoire-sale placeholder-ivoire-sale placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-or-kintsugi focus:border-or-kintsugi", placeholder="Donnez un titre à votre récit...")
+          
+          // Recording controls
+          div.text-center
+            button#record-btn(type="button", class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 transition")
+              span.record-text Commencer l'enregistrement
+            p.text-xs.text-ivoire-sale.text-opacity-70.mt-2 Durée max : 3 minutes
+          
+          // Audio preview (hidden initially)
+          #audio-preview.hidden
+            audio#audio-player(controls, class="w-full mt-4")
+            p.text-xs.text-ivoire-sale.text-opacity-70.mt-2 Écoutez votre enregistrement avant de l'envoyer
+          
+          // Transcription field
+          div
+            label(for="transcription", class="block text-sm font-medium text-ivoire-sale mb-2") Transcription (obligatoire)
+            textarea#transcription(name="transcription", rows="4", required, class="w-full px-3 py-2 bg-ivoire-sale bg-opacity-20 border border-or-kintsugi border-opacity-50 rounded-lg text-ivoire-sale placeholder-ivoire-sale placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-or-kintsugi focus:border-or-kintsugi resize-none", placeholder="Retranscrivez votre histoire ici...")
+          
+          // Badge selection
+          div
+            label(class="block text-sm font-medium text-ivoire-sale mb-2") Type de récit
+            .flex.gap-2
+              label.flex.items-center
+                input(type="radio", name="badge", value="wafer", required, class="sr-only")
+                span(class="px-3 py-1 bg-gradient-to-r from-[#E6D4A6] via-[#F2E8C8] to-[#E6D4A6] text-[#0B0B0B] rounded-full text-xs font-medium cursor-pointer hover:scale-105 transition badge-option") Wafer
+              label.flex.items-center
+                input(type="radio", name="badge", value="charbon", required, class="sr-only")
+                span(class="px-3 py-1 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full text-xs font-medium cursor-pointer hover:scale-105 transition badge-option") Charbon
+          
+          // Submit button
+          div.text-center
+            button#submit-btn(type="submit", disabled, class="submit-button")
+              span.submit-text Partager votre histoire
+          
+          // Cancel button
+          div.text-center
+            button#cancel-btn(type="button", class="px-4 py-2 text-or-kintsugi hover:text-or-kintsugi-hover underline text-sm transition")
+              | Annuler
+      
+      p(class="text-sm font-medium text-white drop-shadow-md") #{stats.total_posts} récits partagés · #{stats.total_listens} écoutes ce mois-ci
 
   // Filters
   nav.flex.justify-center.gap-4.mt-6
@@ -30,32 +78,27 @@ block content
 
   // Feed
   main.mt-6.space-y-4.px-6.pb-8
-    article(class="flex items-center justify-between bg-[#0B0B0B] border border-gray-800 rounded-lg p-4 hover:shadow-lg hover:scale-105 transition")
-      .flex.items-center.space-x-4
-        .p-2.bg-gray-700.rounded-full
-          svg(class="w-5 h-5 text-[#D6B977]", fill="currentColor")
-            path(d="M9 19V6l12-2v15")
-        div
-          h2(class="font-serif font-bold text-xl text-[#F2F2EF]") Un jour de boîte à jouet
-          p(class="text-base text-gray-400")
-            | 0:30 · 
-            span(class="px-2 py-0.5 bg-gradient-to-r from-[#E6D4A6] via-[#F2E8C8] to-[#E6D4A6] text-[#0B0B0B] rounded-full text-xs font-medium") Wafer
-      button(class="flex items-center space-x-1 text-[#D6B977] font-semibold hover:text-[#B99E5A] hover:scale-105 transition", aria-label="Voter")
-        span +1
-        svg.w-4.h-4(fill="currentColor")
-          path(d="M5 12h14M12 5l7 7-7 7")
-    
-    article(class="flex items-center justify-between bg-[#0B0B0B] border border-gray-800 rounded-lg p-4 hover:shadow-lg hover:scale-105 transition")
-      .flex.items-center.space-x-4
-        .p-2.bg-gray-700.rounded-full
-          svg(class="w-5 h-5 text-[#D6B977]", fill="currentColor")
-            path(d="M9 19V6l12-2v15")
-        div
-          h2(class="font-serif font-bold text-xl text-[#F2F2EF]") Quand j'ai croisé un chaton
-          p(class="text-base text-gray-400")
-            | 0:45 · 
-            span(class="px-2 py-0.5 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full text-xs font-medium") Charbon
-      button(class="flex items-center space-x-1 text-[#D6B977] font-semibold hover:text-[#B99E5A] hover:scale-105 transition", aria-label="Voter")
-        span +1
-        svg.w-4.h-4(fill="currentColor")
-          path(d="M5 12h14M12 5l7 7-7 7")
+    if posts && posts.length > 0
+      each post in posts
+        article(class="flex items-center justify-between bg-[#0B0B0B] border border-gray-800 rounded-lg p-4 hover:shadow-lg hover:scale-105 transition")
+          .flex.items-center.space-x-4
+            .p-2.bg-gray-700.rounded-full
+              svg(class="w-5 h-5 text-[#D6B977]", fill="currentColor")
+                path(d="M9 19V6l12-2v15")
+            div
+              h2(class="font-serif font-bold text-xl text-[#F2F2EF]") #{post.title}
+              p(class="text-base text-gray-400")
+                | #{post.duration} · 
+                if post.badge === 'wafer'
+                  span(class="px-2 py-0.5 bg-gradient-to-r from-[#E6D4A6] via-[#F2E8C8] to-[#E6D4A6] text-[#0B0B0B] rounded-full text-xs font-medium") Wafer
+                else
+                  span(class="px-2 py-0.5 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full text-xs font-medium") Charbon
+                | · #{post.timeAgo}
+          button(class="flex items-center space-x-1 text-[#D6B977] font-semibold hover:text-[#B99E5A] hover:scale-105 transition", aria-label="Voter", data-post-id=post.id)
+            span +#{post.votes}
+            svg.w-4.h-4(fill="currentColor")
+              path(d="M5 12h14M12 5l7 7-7 7")
+    else
+      .text-center.py-8
+        p(class="text-gray-400 text-lg") Aucun récit partagé pour le moment.
+        p(class="text-gray-500 text-sm mt-2") Soyez le premier à partager votre histoire !
