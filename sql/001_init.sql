@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS posts (
   transcription text NOT NULL,
   badge varchar(16) CHECK (badge IN ('wafer','charbon')),
   audio_filename text NOT NULL,
-  audio_path text NOT NULL,
+  audio_path text, -- Local path (dev only, nullable)
   audio_url text, -- For S3 URL in production
   status varchar(16) DEFAULT 'published' CHECK (status IN ('pending','published','flagged')),
   votes integer DEFAULT 0,
