@@ -5,11 +5,13 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 ## ✨ Fonctionnalités
 
 - **🎙️ Enregistrement vocal** : Formulaire intégré dans le hero avec MediaRecorder API
-- **📝 Transcription manuelle** : Transcription obligatoire pour l'accessibilité
+- **📝 Transcription manuelle** : Transcription obligatoire pour l'accessibilité  
 - **🏷️ Système de badges** : Classement "Wafer" (léger) et "Charbon" (intense)
 - **👍 Système de votes** : Vote par IP pour les posts préférés
 - **🎨 Design responsive** : Interface adaptée mobile/desktop avec Tailwind CSS v4
 - **♿ Accessibilité** : Labels ARIA, navigation au clavier, contraste élevé
+- **☁️ Stockage cloud** : Upload automatique sur S3/Cellar en production
+- **🚀 Production ready** : Déployé sur CleverCloud avec base PostgreSQL
 
 ---
 
@@ -57,6 +59,9 @@ salete-sincere/
 git clone <repo>
 cd salete-sincere
 npm install
+
+# Outils pour la production (optionnel)
+brew install clever-tools postgresql s3cmd
 ```
 
 ### 2. Configuration
@@ -101,7 +106,8 @@ npm run dev:css      # Watch CSS (optionnel, terminal séparé)
 - **Format audio** : WebM/Opus (navigateurs modernes)
 - **Durée max** : 3 minutes
 - **Transcription** : Obligatoire pour l'accessibilité
-- **Stockage** : Local en dev (`/uploads/`), S3 en production
+- **Stockage** : Local en dev (`/uploads/`), S3/Cellar en production (`salete-media` bucket)
+- **URLs publiques** : `https://cellar-c2.services.clever-cloud.com/salete-media/audio/[filename]`
 
 ---
 
@@ -132,19 +138,75 @@ docker compose up -d
 ## 🚀 Déploiement CleverCloud
 
 ### 1. Configuration
+L'application est déployée sur CleverCloud avec les addons suivants :
+- **PostgreSQL** : Base de données principale
+- **Cellar S3** : Stockage des fichiers audio
+
+### 2. Variables d'environnement
+Les variables sont automatiquement configurées via les addons :
+- `POSTGRESQL_ADDON_URI` : URL de connexion PostgreSQL
+- `CELLAR_ADDON_HOST` : Endpoint S3 Cellar
+- `CELLAR_ADDON_KEY_ID` : Clé d'accès S3
+- `CELLAR_ADDON_KEY_SECRET` : Clé secrète S3
+
+### 3. Déploiement
 ```bash
-# Créer une app Node.js sur CleverCloud
-clever create --type node
+# Lier le repository à l'application CleverCloud
+clever link <app-id>
 
-# Ajouter PostgreSQL
-clever addon create postgresql-addon
-
-# Variables d'environnement (voir cleverapps.json)
+# Déployer via Git hook
+git push origin main
 ```
 
-### 2. Déploiement
+### 4. Initialisation de la base de données
 ```bash
-git push clever main
+# Avec Clever CLI et PostgreSQL client
+brew install clever-tools postgresql
+clever addon env <postgresql-addon-id>
+PGPASSWORD="<password>" psql -h <host> -p <port> -U <user> -d <database> -f sql/001_init.sql
+```
+
+### 5. Configuration S3/Cellar
+```bash
+# Avec s3cmd
+brew install s3cmd
+s3cmd --configure
+s3cmd mb s3://salete-media
+```
+
+### 6. Statut du déploiement
+✅ **Application déployée** : https://app-cb755f4a-25da-4a25-b40c-c395f5086569.cleverapps.io/  
+✅ **Base de données** : PostgreSQL opérationnelle  
+✅ **Stockage S3** : Bucket `salete-media` créé  
+✅ **Upload audio** : Testé et fonctionnel  
+✅ **Accès public** : Fichiers accessibles via navigateur
+
+---
+
+## 🧪 Tests en production
+
+### Vérification des fonctionnalités
+✅ **Enregistrement audio** : 3 fichiers testés avec succès  
+✅ **Upload S3/Cellar** : Stockage automatique opérationnel  
+✅ **Base de données** : Connexion PostgreSQL stable  
+✅ **URLs publiques** : Fichiers audio accessibles  
+✅ **Interface utilisateur** : Formulaire et feedback fonctionnels  
+
+### Fichiers de test créés
+- `audio_1752304442181.webm` (3.4 KB) - 12/07/2025 07:14
+- `audio_1752304625905.webm` (1.5 KB) - 12/07/2025 07:17  
+- `audio_1752304733570.webm` (1.1 KB) - 12/07/2025 07:18
+
+### Commandes de vérification
+```bash
+# Vérifier les fichiers S3
+s3cmd ls s3://salete-media/audio/
+
+# Tester l'accessibilité HTTP
+curl -I https://cellar-c2.services.clever-cloud.com/salete-media/audio/audio_[timestamp].webm
+
+# Vérifier la base de données
+psql <connection-string> -c "SELECT COUNT(*) FROM posts;"
 ```
 
 ---
