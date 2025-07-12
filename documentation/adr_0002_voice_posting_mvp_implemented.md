@@ -96,13 +96,52 @@ La transcription ASR sera déplacée en phase 2, côté serveur, pour alimenter 
 
 ## Évolutions futures (Phase 2)
 
-- [ ] Intégration S3 pour stockage en production
+- [x] Intégration S3 pour stockage en production (Cellar CleverCloud)
 - [ ] Whisper-Base ou wav2vec2-french en option serveur
 - [ ] Transcription streaming/chunking pour longs formats
 - [ ] Modération automatique avec IA
 - [ ] Analytics et métriques d'usage
 - [ ] Export en Web Component réutilisable
 - [ ] Tests automatisés (Jest + Playwright)
+
+## Déploiement CleverCloud
+
+### Configuration requise
+1. **App Node.js** avec variables d'environnement
+2. **PostgreSQL addon** : Variables `POSTGRESQL_ADDON_*` automatiquement injectées
+3. **Cellar S3 addon** : Variables `CELLAR_ADDON_*` pour stockage fichiers audio
+4. **Build hooks** : `npm run build` pour compilation CSS
+
+### Variables d'environnement CleverCloud
+```bash
+# PostgreSQL (auto-injectées par l'addon)
+POSTGRESQL_ADDON_URI=postgresql://user:pass@host:port/db
+POSTGRESQL_ADDON_HOST=xxx-postgresql.services.clever-cloud.com
+POSTGRESQL_ADDON_PORT=50013
+POSTGRESQL_ADDON_USER=xxx
+POSTGRESQL_ADDON_PASSWORD=xxx
+POSTGRESQL_ADDON_DB=xxx
+
+# Cellar S3 (auto-injectées par l'addon)
+CELLAR_ADDON_HOST=cellar-c2.services.clever-cloud.com
+CELLAR_ADDON_KEY_ID=xxx
+CELLAR_ADDON_KEY_SECRET=xxx
+
+# App config
+NODE_ENV=production
+S3_BUCKET=salete-media
+```
+
+### Commandes de déploiement
+```bash
+# Setup initial
+clever create --type node
+clever addon create postgresql-addon
+clever addon create cellar-addon
+
+# Déploiement
+git push clever main
+```
 
 ## Retour d'expérience
 
@@ -116,9 +155,12 @@ La transcription ASR sera déplacée en phase 2, côté serveur, pour alimenter 
 - Rebuild CSS manuel parfois nécessaire
 - Gestion des permissions micro à améliorer
 - Feedback utilisateur à enrichir (progress, success states)
+- Configuration CleverCloud parfois délicate (variables d'env, timing déploiement)
 
 ### Leçons apprises
 - La transcription manuelle est acceptable en MVP
 - L'UX du formulaire inline est plus fluide qu'une page dédiée
 - La validation temps réel améliore significativement l'expérience
 - Les classes CSS custom sont parfois plus simples que les utilitaires Tailwind complexes
+- CleverCloud : bien vérifier que les addons sont créés avant le déploiement
+- S3/Cellar : gérer les environnements dev/prod avec des configurations différentes

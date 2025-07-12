@@ -7,14 +7,58 @@ import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyPostgres from "@fastify/postgres";
 import pug from "pug";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = Fastify({ logger: true });
 
+// S3/Cellar configuration
+const s3Config = {
+  endpoint: process.env.CELLAR_ADDON_HOST 
+    ? `https://${process.env.CELLAR_ADDON_HOST}` 
+    : process.env.S3_ENDPOINT || 'http://localhost:9000',
+  credentials: {
+    accessKeyId: process.env.CELLAR_ADDON_KEY_ID || process.env.S3_ACCESS_KEY || 'salete',
+    secretAccessKey: process.env.CELLAR_ADDON_KEY_SECRET || process.env.S3_SECRET_KEY || 'salete123',
+  },
+  region: 'us-east-1', // Région par défaut pour Cellar
+  forcePathStyle: true, // Important pour MinIO/Cellar
+};
+
+const s3Client = new S3Client(s3Config);
+const bucketName = process.env.S3_BUCKET || 'salete-media';
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.CELLAR_ADDON_HOST;
+
+console.log('🪣 S3/Cellar Configuration:');
+console.log('  Endpoint:', s3Config.endpoint);
+console.log('  Bucket:', bucketName);
+console.log('  Production mode:', isProduction);
+console.log('  Access Key:', s3Config.credentials.accessKeyId ? `${s3Config.credentials.accessKeyId.substring(0, 8)}...` : 'NOT SET');
+
 // Database
-await app.register(fastifyPostgres, {
-  connectionString: process.env.DATABASE_URL || 'postgresql://localhost/salewall_dev'
-});
+const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI || 'postgresql://salete:salete@localhost:5432/salete';
+console.log('🔗 Available DB env vars:');
+console.log('  DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('  POSTGRESQL_ADDON_URI:', process.env.POSTGRESQL_ADDON_URI ? 'SET' : 'NOT SET');
+console.log('  POSTGRESQL_ADDON_HOST:', process.env.POSTGRESQL_ADDON_HOST || 'NOT SET');
+console.log('🔗 Using Database URL:', databaseUrl.replace(/\/\/[^@]+@/, '//***:***@')); // Log sans password
+
+try {
+  await app.register(fastifyPostgres, {
+    connectionString: databaseUrl
+  });
+  console.log('✅ Database connected successfully');
+} catch (error) {
+  console.error('❌ Database connection failed:', error.message);
+  console.error('💡 Make sure PostgreSQL addon is created and env vars are set');
+  
+  // En production, on peut vouloir continuer sans DB pour debugger
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️  Running without database in production mode');
+  } else {
+    throw error;
+  }
+}
 
 // Multipart forms
 await app.register(fastifyMultipart, {
@@ -36,12 +80,14 @@ app.register(fastifyStatic, {
   prefix: "/"
 });
 
-// Audio files
-app.register(fastifyStatic, {
-  root: path.join(__dirname, "uploads"),
-  prefix: "/audio/",
-  decorateReply: false
-});
+// Audio files (only in development - in production they're served from S3)
+if (!isProduction) {
+  app.register(fastifyStatic, {
+    root: path.join(__dirname, "uploads"),
+    prefix: "/audio/",
+    decorateReply: false
+  });
+}
 
 // API Routes
 // Create new post
@@ -82,26 +128,54 @@ app.post("/api/posts", async (req, reply) => {
     // Generate unique filename
     const timestamp = Date.now();
     const filename = `audio_${timestamp}.webm`;
-    const audioPath = path.join(__dirname, 'uploads', filename);
-    
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    
-    // Save audio file
     const buffer = await audioFile.toBuffer();
-    fs.writeFileSync(audioPath, buffer);
+    
+    let audioPath = null;
+    let audioUrl = null;
+    
+    if (isProduction) {
+      // Upload to S3/Cellar in production
+      try {
+        const s3Key = `audio/${filename}`;
+        const uploadCommand = new PutObjectCommand({
+          Bucket: bucketName,
+          Key: s3Key,
+          Body: buffer,
+          ContentType: 'audio/webm',
+          ACL: 'public-read'
+        });
+        
+        await s3Client.send(uploadCommand);
+        audioUrl = `${s3Config.endpoint}/${bucketName}/${s3Key}`;
+        console.log('✅ Audio uploaded to S3:', audioUrl);
+        
+      } catch (s3Error) {
+        console.error('❌ S3 upload failed:', s3Error);
+        return reply.code(500).send({
+          success: false,
+          message: 'Erreur lors de l\'upload du fichier audio'
+        });
+      }
+    } else {
+      // Save locally in development
+      const uploadsDir = path.join(__dirname, 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      audioPath = path.join(__dirname, 'uploads', filename);
+      fs.writeFileSync(audioPath, buffer);
+      audioUrl = `/audio/${filename}`;
+    }
     
     // Save to database
     const client = await app.pg.connect();
     try {
       const result = await client.query(
-        `INSERT INTO posts (title, transcription, badge, audio_filename, audio_path, created_at) 
-         VALUES ($1, $2, $3, $4, $5, NOW()) 
+        `INSERT INTO posts (title, transcription, badge, audio_filename, audio_path, audio_url, created_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, NOW()) 
          RETURNING id, created_at`,
-        [data.title, data.transcription, data.badge, filename, audioPath]
+        [data.title, data.transcription, data.badge, filename, audioPath, audioUrl]
       );
       
       reply.send({
@@ -191,6 +265,7 @@ app.get("/", async (req, reply) => {
           p.transcription,
           p.badge,
           p.audio_filename,
+          p.audio_url,
           p.created_at,
           COALESCE(v.vote_count, 0) as votes,
           EXTRACT(EPOCH FROM (NOW() - p.created_at)) as age_seconds
