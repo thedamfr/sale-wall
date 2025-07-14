@@ -33,7 +33,9 @@
   - ✅ Nettoyage après audit
 
 **📋 Fichiers créés :**
-- `documentation/owasp_top10_audit_plan.md` : Plan d'audit complet
+- `security/plans/owasp_top10_audit_plan.md` : Plan d'audit complet
+- `security/audit_guide.md` : Guide d'utilisation
+- `security/reports/audit_final_report.md` : Rapport final
 - `scripts/audit_owasp.sh` : Script d'audit automatisé
 - `scripts/prepare_audit.sh` : Script de préparation
 
@@ -42,10 +44,7 @@
 # Audit complet automatique
 ./scripts/prepare_audit.sh full
 
-# Étapes individuelles
-./scripts/prepare_audit.sh start
-./scripts/audit_owasp.sh
-./scripts/prepare_audit.sh stop
+# Résultats dans security/reports/
 ```
 
 ---

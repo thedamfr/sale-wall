@@ -107,13 +107,13 @@ export function setupErrorHandler(fastify) {
       message: clientMessage
     };
     
-    // En développement, ajouter des détails
-    if (!isProduction) {
+    // En développement, ajouter des détails limités (pas de stack trace)
+    if (!isProduction && process.env.DEBUG_ERRORS === 'true') {
       response.debug = {
         type: error.name,
         code: error.code,
-        originalMessage: error.message,
-        stack: error.stack
+        originalMessage: error.message
+        // Stack trace supprimée même en développement pour éviter l'exposition
       };
     }
     

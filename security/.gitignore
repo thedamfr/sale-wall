@@ -1,0 +1,7 @@
+# Ignore les logs et rapports automatiques
+reports/audit_owasp_*.log
+reports/audit_report_*.md
+
+# Garder le rapport final et les exemples
+!reports/audit_final_report.md
+!reports/README.md

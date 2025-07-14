@@ -7,7 +7,7 @@ Ce guide décrit comment utiliser les outils d'audit de sécurité OWASP Top 10 
 ## Fichiers d'audit
 
 ### 1. Plan d'audit
-- **Fichier** : `documentation/owasp_top10_audit_plan.md`
+- **Fichier** : `security/plans/owasp_top10_audit_plan.md`
 - **Description** : Plan détaillé des tests à effectuer pour chaque risque OWASP
 - **Contenu** : Tests spécifiques, critères de réussite, prérequis
 
@@ -107,8 +107,8 @@ sudo yum install jq ffmpeg postgresql
 ## Résultats d'audit
 
 ### Fichiers générés
-- **Log d'audit** : `logs/audit_owasp_YYYYMMDD_HHMMSS.log`
-- **Rapport** : `documentation/audit_report_YYYYMMDD_HHMMSS.md`
+- **Log d'audit** : `security/reports/audit_owasp_YYYYMMDD_HHMMSS.log`
+- **Rapport** : `security/reports/audit_report_YYYYMMDD_HHMMSS.md`
 - **Fichiers de test** : `test_data/` (nettoyés automatiquement)
 
 ### Interprétation des résultats
