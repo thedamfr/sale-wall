@@ -6,8 +6,10 @@ import fastifyView from "@fastify/view";
 import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyPostgres from "@fastify/postgres";
+import fastifyRateLimit from "@fastify/rate-limit";
 import pug from "pug";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter } from "./middleware/rateLimiter.js";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = Fastify({ logger: true });
@@ -68,6 +70,11 @@ await app.register(fastifyMultipart, {
   }
 });
 
+// Rate limiting
+await app.register(fastifyRateLimit, {
+  global: false, // Pas de limite globale, on configure par route
+});
+
 // Views (Pug)
 await app.register(fastifyView, {
   engine: { pug },
@@ -90,8 +97,12 @@ if (!isProduction) {
 }
 
 // API Routes
-// Create new post
-app.post("/api/posts", async (req, reply) => {
+// Create new post (avec rate limiting)
+app.post("/api/posts", {
+  config: {
+    rateLimit: uploadLimiter
+  }
+}, async (req, reply) => {
   try {
     const parts = req.parts();
     const data = {};
@@ -199,8 +210,12 @@ app.post("/api/posts", async (req, reply) => {
   }
 });
 
-// Vote for a post
-app.post("/api/posts/:id/vote", async (req, reply) => {
+// Vote for a post (avec rate limiting)
+app.post("/api/posts/:id/vote", {
+  config: {
+    rateLimit: voteLimiter
+  }
+}, async (req, reply) => {
   try {
     const postId = req.params.id;
     const voterHash = req.headers['x-forwarded-for'] || req.ip || 'anonymous';
@@ -252,8 +267,12 @@ app.post("/api/posts/:id/vote", async (req, reply) => {
   }
 });
 
-// Route home
-app.get("/", async (req, reply) => {
+// Route home (avec rate limiting)
+app.get("/", {
+  config: {
+    rateLimit: pageLimiter
+  }
+}, async (req, reply) => {
   try {
     const client = await app.pg.connect();
     try {
@@ -338,8 +357,12 @@ function formatTimeAgo(seconds) {
   return 'à l\'instant';
 }
 
-// Route manifeste
-app.get("/manifeste", (req, reply) =>
+// Route manifeste (avec rate limiting)
+app.get("/manifeste", {
+  config: {
+    rateLimit: pageLimiter
+  }
+}, (req, reply) =>
   reply.view("manifeste.pug", { title: "Manifeste" })
 );
 
