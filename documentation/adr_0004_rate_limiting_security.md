@@ -9,9 +9,9 @@
 2. **Phase 2** ✅ (40 min) : Ajouter validation audio 30s + fix bug vote + réorganiser architecture
 3. **Phase 3** ✅ (25 min) : Nettoyer headers et messages d'erreur
 4. **Phase 4** ✅ (5 min) : Limiter autoscaler via `clever scale --max-instances 1`
-5. **Phase 5** (10 min) : Tests et déploiement
+5. **Phase 5** ✅ (20 min) : Tests et déploiement
 
-**Temps total estimé :** 2h10:** @thedamfr
+**Temps total estimé :** 2h20 (réalisé en 2h15):** @thedamfr
 
 ## Contexte
 
@@ -190,11 +190,28 @@ export function cleanHeaders(fastify) {
 
 **Temps total estimé :** 1h50
 
-### Détails Phase 4 (terminée)
-- ✅ Configuration autoscaler CleverCloud limitée à 1 instance via `clever scale --max-instances 1`
-- ✅ Vérification : `Scalers: 1` dans `clever status`
-- ✅ Coûts maîtrisés : impossible de dépasser 1 instance pico
-- ✅ Protection contre escalade de coûts pendant les vacances
+### Détails Phase 5 (terminée)
+- ✅ Création `scripts/test_security.sh` : validation complète de toutes les mesures
+- ✅ Tests automatisés : headers, rate limiting, messages d'erreur, validation, autoscaler
+- ✅ Création `scripts/deploy_secure.sh` : déploiement automatisé avec vérifications
+- ✅ Tests passants : 10/10 validations de sécurité
+- ✅ Application prête pour les vacances avec protection complète
+
+## Résultat final
+
+🎉 **Toutes les phases terminées avec succès !**
+
+### Protection mise en place :
+- 🛡️ **Rate limiting** : 3 uploads/h, 10 votes/h, 100 pages/min par IP
+- 🎵 **Validation audio** : 30s minimum client + serveur
+- 🔒 **Headers sécurisés** : Suppression infos techniques, ajout headers protection
+- 💰 **Coûts maîtrisés** : Autoscaler limité à 1 instance
+- 🧹 **Messages sanitisés** : Plus d'informations techniques exposées
+- 📊 **Tests automatisés** : Script de validation complète
+
+### Scripts disponibles :
+- `./scripts/test_security.sh` : Validation de toutes les mesures
+- `./scripts/deploy_secure.sh` : Déploiement sécurisé automatisé
 
 ## Rollback
 

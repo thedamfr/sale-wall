@@ -1,5 +1,5 @@
 # TODO MVP « Saleté Sincère » ✅ LIVRÉ !
-*Solo-builder – sessions de 45 – 90 min pendant que le f## 🏖️ Sécurité Vacances (Urgent)
+*Solo-builder – sessions de 45 – 90 min pendant que le f## 🏖️ Sécurité Vacances (Urgent) ✅ TERMINÉ !
 - [x] ⚠️ 30′ **Rate Limiting** : `@fastify/rate-limit` avec stockage in-memory
   - Upload audio : 3/heure par IP
   - Votes : 10/heure par IP  
@@ -7,7 +7,9 @@
 - [x] ⚠️ 40′ **Validation audio 30s** : Client + Serveur + réorganisation architecture
 - [x] ⚠️ 25′ **Headers sécurisés** : Suppression headers techniques + ajout headers sécurité
 - [x] ⚠️ 5′ **Limiter autoscaler** : 1 seule VM CleverCloud (`clever scale --max-instances 1`)
-- [ ] ⚠️ 10′ **Tests & déploiement** : Validation avant vacances
+- [x] ⚠️ 20′ **Tests & déploiement** : Scripts automatisés + validation complète
+
+**🎉 Application sécurisée et prête pour les vacances !**
 
 ---
 
