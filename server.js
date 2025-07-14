@@ -11,6 +11,7 @@ import pug from "pug";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter } from "./server/middleware/rateLimiter.js";
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
+import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = Fastify({ logger: true });
@@ -32,19 +33,25 @@ const s3Client = new S3Client(s3Config);
 const bucketName = process.env.S3_BUCKET || 'salete-media';
 const isProduction = process.env.NODE_ENV === 'production' || !!process.env.CELLAR_ADDON_HOST;
 
-console.log('🪣 S3/Cellar Configuration:');
-console.log('  Endpoint:', s3Config.endpoint);
-console.log('  Bucket:', bucketName);
-console.log('  Production mode:', isProduction);
-console.log('  Access Key:', s3Config.credentials.accessKeyId ? `${s3Config.credentials.accessKeyId.substring(0, 8)}...` : 'NOT SET');
+// Phase 3: Logs détaillés uniquement en dev
+if (!isProduction) {
+  console.log('🪣 S3/Cellar Configuration:');
+  console.log('  Endpoint:', s3Config.endpoint);
+  console.log('  Bucket:', bucketName);
+  console.log('  Production mode:', isProduction);
+  console.log('  Access Key:', s3Config.credentials.accessKeyId ? `${s3Config.credentials.accessKeyId.substring(0, 8)}...` : 'NOT SET');
+}
 
 // Database
 const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI || 'postgresql://salete:salete@localhost:5432/salete';
-console.log('🔗 Available DB env vars:');
-console.log('  DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
-console.log('  POSTGRESQL_ADDON_URI:', process.env.POSTGRESQL_ADDON_URI ? 'SET' : 'NOT SET');
-console.log('  POSTGRESQL_ADDON_HOST:', process.env.POSTGRESQL_ADDON_HOST || 'NOT SET');
-console.log('🔗 Using Database URL:', databaseUrl.replace(/\/\/[^@]+@/, '//***:***@')); // Log sans password
+
+if (!isProduction) {
+  console.log('🔗 Available DB env vars:');
+  console.log('  DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+  console.log('  POSTGRESQL_ADDON_URI:', process.env.POSTGRESQL_ADDON_URI ? 'SET' : 'NOT SET');
+  console.log('  POSTGRESQL_ADDON_HOST:', process.env.POSTGRESQL_ADDON_HOST || 'NOT SET');
+  console.log('🔗 Using Database URL:', databaseUrl.replace(/\/\/[^@]+@/, '//***:***@')); // Log sans password
+}
 
 try {
   await app.register(fastifyPostgres, {
@@ -74,6 +81,18 @@ await app.register(fastifyMultipart, {
 // Rate limiting
 await app.register(fastifyRateLimit, {
   global: false, // Pas de limite globale, on configure par route
+});
+
+// Phase 3: Configuration de sécurité
+setupSecurityHeaders(app);
+setupErrorHandler(app);
+
+// Custom 404 handler
+app.setNotFoundHandler((request, reply) => {
+  reply.status(404).send({
+    success: false,
+    message: 'Page non trouvée'
+  });
 });
 
 // Views (Pug)
@@ -125,7 +144,7 @@ app.post("/api/posts", {
     if (!data.title || !data.transcription || !data.badge || !audioFile) {
       return reply.code(400).send({
         success: false,
-        message: 'Tous les champs sont obligatoires (titre, transcription, badge, audio)'
+        message: 'Informations manquantes'
       });
     }
     
@@ -133,7 +152,7 @@ app.post("/api/posts", {
     if (!['wafer', 'charbon'].includes(data.badge)) {
       return reply.code(400).send({
         success: false,
-        message: 'Badge invalide'
+        message: 'Données invalides'
       });
     }
     
@@ -149,12 +168,13 @@ app.post("/api/posts", {
     if (!validation.isValid) {
       return reply.code(400).send({
         success: false,
-        message: 'Fichier audio invalide',
-        details: validation.errors
+        message: 'Enregistrement audio invalide'
       });
     }
-    
-    console.log(`✅ Audio validation passed: ${validation.validatedData.duration}ms, ${validation.validatedData.size} bytes`);
+    // Phase 3: Supprimer les logs détaillés en production
+    if (!isProduction) {
+      console.log(`✅ Audio validation passed: ${validation.validatedData.duration}ms, ${validation.validatedData.size} bytes`);
+    }
     
     let audioPath = null;
     let audioUrl = null;
@@ -173,7 +193,9 @@ app.post("/api/posts", {
         
         await s3Client.send(uploadCommand);
         audioUrl = `${s3Config.endpoint}/${bucketName}/${s3Key}`;
-        console.log('✅ Audio uploaded to S3:', audioUrl);
+        if (!isProduction) {
+          console.log('✅ Audio uploaded to S3:', audioUrl);
+        }
         
       } catch (s3Error) {
         console.error('❌ S3 upload failed:', s3Error);
@@ -246,7 +268,7 @@ app.post("/api/posts/:id/vote", {
       if (existingVote.rows.length > 0) {
         return reply.code(400).send({
           success: false,
-          message: 'Vous avez déjà voté pour ce post'
+          message: 'Déjà voté'
         });
       }
       
@@ -264,7 +286,7 @@ app.post("/api/posts/:id/vote", {
       
       reply.send({
         success: true,
-        message: 'Vote ajouté avec succès',
+        message: 'Vote ajouté',
         data: {
           votes: parseInt(voteResult.rows[0].vote_count)
         }
@@ -274,11 +296,8 @@ app.post("/api/posts/:id/vote", {
     }
     
   } catch (error) {
-    app.log.error(error);
-    reply.code(500).send({
-      success: false,
-      message: 'Erreur serveur lors du vote'
-    });
+    // L'error handler global va s'en occuper
+    throw error;
   }
 });
 
