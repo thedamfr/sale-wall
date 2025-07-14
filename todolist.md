@@ -94,7 +94,20 @@
 
 ---
 
-## 🐛 Bugs à corriger
+## �️ Sécurité Vacances (Urgent)
+- [ ] ⚠️ 30′ **Rate Limiting** : `@fastify/rate-limit` avec stockage in-memory
+  - Upload audio : 3/heure par IP
+  - Votes : 10/heure par IP  
+  - Pages : 100/minute par IP
+- [ ] ⚠️ 20′ **Validation audio 30s** : Client + Serveur
+- [ ] ⚠️ 15′ **Headers sécurisés** : Supprimer `X-Powered-By`, `Server`
+- [ ] ⚠️ 15′ **Limiter autoscaler** : 1 seule VM CleverCloud
+- [ ] ⚠️ 10′ **Messages discrets** : "Revenez demain !" sans détails techniques
+- [ ] ⚠️ 10′ **Tests & déploiement** : Validation avant vacances
+
+---
+
+## �🐛 Bugs à corriger
 - [ ] ⚠️ **Système de votes** : Le vote ne fonctionne pas correctement en production
   - Vérifier la route POST `/api/posts/:id/vote`
   - Vérifier la logique de hachage IP
