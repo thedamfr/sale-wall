@@ -364,10 +364,7 @@ function initVoteSystem() {
       
       try {
         const response = await fetch(`/api/posts/${postId}/vote`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          method: 'POST'
         });
         
         const result = await response.json();
