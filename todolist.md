@@ -13,7 +13,44 @@
 
 ---
 
-## 🐛 Bugs à corriger
+## � Audit OWASP Top 10 ✅ TERMINÉ !
+- [x] ⏱ 60′ **Plan d'audit OWASP** : Rédaction du plan markdown complet
+  - ✅ Analyse des 10 risques OWASP Top 10 2021
+  - ✅ Identification des fonctionnalités concernées
+  - ✅ Définition des tests spécifiques par risque
+  - ✅ Critères de réussite et échec
+- [x] ⏱ 90′ **Script d'audit automatisé** : Génération du script bash
+  - ✅ Tests A01-A10 : Access Control, Crypto, Injection, Design, etc.
+  - ✅ Génération de fichiers de test (audio, corrompu, etc.)
+  - ✅ Validation des headers de sécurité
+  - ✅ Tests de rate limiting et validation
+  - ✅ Rapport markdown automatique
+- [x] ⏱ 20′ **Script de préparation** : Environnement et exécution
+  - ✅ Vérification des prérequis (Node, npm, curl, jq, ffmpeg)
+  - ✅ Installation des dépendances
+  - ✅ Configuration environnement de test
+  - ✅ Démarrage/arrêt serveur automatique
+  - ✅ Nettoyage après audit
+
+**📋 Fichiers créés :**
+- `documentation/owasp_top10_audit_plan.md` : Plan d'audit complet
+- `scripts/audit_owasp.sh` : Script d'audit automatisé
+- `scripts/prepare_audit.sh` : Script de préparation
+
+**🎯 Utilisation :**
+```bash
+# Audit complet automatique
+./scripts/prepare_audit.sh full
+
+# Étapes individuelles
+./scripts/prepare_audit.sh start
+./scripts/audit_owasp.sh
+./scripts/prepare_audit.sh stop
+```
+
+---
+
+## �🐛 Bugs à corriger
 - [x] ⚠️ **Système de votes** : Le vote ne fonctionne pas correctement en production
   - ✅ Vérifier la route POST `/api/posts/:id/vote`
   - ✅ Vérifier la logique de hachage IP
