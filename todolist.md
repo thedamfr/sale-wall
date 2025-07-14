@@ -1,7 +1,23 @@
 # TODO MVP « Saleté Sincère » ✅ LIVRÉ !
-*Solo-builder – sessions de 45 – 90 min pendant que le fiston dort.*
+*Solo-builder – sessions de 45 – 90 min pendant que le f## 🏖️ Sécurité Vacances (Urgent)
+- [x] ⚠️ 30′ **Rate Limiting** : `@fastify/rate-limit` avec stockage in-memory
+  - Upload audio : 3/heure par IP
+  - Votes : 10/heure par IP  
+  - Pages : 100/minute par IP
+- [x] ⚠️ 40′ **Validation audio 30s** : Client + Serveur + réorganisation architecture
+- [ ] ⚠️ 15′ **Headers sécurisés** : Supprimer `X-Powered-By`, `Server`
+- [ ] ⚠️ 15′ **Limiter autoscaler** : 1 seule VM CleverCloud
+- [ ] ⚠️ 10′ **Messages discrets** : "Revenez demain !" sans détails techniques
+- [ ] ⚠️ 10′ **Tests & déploiement** : Validation avant vacances
 
-**🎉 Statut : MVP DÉPLOYÉ EN PRODUCTION !**  
+---
+
+## 🐛 Bugs à corriger
+- [x] ⚠️ **Système de votes** : Le vote ne fonctionne pas correctement en production
+  - ✅ Vérifier la route POST `/api/posts/:id/vote`
+  - ✅ Vérifier la logique de hachage IP
+  - ✅ Tester le feedback utilisateur (toast, compteur)
+  - ✅ Vérifier les requêtes SQL de voteStatut : MVP DÉPLOYÉ EN PRODUCTION !**  
 **URL : https://app-cb755f4a-25da-4a25-b40c-c395f5086569.cleverapps.io/**  
 **Date de livraison : 12 juillet 2025**
 

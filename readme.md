@@ -33,7 +33,11 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 salete-sincere/
 ├── server.js            # Serveur Fastify principal
 ├── server/
-│   └── views/           # Templates Pug
+│   ├── views/           # Templates Pug
+│   ├── middleware/      # Middleware Fastify
+│   │   └── rateLimiter.js
+│   └── validators/      # Validation données
+│       └── audioValidator.js
 ├── public/              # Assets statiques
 │   ├── style.css        # CSS compilé
 │   ├── custom.css       # CSS custom

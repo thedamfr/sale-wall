@@ -63,10 +63,9 @@ CC_SCALING_MAX_INSTANCES=1
 
 ### Structure
 ```
-src/
+server/
 ├── middleware/
-│   ├── rateLimiter.js      # Configuration des limites
-│   └── security.js         # Nettoyage headers
+│   └── rateLimiter.js      # Configuration des limites
 ├── validators/
 │   └── audioValidator.js   # Validation durée audio
 └── server.js               # Intégration
@@ -96,8 +95,26 @@ export const voteLimiter = {
 
 ### Validation Audio
 ```javascript
-// validators/audioValidator.js
-export function validateAudioDuration(audioBuffer) {
+// server/validators/audioValidator.js
+export function validateAudio(audioBuffer, mimeType, recordingDuration) {
+  const errors = [];
+  
+  // Vérifier la durée (30s minimum)
+  if (!recordingDuration || recordingDuration < 30000) {
+    errors.push(`L'enregistrement doit durer au moins 30 secondes`);
+  }
+  
+  // Vérifier le format
+  if (!SUPPORTED_FORMATS.some(format => mimeType.includes(format))) {
+    errors.push(`Format audio non supporté`);
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors: errors
+  };
+}
+```
   // Approximation : 1 seconde ≈ 16KB pour WebM
   const minSize = 30 * 16 * 1024; // 30 secondes
   return audioBuffer.length >= minSize;
@@ -157,13 +174,21 @@ export function cleanHeaders(fastify) {
 
 ## Plan d'implémentation
 
-1. **Phase 1** (30 min) : Installer et configurer rate limiting
-2. **Phase 2** (20 min) : Ajouter validation audio 30s
+1. **Phase 1** ✅ (30 min) : Installer et configurer rate limiting
+2. **Phase 2** ✅ (40 min) : Ajouter validation audio 30s + fix bug vote + réorganiser architecture
 3. **Phase 3** (15 min) : Nettoyer headers et messages
 4. **Phase 4** (15 min) : Limiter autoscaler via `clever scale --max-instances 1`
 5. **Phase 5** (10 min) : Tests et déploiement
 
-**Temps total estimé :** 1h30
+**Temps total estimé :** 1h50
+
+### Détails Phase 2 (terminée)
+- ✅ Création `server/validators/audioValidator.js` avec validation complète
+- ✅ Validation côté serveur : durée 30s min, format audio, taille max 10MB
+- ✅ Intégration validation dans route `/api/posts` 
+- ✅ Envoi durée client → serveur via FormData
+- ✅ Réorganisation architecture : `middleware/` et `validators/` dans `server/`
+- ✅ Correction bug système de vote (sélecteur span, gestion erreurs)
 
 ## Rollback
 
