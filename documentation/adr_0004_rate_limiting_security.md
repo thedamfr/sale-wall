@@ -3,7 +3,15 @@
 **Date :** 14 juillet 2025  
 **Statut :** Proposé  
 **Contexte :** Protection contre spam/DDoS pendant les vacances  
-**Auteur :** @thedamfr
+## Plan d'implémentation
+
+1. **Phase 1** ✅ (30 min) : Installer et configurer rate limiting
+2. **Phase 2** ✅ (40 min) : Ajouter validation audio 30s + fix bug vote + réorganiser architecture
+3. **Phase 3** ✅ (25 min) : Nettoyer headers et messages d'erreur
+4. **Phase 4** (15 min) : Limiter autoscaler via `clever scale --max-instances 1`
+5. **Phase 5** (10 min) : Tests et déploiement
+
+**Temps total estimé :** 2h:** @thedamfr
 
 ## Contexte
 
@@ -182,13 +190,14 @@ export function cleanHeaders(fastify) {
 
 **Temps total estimé :** 1h50
 
-### Détails Phase 2 (terminée)
-- ✅ Création `server/validators/audioValidator.js` avec validation complète
-- ✅ Validation côté serveur : durée 30s min, format audio, taille max 10MB
-- ✅ Intégration validation dans route `/api/posts` 
-- ✅ Envoi durée client → serveur via FormData
-- ✅ Réorganisation architecture : `middleware/` et `validators/` dans `server/`
-- ✅ Correction bug système de vote (sélecteur span, gestion erreurs)
+### Détails Phase 3 (terminée)
+- ✅ Création `server/middleware/security.js` avec nettoyage headers et sanitisation erreurs
+- ✅ Suppression headers techniques: `x-powered-by`, `server`, `x-fastify-version`
+- ✅ Ajout headers sécurité: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`
+- ✅ Messages d'erreur génériques en production (ex: "Déjà voté" vs détails techniques)
+- ✅ Gestion 404 personnalisée avec message uniforme
+- ✅ Logs détaillés uniquement en développement
+- ✅ Error handler global avec mapping des erreurs techniques vers messages user-friendly
 
 ## Rollback
 

@@ -5,9 +5,8 @@
   - Votes : 10/heure par IP  
   - Pages : 100/minute par IP
 - [x] ⚠️ 40′ **Validation audio 30s** : Client + Serveur + réorganisation architecture
-- [ ] ⚠️ 15′ **Headers sécurisés** : Supprimer `X-Powered-By`, `Server`
+- [x] ⚠️ 25′ **Headers sécurisés** : Suppression headers techniques + ajout headers sécurité
 - [ ] ⚠️ 15′ **Limiter autoscaler** : 1 seule VM CleverCloud
-- [ ] ⚠️ 10′ **Messages discrets** : "Revenez demain !" sans détails techniques
 - [ ] ⚠️ 10′ **Tests & déploiement** : Validation avant vacances
 
 ---
