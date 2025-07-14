@@ -9,7 +9,9 @@ class VoiceRecorder {
     this.audioChunks = [];
     this.isRecording = false;
     this.recordingStartTime = null;
+    this.recordingDuration = 0; // Track recording duration in milliseconds
     this.maxDuration = 3 * 60 * 1000; // 3 minutes in milliseconds
+    this.minDuration = 30 * 1000; // 30 seconds minimum (Phase 2)
     this.currentBlob = null;
     
     this.initializeElements();
@@ -114,6 +116,7 @@ class VoiceRecorder {
 
   stopRecording() {
     if (this.mediaRecorder && this.isRecording) {
+      this.recordingDuration = Date.now() - this.recordingStartTime;
       this.mediaRecorder.stop();
       this.isRecording = false;
       this.updateRecordingUI();
@@ -122,12 +125,23 @@ class VoiceRecorder {
 
   processRecording() {
     if (this.audioChunks.length > 0) {
+      // Phase 2: Validate minimum duration (30 seconds)
+      if (this.recordingDuration < this.minDuration) {
+        const durationSeconds = Math.floor(this.recordingDuration / 1000);
+        this.showError(`Enregistrement trop court (${durationSeconds}s), minimum 30 secondes`);
+        this.resetRecording();
+        return;
+      }
+      
       this.currentBlob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
       const audioUrl = URL.createObjectURL(this.currentBlob);
       
       this.audioPlayer.src = audioUrl;
       this.audioPreview.classList.remove('hidden');
       this.validateForm();
+      
+      const durationSeconds = Math.floor(this.recordingDuration / 1000);
+      console.log(`✅ Recording validated: ${durationSeconds}s (minimum 30s)`);
     }
   }
 
@@ -206,6 +220,7 @@ class VoiceRecorder {
       formData.append('transcription', this.transcriptionInput.value.trim());
       formData.append('badge', document.querySelector('input[name="badge"]:checked').value);
       formData.append('audio', this.currentBlob, 'recording.webm');
+      formData.append('duration', this.recordingDuration.toString()); // Add duration for server validation
       
       const response = await fetch('/api/posts', {
         method: 'POST',
@@ -337,7 +352,11 @@ function initVoteSystem() {
       
       const postId = button.dataset.postId;
       const voteSpan = button.querySelector('span');
-      const currentVotes = parseInt(voteSpan.textContent.replace('+', ''));
+      
+      if (!voteSpan) {
+        console.error('Vote span not found');
+        return;
+      }
       
       // Disable button during request
       button.disabled = true;
@@ -353,7 +372,7 @@ function initVoteSystem() {
         
         const result = await response.json();
         
-        if (result.success) {
+        if (response.ok && result.success) {
           voteSpan.textContent = `+${result.data.votes}`;
           button.classList.add('text-green-500');
           
@@ -366,8 +385,11 @@ function initVoteSystem() {
         console.error('Vote error:', error);
         showVoteNotification('Erreur lors du vote', 'error');
       } finally {
-        button.disabled = false;
-        button.classList.remove('opacity-50');
+        // Re-enable button after a short delay
+        setTimeout(() => {
+          button.disabled = false;
+          button.classList.remove('opacity-50');
+        }, 1000);
       }
     });
   });

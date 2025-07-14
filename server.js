@@ -9,7 +9,8 @@ import fastifyPostgres from "@fastify/postgres";
 import fastifyRateLimit from "@fastify/rate-limit";
 import pug from "pug";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter } from "./middleware/rateLimiter.js";
+import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter } from "./server/middleware/rateLimiter.js";
+import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = Fastify({ logger: true });
@@ -140,6 +141,20 @@ app.post("/api/posts", {
     const timestamp = Date.now();
     const filename = `audio_${timestamp}.webm`;
     const buffer = await audioFile.toBuffer();
+    
+    // Phase 2: Validate audio with new validator
+    const recordingDuration = data.duration ? parseInt(data.duration) : null;
+    const validation = validateAudio(buffer, audioFile.mimetype, recordingDuration);
+    
+    if (!validation.isValid) {
+      return reply.code(400).send({
+        success: false,
+        message: 'Fichier audio invalide',
+        details: validation.errors
+      });
+    }
+    
+    console.log(`✅ Audio validation passed: ${validation.validatedData.duration}ms, ${validation.validatedData.size} bytes`);
     
     let audioPath = null;
     let audioUrl = null;
