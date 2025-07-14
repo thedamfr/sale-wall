@@ -8,10 +8,10 @@
 1. **Phase 1** ✅ (30 min) : Installer et configurer rate limiting
 2. **Phase 2** ✅ (40 min) : Ajouter validation audio 30s + fix bug vote + réorganiser architecture
 3. **Phase 3** ✅ (25 min) : Nettoyer headers et messages d'erreur
-4. **Phase 4** (15 min) : Limiter autoscaler via `clever scale --max-instances 1`
+4. **Phase 4** ✅ (5 min) : Limiter autoscaler via `clever scale --max-instances 1`
 5. **Phase 5** (10 min) : Tests et déploiement
 
-**Temps total estimé :** 2h:** @thedamfr
+**Temps total estimé :** 2h10:** @thedamfr
 
 ## Contexte
 
@@ -190,14 +190,11 @@ export function cleanHeaders(fastify) {
 
 **Temps total estimé :** 1h50
 
-### Détails Phase 3 (terminée)
-- ✅ Création `server/middleware/security.js` avec nettoyage headers et sanitisation erreurs
-- ✅ Suppression headers techniques: `x-powered-by`, `server`, `x-fastify-version`
-- ✅ Ajout headers sécurité: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`
-- ✅ Messages d'erreur génériques en production (ex: "Déjà voté" vs détails techniques)
-- ✅ Gestion 404 personnalisée avec message uniforme
-- ✅ Logs détaillés uniquement en développement
-- ✅ Error handler global avec mapping des erreurs techniques vers messages user-friendly
+### Détails Phase 4 (terminée)
+- ✅ Configuration autoscaler CleverCloud limitée à 1 instance via `clever scale --max-instances 1`
+- ✅ Vérification : `Scalers: 1` dans `clever status`
+- ✅ Coûts maîtrisés : impossible de dépasser 1 instance pico
+- ✅ Protection contre escalade de coûts pendant les vacances
 
 ## Rollback
 

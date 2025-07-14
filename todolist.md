@@ -6,7 +6,7 @@
   - Pages : 100/minute par IP
 - [x] ⚠️ 40′ **Validation audio 30s** : Client + Serveur + réorganisation architecture
 - [x] ⚠️ 25′ **Headers sécurisés** : Suppression headers techniques + ajout headers sécurité
-- [ ] ⚠️ 15′ **Limiter autoscaler** : 1 seule VM CleverCloud
+- [x] ⚠️ 5′ **Limiter autoscaler** : 1 seule VM CleverCloud (`clever scale --max-instances 1`)
 - [ ] ⚠️ 10′ **Tests & déploiement** : Validation avant vacances
 
 ---
