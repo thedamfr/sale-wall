@@ -54,3 +54,24 @@ cypress/
 
 # Autres fichiers temporaires
 *.tsbuildinfo
+
+# Fichiers de test et uploads
+test_data/
+uploads/
+
+# Rapports de sécurité et audit
+security/reports/
+security/audit_report_*.json
+security/audit_report_*.md
+
+# Fichiers de backup
+*.backup
+*.bak
+
+# Fichiers de test audio
+*.webm
+*.mp3
+*.wav
+
+# Scripts de test temporaires
+scripts/audit_simple.sh
