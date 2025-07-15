@@ -32,9 +32,9 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 
 ### 🛡️ Statut de Sécurité : ✅ SÉCURISÉ
 
-- **Audit OWASP Top 10** : ✅ Conforme (Score 9.5/10)
+- **Audit OWASP Top 10** : ✅ Conforme (Score 11/11)
 - **Vulnérabilités critiques** : 0 détectée
-- **Dernier audit** : 14 juillet 2025
+- **Dernier audit** : 15 juillet 2025
 - **Système de protection** : Rate limiting, validation stricte, headers sécurisés
 
 ### 🚦 Protections Actives
