@@ -86,8 +86,9 @@ test_result "Endpoints admin bloqués" "404" "$ADMIN_RESPONSE"
 
 # Test 7: Injection basique
 echo -e "\n7. Test injection basique"
-SQL_RESPONSE=$(curl -s -X POST "$URL_BASE/api/posts/'; DROP TABLE posts; --/vote" 2>/dev/null)
-if echo "$SQL_RESPONSE" | grep -q "success.*false"; then
+# Tester avec des caractères encodés pour éviter les problèmes curl
+SQL_RESPONSE=$(curl -s -X POST "$URL_BASE/api/posts/malicious%27%3B%20DROP%20TABLE%20posts%3B%20--/vote" 2>/dev/null)
+if echo "$SQL_RESPONSE" | grep -q '"success":false'; then
     echo "✅ Injection SQL bloquée"
     PASSED_TESTS=$((PASSED_TESTS + 1))
 else
