@@ -3,15 +3,17 @@ node_modules/
 server/node_modules/
 client/node_modules/
 
-# Fichiers de lock
+# Fichiers de lock (laisser package-lock.json si on utilise npm)
 package-lock.json
 pnpm-lock.yaml
+yarn.lock
 
 # Build output
 server/dist/
 client/dist/
 dist/
 build/
+*.tsbuildinfo
 
 # Fichiers d'environnement
 .env
@@ -19,23 +21,30 @@ build/
 .envrc
 
 # Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-*.log
+lerna-debug.log*
 
 # Fichiers système
 .DS_Store
 Thumbs.db
+*.tmp
+*.temp
 
 # IDEs et éditeurs
 .vscode/
 .idea/
+*.swp
+*.swo
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
+*.sw?
 
 # Docker
 /docker-compose.override.yml
@@ -43,35 +52,62 @@ Thumbs.db
 # Couverture de tests
 coverage/
 *.lcov
+.nyc_output
 
 # Caches divers
 **/.cache/
 **/.tmp/
+.eslintcache
+.stylelintcache
 
 # Playwright/Cypress (si utilisés)
 .playwright/
 cypress/
-
-# Autres fichiers temporaires
-*.tsbuildinfo
+test-results/
 
 # Fichiers de test et uploads
 test_data/
 uploads/
+temp/
 
 # Rapports de sécurité et audit
 security/reports/
 security/audit_report_*.json
 security/audit_report_*.md
+security/audit_report_*.txt
+security/audit_report_*.html
 
 # Fichiers de backup
 *.backup
 *.bak
+*.orig
 
-# Fichiers de test audio
+# Fichiers de test audio et media
 *.webm
 *.mp3
 *.wav
+*.m4a
+*.ogg
+*.flac
 
-# Scripts de test temporaires
-scripts/audit_simple.sh
+# Fichiers de processus
+*.pid
+*.seed
+*.pid.lock
+
+# Fichiers de runtime
+.pnpm-store
+.npm
+.yarn-integrity
+
+# Fichiers de monitoring
+newrelic_agent.log
+.pm2/
+
+# Fichiers de profiling
+isolate-*.log
+v8-compile-cache-*
+
+# Fichiers de debug
+debug.log
+error.log
