@@ -220,10 +220,10 @@ app.post("/api/posts", {
     const client = await app.pg.connect();
     try {
       const result = await client.query(
-        `INSERT INTO posts (title, transcription, badge, audio_filename, audio_path, audio_url, created_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, NOW()) 
+        `INSERT INTO posts (title, transcription, badge, audio_filename, audio_path, audio_url, duration_seconds, created_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) 
          RETURNING id, created_at`,
-        [data.title, data.transcription, data.badge, filename, audioPath, audioUrl]
+        [data.title, data.transcription, data.badge, filename, audioPath, audioUrl, Math.floor(validation.validatedData.duration / 1000)]
       );
       
       reply.send({
@@ -319,6 +319,7 @@ app.get("/", {
           p.badge,
           p.audio_filename,
           p.audio_url,
+          p.duration_seconds,
           p.created_at,
           COALESCE(v.vote_count, 0) as votes,
           EXTRACT(EPOCH FROM (NOW() - p.created_at)) as age_seconds
@@ -335,8 +336,8 @@ app.get("/", {
       
       const posts = result.rows.map(post => ({
         ...post,
-        // Calculate duration placeholder (we'll implement real duration later)
-        duration: `0:${Math.floor(Math.random() * 50) + 10}`,
+        // Use real duration from database
+        duration: formatDuration(post.duration_seconds),
         // Format creation time
         timeAgo: formatTimeAgo(post.age_seconds)
       }));
@@ -389,6 +390,14 @@ function formatTimeAgo(seconds) {
   if (hours > 0) return `il y a ${hours} heure${hours > 1 ? 's' : ''}`;
   if (minutes > 0) return `il y a ${minutes} minute${minutes > 1 ? 's' : ''}`;
   return 'à l\'instant';
+}
+
+// Helper function to format duration
+function formatDuration(seconds) {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 // Route manifeste (avec rate limiting)
