@@ -8,7 +8,7 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyPostgres from "@fastify/postgres";
 import fastifyRateLimit from "@fastify/rate-limit";
 import pug from "pug";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter } from "./server/middleware/rateLimiter.js";
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
@@ -16,7 +16,7 @@ import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/sec
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = Fastify({ logger: true });
 
-// S3/Cellar configuration
+// S3/Cellar configuration with performance optimizations
 const s3Config = {
   endpoint: process.env.CELLAR_ADDON_HOST 
     ? `https://${process.env.CELLAR_ADDON_HOST}` 
@@ -27,11 +27,43 @@ const s3Config = {
   },
   region: 'us-east-1', // Région par défaut pour Cellar
   forcePathStyle: true, // Important pour MinIO/Cellar
+  // Performance optimizations for MinIO
+  maxAttempts: 2, // Reduce retry attempts
+  requestTimeout: 8000, // 8 second timeout
+  connectTimeout: 3000, // 3 second connection timeout
+  // Force signature v4 for MinIO compatibility
+  signatureVersion: 'v4'
 };
 
 const s3Client = new S3Client(s3Config);
 const bucketName = process.env.S3_BUCKET || 'salete-media';
 const isProduction = process.env.NODE_ENV === 'production' || !!process.env.CELLAR_ADDON_HOST;
+
+// Ensure bucket exists
+async function ensureBucketExists() {
+  try {
+    await s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
+    if (!isProduction) {
+      console.log(`✅ Bucket ${bucketName} already exists`);
+    }
+  } catch (error) {
+    if (error.name === 'NotFound') {
+      try {
+        await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+        if (!isProduction) {
+          console.log(`✅ Bucket ${bucketName} created successfully`);
+        }
+      } catch (createError) {
+        console.error(`❌ Failed to create bucket ${bucketName}:`, createError);
+      }
+    } else {
+      console.error(`❌ Error checking bucket ${bucketName}:`, error);
+    }
+  }
+}
+
+// Initialize bucket
+await ensureBucketExists();
 
 // Phase 3: Logs détaillés uniquement en dev
 if (!isProduction) {
@@ -123,29 +155,118 @@ app.post("/api/posts", {
     rateLimit: uploadLimiter
   }
 }, async (req, reply) => {
+  if (!isProduction) {
+    console.log('📥 POST /api/posts - Starting request processing');
+  }
+  
   try {
+    if (!isProduction) {
+      console.log('📋 Parsing multipart form data...');
+    }
+    
     const parts = req.parts();
     const data = {};
     let audioFile = null;
     
-    for await (const part of parts) {
-      if (part.type === 'file') {
-        // Handle audio file
-        if (part.fieldname === 'audio') {
-          audioFile = part;
-        }
-      } else {
-        // Handle text fields
-        data[part.fieldname] = part.value;
+    try {
+      if (!isProduction) {
+        console.log('⏳ Starting multipart parsing...');
       }
+      
+      let partCount = 0;
+      const maxParts = 10; // Safety limit
+      
+      for await (const part of parts) {
+        partCount++;
+        
+        if (!isProduction) {
+          console.log(`🔍 Processing part ${partCount}:`, part.fieldname, 'type:', part.type);
+        }
+        
+        if (part.type === 'file') {
+          // Handle audio file
+          if (part.fieldname === 'audio') {
+            if (!isProduction) {
+              console.log('🎵 Audio file found:', part.filename, 'mimetype:', part.mimetype);
+            }
+            // Convert to buffer immediately to consume the stream and allow parsing to continue
+            if (!isProduction) {
+              console.log('🔄 Converting audio to buffer to consume stream...');
+            }
+            const audioBuffer = await part.toBuffer();
+            // Store both the buffer and metadata
+            audioFile = {
+              buffer: audioBuffer,
+              filename: part.filename,
+              mimetype: part.mimetype
+            };
+            if (!isProduction) {
+              console.log('✅ Audio stream consumed, buffer size:', audioBuffer.length);
+            }
+          }
+        } else {
+          // Handle text fields
+          data[part.fieldname] = part.value;
+          if (!isProduction) {
+            console.log(`📝 Form field ${part.fieldname}:`, part.value);
+          }
+        }
+        
+        if (!isProduction) {
+          console.log('✅ Part processed:', part.fieldname);
+          console.log('📊 Current data so far:', Object.keys(data));
+        }
+        
+        // Safety break to avoid infinite loops
+        if (partCount >= maxParts) {
+          if (!isProduction) {
+            console.log('⚠️ Reached maximum parts limit, breaking');
+          }
+          break;
+        }
+      }
+      
+      if (!isProduction) {
+        console.log('🎊 Finished processing multipart data');
+        console.log('📋 Final data fields:', Object.keys(data));
+        console.log('📋 Final data values:', data);
+        console.log('📁 Audio file present:', !!audioFile);
+      }
+    } catch (parsingError) {
+      if (!isProduction) {
+        console.error('❌ Error during multipart parsing:', parsingError);
+        console.error('  Error message:', parsingError.message);
+        console.error('  Error stack:', parsingError.stack);
+      }
+      throw parsingError;
+    }
+    
+    if (!isProduction) {
+      console.log('✅ Form parsing completed');
     }
     
     // Validate required fields
+    if (!isProduction) {
+      console.log('🔍 Validating required fields...');
+    }
+    
     if (!data.title || !data.transcription || !data.badge || !audioFile) {
+      if (!isProduction) {
+        console.log('❌ Missing fields:', { 
+          title: !!data.title, 
+          transcription: !!data.transcription, 
+          badge: !!data.badge, 
+          audioFile: !!audioFile 
+        });
+      }
       return reply.code(400).send({
         success: false,
         message: 'Informations manquantes'
       });
+    }
+    
+    if (!isProduction) {
+      console.log('✅ All required fields present');
     }
     
     // Validate badge value
@@ -157,74 +278,151 @@ app.post("/api/posts", {
     }
     
     // Generate unique filename
+    if (!isProduction) {
+      console.log('🏷️ Generating filename...');
+    }
+    
     const timestamp = Date.now();
     const filename = `audio_${timestamp}.webm`;
-    const buffer = await audioFile.toBuffer();
+    
+    if (!isProduction) {
+      console.log('📁 Generated filename:', filename);
+    }
+    
+    const buffer = audioFile.buffer;
+    
+    if (!isProduction) {
+      console.log('✅ Using pre-converted buffer, size:', buffer.length, 'bytes');
+    }
     
     // Phase 2: Validate audio with new validator
+    if (!isProduction) {
+      console.log('🎧 Starting audio validation...');
+    }
+    
     const recordingDuration = data.duration ? parseInt(data.duration) : null;
+    
+    if (!isProduction) {
+      console.log('⏱️ Recording duration from form:', recordingDuration);
+    }
+    
     const validation = validateAudio(buffer, audioFile.mimetype, recordingDuration);
     
     if (!validation.isValid) {
+      if (!isProduction) {
+        console.log('❌ Audio validation failed:', validation);
+      }
       return reply.code(400).send({
         success: false,
         message: 'Enregistrement audio invalide'
       });
     }
+    
     // Phase 3: Supprimer les logs détaillés en production
     if (!isProduction) {
       console.log(`✅ Audio validation passed: ${validation.validatedData.duration}ms, ${validation.validatedData.size} bytes`);
     }
     
-    let audioPath = null;
     let audioUrl = null;
     
-    if (isProduction) {
-      // Upload to S3/Cellar in production
-      try {
-        const s3Key = `audio/${filename}`;
-        const uploadCommand = new PutObjectCommand({
-          Bucket: bucketName,
-          Key: s3Key,
-          Body: buffer,
-          ContentType: 'audio/webm',
-          ACL: 'public-read'
-        });
-        
-        await s3Client.send(uploadCommand);
-        audioUrl = `${s3Config.endpoint}/${bucketName}/${s3Key}`;
-        if (!isProduction) {
-          console.log('✅ Audio uploaded to S3:', audioUrl);
-        }
-        
-      } catch (s3Error) {
-        console.error('❌ S3 upload failed:', s3Error);
-        return reply.code(500).send({
-          success: false,
-          message: 'Erreur lors de l\'upload du fichier audio'
-        });
-      }
-    } else {
-      // Save locally in development
-      const uploadsDir = path.join(__dirname, 'uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+    // Always use MinIO/S3 storage (both dev and production)
+    if (!isProduction) {
+      console.log('🚀 Starting MinIO upload process...');
+    }
+    
+    try {
+      const s3Key = `audio/${filename}`;
+      
+      if (!isProduction) {
+        console.log('🔄 Starting MinIO upload...');
+        console.log('  S3 Key:', s3Key);
+        console.log('  Buffer size:', buffer.length);
+        console.log('  Endpoint:', s3Config.endpoint);
+        console.log('  Bucket:', bucketName);
+        console.log('  Access Key:', s3Config.credentials.accessKeyId);
+        console.log('📦 Creating PutObjectCommand...');
       }
       
-      audioPath = path.join(__dirname, 'uploads', filename);
-      fs.writeFileSync(audioPath, buffer);
-      audioUrl = `/audio/${filename}`;
+      const uploadCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: s3Key,
+        Body: buffer,
+        ContentType: 'audio/webm'
+        // Removed ACL for better performance and MinIO compatibility
+      });
+      
+      if (!isProduction) {
+        console.log('✅ PutObjectCommand created successfully');
+        console.log('⏳ Sending command to S3 client...');
+      }
+      
+      // Performance optimization: upload with timeout
+      const uploadPromise = s3Client.send(uploadCommand);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Upload timeout')), 10000) // 10s timeout
+      );
+      
+      if (!isProduction) {
+        console.log('🔄 Waiting for upload or timeout (10s)...');
+      }
+      
+      await Promise.race([uploadPromise, timeoutPromise]);
+      
+      if (!isProduction) {
+        console.log('🎉 Upload completed successfully!');
+      }
+      
+      // Generate public URL for MinIO
+      if (!isProduction) {
+        console.log('🔗 Generating public URL...');
+      }
+      
+      if (isProduction) {
+        audioUrl = `${s3Config.endpoint}/${bucketName}/${s3Key}`;
+      } else {
+        // In development, use localhost MinIO URL
+        audioUrl = `http://localhost:9000/${bucketName}/${s3Key}`;
+      }
+      
+      if (!isProduction) {
+        console.log('✅ Audio uploaded to MinIO:', audioUrl);
+      }
+      
+    } catch (s3Error) {
+      console.error('❌ MinIO upload failed:', s3Error);
+      if (!isProduction) {
+        console.error('  Error details:', s3Error.message);
+        console.error('  Error name:', s3Error.name);
+        console.error('  Error code:', s3Error.code);
+        console.error('  Error stack:', s3Error.stack);
+        console.error('  Full error object:', JSON.stringify(s3Error, null, 2));
+      }
+      return reply.code(500).send({
+        success: false,
+        message: 'Erreur lors de l\'upload vers MinIO'
+      });
     }
     
     // Save to database
+    if (!isProduction) {
+      console.log('💾 Starting database save...');
+    }
     const client = await app.pg.connect();
     try {
+      if (!isProduction) {
+        console.log('📝 Inserting post into database...');
+      }
+      
       const result = await client.query(
-        `INSERT INTO posts (title, transcription, badge, audio_filename, audio_path, audio_url, duration_seconds, created_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) 
+        `INSERT INTO posts (title, transcription, badge, audio_filename, audio_url, duration_seconds, created_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, NOW()) 
          RETURNING id, created_at`,
-        [data.title, data.transcription, data.badge, filename, audioPath, audioUrl, Math.floor(validation.validatedData.duration / 1000)]
+        [data.title, data.transcription, data.badge, filename, audioUrl, Math.floor(validation.validatedData.duration / 1000)]
       );
+      
+      if (!isProduction) {
+        console.log('✅ Post saved to database with ID:', result.rows[0].id);
+      }
       
       reply.send({
         success: true,
@@ -234,11 +432,20 @@ app.post("/api/posts", {
           created_at: result.rows[0].created_at
         }
       });
+      
+      if (!isProduction) {
+        console.log('🎉 POST /api/posts completed successfully!');
+      }
     } finally {
       client.release();
     }
     
   } catch (error) {
+    console.error('💥 Fatal error in POST /api/posts:', error);
+    if (!isProduction) {
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+    }
     app.log.error(error);
     reply.code(500).send({
       success: false,

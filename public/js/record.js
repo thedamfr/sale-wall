@@ -220,7 +220,18 @@ class VoiceRecorder {
       formData.append('transcription', this.transcriptionInput.value.trim());
       formData.append('badge', document.querySelector('input[name="badge"]:checked').value);
       formData.append('audio', this.currentBlob, 'recording.webm');
+      
+      // Debug: log duration before appending
+      console.log('🔍 CLIENT: Recording duration before append:', this.recordingDuration);
+      console.log('🔍 CLIENT: Recording duration type:', typeof this.recordingDuration);
+      
       formData.append('duration', this.recordingDuration.toString()); // Add duration for server validation
+      
+      // Debug: verify formData contents
+      console.log('🔍 CLIENT: FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
       
       const response = await fetch('/api/posts', {
         method: 'POST',
@@ -329,6 +340,148 @@ class VoiceRecorder {
   }
 }
 
+/**
+ * Audio Player System for post playback
+ */
+class AudioPlayer {
+  constructor() {
+    this.currentAudio = null;
+    this.currentButton = null;
+    this.initializeAudioButtons();
+  }
+
+  initializeAudioButtons() {
+    const audioButtons = document.querySelectorAll('.audio-play-btn');
+    audioButtons.forEach(button => {
+      button.addEventListener('click', (e) => this.handleAudioClick(e));
+    });
+  }
+
+  async handleAudioClick(e) {
+    e.preventDefault();
+    const button = e.currentTarget;
+    const audioUrl = button.dataset.audioUrl;
+
+    // If clicking the same button that's already playing, pause it
+    if (this.currentButton === button && this.currentAudio && !this.currentAudio.paused) {
+      this.pauseAudio();
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (this.currentAudio) {
+      this.stopAudio();
+    }
+
+    try {
+      await this.playAudio(audioUrl, button);
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      this.showError('Impossible de lire l\'audio');
+    }
+  }
+
+  async playAudio(audioUrl, button) {
+    return new Promise((resolve, reject) => {
+      this.currentAudio = new Audio(audioUrl);
+      this.currentButton = button;
+
+      this.currentAudio.addEventListener('loadstart', () => {
+        this.setButtonState(button, 'loading');
+      });
+
+      this.currentAudio.addEventListener('canplay', () => {
+        this.setButtonState(button, 'playing');
+        this.currentAudio.play().then(resolve).catch(reject);
+      });
+
+      this.currentAudio.addEventListener('ended', () => {
+        this.setButtonState(button, 'idle');
+        this.currentAudio = null;
+        this.currentButton = null;
+      });
+
+      this.currentAudio.addEventListener('error', () => {
+        this.setButtonState(button, 'idle');
+        reject(new Error('Audio loading failed'));
+      });
+
+      this.currentAudio.load();
+    });
+  }
+
+  pauseAudio() {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.setButtonState(this.currentButton, 'paused');
+    }
+  }
+
+  stopAudio() {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
+      this.setButtonState(this.currentButton, 'idle');
+      this.currentAudio = null;
+      this.currentButton = null;
+    }
+  }
+
+  setButtonState(button, state) {
+    const playIcon = button.querySelector('.play-icon');
+    const pauseIcon = button.querySelector('.pause-icon');
+    
+    // Reset all states
+    playIcon.classList.remove('hidden');
+    pauseIcon.classList.add('hidden');
+    button.classList.remove('animate-pulse');
+
+    switch (state) {
+      case 'loading':
+        button.classList.add('animate-pulse');
+        break;
+      case 'playing':
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        break;
+      case 'paused':
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        break;
+      case 'idle':
+      default:
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        break;
+    }
+  }
+
+  showError(message) {
+    // Reuse the toast system from VoiceRecorder
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 opacity-0 transform translate-y-2 transition-all duration-300';
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      toast.classList.remove('opacity-0', 'translate-y-2');
+    });
+    
+    toast.innerHTML = `
+      <div class="flex items-center">
+        <span class="text-sm font-medium">${message}</span>
+      </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.remove();
+      }
+    }, 3000);
+  }
+}
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   // Check for MediaRecorder support
@@ -339,6 +492,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialize voice recorder
   new VoiceRecorder();
+  
+  // Initialize audio player for post playback
+  new AudioPlayer();
   
   // Initialize vote system
   initVoteSystem();
