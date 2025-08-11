@@ -80,6 +80,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 ```
 salete-sincere/
 ├── server.js            # Serveur Fastify principal
+├── CLAUDE.md            # Framework TDD générique (base contributeurs)
 ├── server/
 │   ├── views/           # Templates Pug
 │   ├── middleware/      # Middleware Fastify
@@ -87,6 +88,8 @@ salete-sincere/
 │   │   └── security.js
 │   └── validators/      # Validation données
 │       └── audioValidator.js
+├── .github/
+│   └── copilot-instructions.md  # Instructions TDD spécifiques projet
 ├── public/              # Assets statiques
 │   ├── style.css        # CSS compilé
 │   ├── custom.css       # CSS custom
@@ -303,11 +306,20 @@ psql <connection-string> -c "SELECT COUNT(*) FROM posts;"
 
 ## 🤝 Contribution
 
-1. Fork le projet
-2. Créez une branche feature (`git checkout -b feature/nouvelle-fonctionnalite`)
-3. Committez vos changements (`git commit -am 'Ajout nouvelle fonctionnalité'`)
-4. Push sur la branche (`git push origin feature/nouvelle-fonctionnalite`)
-5. Ouvrez une Pull Request
+### Méthodologie TDD-first
+Ce projet suit une approche **Test-Driven Development** stricte :
+- **Documentation requis** : [`CLAUDE.md`](CLAUDE.md) - Framework TDD générique à personnaliser
+- **Instructions spécifiques** : [`.github/copilot-instructions.md`](.github/copilot-instructions.md) - Guide pour ce projet
+- **Cycle obligatoire** : ADR + sécurité → tests → code minimal → refactor → pause state
+
+### Processus de contribution
+1. **Consulter la documentation** : Lire `CLAUDE.md` et `.github/copilot-instructions.md`
+2. Fork le projet
+3. Créez une branche feature (`git checkout -b feature/nouvelle-fonctionnalite`)
+4. **Suivre TDD** : ADR minimal + tests d'abord + implémentation minimale
+5. Committez vos changements (`git commit -am 'Ajout nouvelle fonctionnalité'`)
+6. Push sur la branche (`git push origin feature/nouvelle-fonctionnalite`)
+7. Ouvrez une Pull Request
 
 ---
 
