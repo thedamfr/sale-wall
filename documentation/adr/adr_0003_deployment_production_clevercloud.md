@@ -1,4 +1,19 @@
-# ADR 0003 — Déploiement Production CleverCloud ✅ OPÉRATIONNEL
+---
+title: Production Deployment CleverCloud
+description: Configuration et déploiement de l'application sur CleverCloud avec PostgreSQL et Cellar S3
+owner: @thedamfr
+status: active
+review_after: 2026-01-01
+canonical_url: https://github.com/thedamfr/sale-wall/blob/main/documentation/adr/adr_0003_deployment_production_clevercloud.md
+tags: [adr, infrastructure, clevercloud, postgresql, s3]
+adr_number: 0003
+date_created: 2025-07
+date_deployed: 2025-07-12
+impact: critical
+production_url: https://app-cb755f4a-25da-4a25-b40c-c395f5086569.cleverapps.io/
+---
+
+# ADR 0003 — Production Deployment CleverCloud ✅
 
 ## Contexte
 

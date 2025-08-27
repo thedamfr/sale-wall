@@ -1,4 +1,18 @@
-# ADR-004: Rate Limiting et Sécurité pour les Vacances
+---
+title: Rate Limiting & Security
+description: Protection contre spam/DDoS avec rate limiting et headers sécurisés pour la production
+owner: @thedamfr
+status: active
+review_after: 2025-12-01
+canonical_url: https://github.com/thedamfr/sale-wall/blob/main/documentation/adr/adr_0004_rate_limiting_security.md
+tags: [adr, security, rate-limiting, ddos, owasp]
+adr_number: 0004
+date_created: 2025-07-14
+date_implemented: 2025-07-15
+impact: critical
+---
+
+# ADR 0004 — Rate Limiting & Security
 
 **Date :** 14 juillet 2025  
 **Statut :** Proposé  

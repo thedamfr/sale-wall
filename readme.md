@@ -1,3 +1,14 @@
+---
+title: Saleté Sincère
+description: Plateforme audio pour partager victoires "Wafer" et "Charbon" du quotidien avec système de votes
+owner: @thedamfr
+status: active
+review_after: 2026-01-01
+canonical_url: https://github.com/thedamfr/sale-wall
+tags: [audio, platform, fastify, postgresql, tdd]
+production_url: https://app-cb755f4a-25da-4a25-b40c-c395f5086569.cleverapps.io/
+---
+
 # Saleté Sincère
 
 Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "Charbon" du quotidien, voter pour vos coups de coeur, et faire naître des épisodes longs.

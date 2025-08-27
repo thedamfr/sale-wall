@@ -1,4 +1,31 @@
-# ADR 0002 — Feature : Création de ## Plan d'implémentation
+---
+title: Voice Posting MVP
+description: Architecture décision pour implémenter l'enregistrement vocal avec transcription manuelle
+owner: @thedamfr
+status: implemented
+review_after: 2025-12-01
+canonical_url: https://github.com/thedamfr/sale-wall/blob/main/documentation/adr/adr_0001_voice_posting_mvp.md
+tags: [adr, audio, mvp, frontend, ui]
+adr_number: 0001
+date_created: 2025-07
+date_implemented: 2025-07
+impact: core
+---
+
+# ADR 0001 — Voice Posting MVP
+
+## Plan d'implémentation
+
+1. **Formulaire inline dans le hero (views/index.pug)**  
+   - Modifier le hero pour inclure un formulaire qui se déplie au clic sur "+ Enregistrer votre histoire"
+   - Conteneur collapse/expand avec :
+     - Bouton Enregistrer / Arrêter avec feedback visuel
+     - Champ `input` pour le **titre**  
+     - Aperçu audio (`<audio>`) avec contrôles
+     - Textarea pour la **transcription** obligatoire
+     - Sélecteur de badge (Wafer/Charbon/Tous)
+     - Bouton d'envoi avec loader
+2. **Vanilla JS (public/js/record.js)** (MVP) Feature : Création de ## Plan d'implémentation
 
 1. **Formulaire inline dans le hero (views/index.pug)**  
    - Modifier le hero pour inclure un formulaire qui se déplie au clic sur "+ Enregistrer votre histoire"

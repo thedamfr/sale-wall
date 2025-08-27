@@ -1,4 +1,18 @@
-# ADR 0002 — Feature : Création de post vocal (MVP) ✅ IMPLÉMENTÉ
+---
+title: Voice Posting MVP Implementation
+description: Détails techniques d'implémentation de l'enregistrement vocal avec transcription manuelle
+owner: @thedamfr
+status: implemented
+review_after: 2025-12-01
+canonical_url: https://github.com/thedamfr/sale-wall/blob/main/documentation/adr/adr_0002_voice_posting_mvp_implemented.md
+tags: [adr, audio, implementation, backend, storage]
+adr_number: 0002
+date_created: 2025-07
+date_implemented: 2025-07-11
+impact: core
+---
+
+# ADR 0002 — Voice Posting MVP Implementation ✅
 
 ## Contexte
 

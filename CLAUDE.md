@@ -1,3 +1,13 @@
+---
+title: CLAUDE.md — TDD-first playbook
+description: Framework TDD générique pour agents IA avec contexte limité, minimalisme et sécurité intégrée
+owner: @WeLoveDevs
+status: active
+review_after: 2026-01-01
+canonical_url: https://github.com/thedamfr/sale-wall/blob/main/CLAUDE.md
+tags: [tdd, framework, methodology, ai-agents, security]
+---
+
 # CLAUDE.md — TDD-first playbook (WeLoveDevs)
 
 > **But**: produire du code maintenable et sécurisé **en écrivant d'abord les tests** (TDD), avec des agents IA au contexte limité. Minimalisme, lisibilité, pas de code sans critères d'acceptation écrits.

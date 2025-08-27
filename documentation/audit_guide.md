@@ -1,3 +1,13 @@
+---
+title: Guide d'Audit OWASP Top 10
+description: Guide d'utilisation des outils d'audit de sécurité OWASP Top 10 pour Saleté Sincère
+owner: @thedamfr
+status: active
+review_after: 2026-01-01
+canonical_url: https://github.com/thedamfr/sale-wall/blob/main/documentation/audit_guide.md
+tags: [security, owasp, audit, guide, testing]
+---
+
 # Guide d'Audit OWASP Top 10 - Saleté Sincère
 
 ## Vue d'ensemble
