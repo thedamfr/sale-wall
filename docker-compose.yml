@@ -45,11 +45,11 @@ services:
       - s3data:/data
     networks: [salete_net]
 
-  api:
+  server:
     build:
       context: .
       dockerfile: ./Dockerfile      # ↳ basé sur node:24-slim
-    container_name: salete_api
+    container_name: salete_server
     restart: unless-stopped
     env_file: .env.docker                # copie le .example → .env.docker
     environment:
@@ -71,3 +71,5 @@ services:
     ports:
       - "3000:3000"
     networks: [salete_net]
+    profiles:
+      - production  # Seulement pour production/tests complets

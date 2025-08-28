@@ -161,8 +161,11 @@ cp .env.example .env
 colima status    # Devrait afficher "Running"
 # Si arrêté : colima start
 
-# Lancer PostgreSQL + MinIO/S3
-docker-compose up -d
+# DÉVELOPPEMENT : Lancer seulement PostgreSQL + MinIO/S3
+docker-compose up db s3 -d
+
+# PRODUCTION/TESTS : Lancer tout incluant le serveur
+docker-compose --profile production up -d
 
 # Vérifier que les services sont UP
 docker-compose ps
@@ -176,13 +179,35 @@ docker exec -i salete_pg psql -U salete -d salete < sql/001_init.sql
 
 ### 5. Lancer le serveur de dev
 ```bash
-npm run dev          # Serveur avec live reload
+# Mode développement : serveur local avec live reload
+npm run dev          # Serveur avec nodemon (port 3000)
 npm run dev:css      # Watch CSS (optionnel, terminal séparé)
 ```
+
+**Note** : En mode développement, seuls PostgreSQL et MinIO tournent dans Docker. Le serveur Node.js tourne en local pour le live reload.
 
 ### 6. Accéder à l'application
 - **App** : http://localhost:3000
 - **S3 Console** : http://localhost:9001 (admin/password: salete/salete123)
+
+### 📋 Modes d'utilisation
+
+#### 🛠️ Mode Développement (recommandé)
+```bash
+# 1. Services seulement (DB + S3)
+docker-compose up db s3 -d
+
+# 2. Serveur en local avec live reload
+npm run dev
+```
+✅ **Avantages** : Live reload, debug facile, performance optimale
+
+#### 🐳 Mode Production/Tests
+```bash
+# Tout dans Docker
+docker-compose --profile production up -d
+```
+✅ **Avantages** : Environnement identique à la production
 
 ## 🎙️ Fonctionnalité d'enregistrement vocal
 
