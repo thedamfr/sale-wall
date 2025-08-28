@@ -126,6 +126,19 @@ salete-sincere/
 
 ## ⚙️ Développement local
 
+### Prérequis
+- **Node.js** ≥ 24
+- **Docker** (via Colima sur macOS)
+
+```bash
+# Installation Docker via Colima (macOS)
+brew install colima docker docker-compose
+colima start
+
+# Vérifier que Docker fonctionne
+docker --version
+```
+
 ### 1. Installation
 ```bash
 git clone <repo>
@@ -142,22 +155,32 @@ brew install clever-tools postgresql s3cmd
 cp .env.example .env
 ```
 
-### 3. Initialiser la base de données
+### 3. Démarrer les services
 ```bash
-# Lancer les services (PostgreSQL + S3)
-docker compose up db s3 -d
+# S'assurer que Docker est démarré
+colima status    # Devrait afficher "Running"
+# Si arrêté : colima start
 
+# Lancer PostgreSQL + MinIO/S3
+docker-compose up -d
+
+# Vérifier que les services sont UP
+docker-compose ps
+```
+
+### 4. Initialiser la base de données
+```bash
 # Initialiser les tables et données de test
 docker exec -i salete_pg psql -U salete -d salete < sql/001_init.sql
 ```
 
-### 4. Lancer le serveur de dev
+### 5. Lancer le serveur de dev
 ```bash
 npm run dev          # Serveur avec live reload
 npm run dev:css      # Watch CSS (optionnel, terminal séparé)
 ```
 
-### 5. Accéder à l'application
+### 6. Accéder à l'application
 - **App** : http://localhost:3000
 - **S3 Console** : http://localhost:9001 (admin/password: salete/salete123)
 
