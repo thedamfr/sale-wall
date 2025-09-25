@@ -9,14 +9,16 @@ html(lang="fr")
     link(href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap", rel="stylesheet")
     link(rel="stylesheet", href="/style.css")
     link(rel="stylesheet", href="/custom.css")
-  body(class="bg-[#0B0B0B] text-[#F2F2EF] font-sans")
+  body(class="bg-[#0B0B0B] text-[#F2F2EF] font-sans min-h-screen")
     // Top Banner
-    div(class="bg-[#D6B977] text-[#0B0B0B] text-center p-2")
+    div(class="bg-[#D6B977] text-[#0B0B0B] text-center p-3 text-sm")
       | ⚠️ Prototype en travaux. Certaines fonctionnalités ne sont pas encore disponibles.
     
     block header
     
-    block content
+    // Main container with better responsive design
+    div(class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8")
+      block content
     
     // JavaScript
     script(src="/js/record.js")

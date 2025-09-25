@@ -19,6 +19,7 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 - **📝 Transcription manuelle** : Transcription obligatoire pour l'accessibilité  
 - **🏷️ Système de badges** : Classement "Wafer" (léger) et "Charbon" (intense)
 - **👍 Système de votes** : Vote par IP pour les posts préférés
+- **📧 Newsletter intégrée** : Inscription double opt-in via API Brevo (backend-only)
 - **🎨 Design responsive** : Interface adaptée mobile/desktop avec Tailwind CSS v4
 - **♿ Accessibilité** : Labels ARIA, navigation au clavier, contraste élevé
 - **🔒 Sécurité renforcée** : Rate limiting, validation stricte, audit OWASP Top 10
@@ -53,6 +54,7 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 #### Rate Limiting
 - **Posts audio** : 3 uploads/heure par IP
 - **Votes** : 10 votes/heure par IP  
+- **Newsletter** : 5 inscriptions/heure par IP
 - **Navigation** : 100 pages/minute par IP
 
 #### Validation des Données
@@ -97,8 +99,11 @@ salete-sincere/
 │   ├── middleware/      # Middleware Fastify
 │   │   ├── rateLimiter.js
 │   │   └── security.js
-│   └── validators/      # Validation données
-│       └── audioValidator.js
+│   ├── validators/      # Validation données
+│   │   └── audioValidator.js
+│   └── newsletter/      # Module newsletter Brevo
+│       ├── brevoClient.js  # Client API Brevo
+│       └── routes.js       # Routes newsletter (/newsletter/*)
 ├── .github/
 │   └── copilot-instructions.md  # Instructions TDD spécifiques projet
 ├── public/              # Assets statiques
@@ -177,7 +182,14 @@ docker-compose ps
 docker exec -i salete_pg psql -U salete -d salete < sql/001_init.sql
 ```
 
-### 5. Lancer le serveur de dev
+### 5. Compiler le CSS (OBLIGATOIRE)
+```bash
+# ⚠️ IMPORTANT : Compiler le CSS avant le premier lancement
+npm run build:css
+```
+**🚨 Cette étape est cruciale** : Sans compilation CSS, les styles Tailwind ne seront pas appliqués et l'interface sera cassée.
+
+### 6. Lancer le serveur de dev
 ```bash
 # Mode développement : serveur local avec live reload
 npm run dev          # Serveur avec nodemon (port 3000)
@@ -186,9 +198,44 @@ npm run dev:css      # Watch CSS (optionnel, terminal séparé)
 
 **Note** : En mode développement, seuls PostgreSQL et MinIO tournent dans Docker. Le serveur Node.js tourne en local pour le live reload.
 
-### 6. Accéder à l'application
+### 7. Accéder à l'application
 - **App** : http://localhost:3000
 - **S3 Console** : http://localhost:9001 (admin/password: salete/salete123)
+
+---
+
+## 🆘 Troubleshooting Rapide
+
+### ❌ Interface cassée / Styles non appliqués
+**Symptôme** : L'interface semble cassée, boutons invisibles, pas de styles
+
+**Solution** :
+```bash
+# Recompiler le CSS Tailwind
+npm run build:css
+```
+
+**Explication** : Les classes Tailwind CSS ne sont générées que lors de la compilation. Si vous modifiez les templates `.pug` ou ajoutez de nouvelles classes, il faut recompiler.
+
+### ❌ Erreur de connexion base de données
+**Symptôme** : `Connection refused` ou `database salete does not exist`
+
+**Solution** :
+```bash
+# Vérifier que Docker tourne
+colima status
+docker-compose ps
+
+# Redémarrer les services si nécessaire  
+docker-compose up db s3 -d
+```
+
+### ❌ Permissions micro non accordées
+**Symptôme** : L'enregistrement vocal ne fonctionne pas
+
+**Solution** : Autoriser le micro dans votre navigateur (icône 🔒 dans la barre d'adresse)
+
+---
 
 ### 📋 Modes d'utilisation
 
@@ -234,12 +281,18 @@ docker-compose --profile production up -d
 ## 🏗️ Scripts disponibles
 
 ```bash
-npm run dev          # Développement avec nodemon
-npm run dev:css      # Watch compilation CSS
-npm run build        # Build complet (CSS + views)
-npm run build:css    # Compilation CSS seule
-npm start            # Production
+npm run dev          # Développement avec nodemon (serveur seulement)
+npm run dev:css      # Watch compilation CSS (optionnel, terminal séparé)
+npm run build        # Build complet (CSS + views) pour production
+npm run build:css    # ⚠️ OBLIGATOIRE : Compilation CSS Tailwind
+npm start            # Démarrage production
 ```
+
+**💡 Quand utiliser `npm run build:css` ?**
+- ✅ **Toujours** avant le premier lancement  
+- ✅ Après modification des templates Pug  
+- ✅ Après ajout de nouvelles classes Tailwind CSS  
+- ✅ Si l'interface semble cassée ou les boutons invisibles
 
 ---
 
@@ -263,11 +316,19 @@ L'application est déployée sur CleverCloud avec les addons suivants :
 - **Cellar S3** : Stockage des fichiers audio
 
 ### 2. Variables d'environnement
-Les variables sont automatiquement configurées via les addons :
+
+#### Variables automatiques (Addons CleverCloud)
 - `POSTGRESQL_ADDON_URI` : URL de connexion PostgreSQL
 - `CELLAR_ADDON_HOST` : Endpoint S3 Cellar
 - `CELLAR_ADDON_KEY_ID` : Clé d'accès S3
 - `CELLAR_ADDON_KEY_SECRET` : Clé secrète S3
+
+#### Variables Newsletter (à configurer)
+- `BREVO_BASEURL="https://api.brevo.com/v3"` : URL API Brevo
+- `BREVO_API_KEY="xkeysib-xxx"` : Clé API Brevo (obligatoire)
+- `BREVO_LIST_ID="3"` : ID liste "Saleté Sincère" dans Brevo
+- `BREVO_DOI_TEMPLATE_ID="TBD"` : ID template email double opt-in
+- `SALENEWS_PUBLIC_BASEURL="https://saletesincere.fr"` : URL publique pour redirections
 
 ### 3. Déploiement
 ```bash
@@ -353,6 +414,11 @@ psql <connection-string> -c "SELECT COUNT(*) FROM posts;"
 - **POST /api/posts** : Création d'un post vocal (multipart/form-data)
 - **POST /api/posts/:id/vote** : Vote pour un post
 - **GET /audio/:filename** : Accès aux fichiers audio
+
+### Routes Newsletter
+- **GET /newsletter** : Formulaire d'inscription
+- **POST /newsletter/subscribe** : Traitement inscription (double opt-in)
+- **GET /newsletter/confirmed** : Page confirmation après clic email
 
 ### Tips de dev
 - Gardez les DevTools ouverts avec cache désactivé

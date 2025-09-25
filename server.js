@@ -5,13 +5,15 @@ import Fastify from "fastify";
 import fastifyView from "@fastify/view";
 import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";
+import fastifyFormbody from "@fastify/formbody";
 import fastifyPostgres from "@fastify/postgres";
 import fastifyRateLimit from "@fastify/rate-limit";
 import pug from "pug";
 import { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
-import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter } from "./server/middleware/rateLimiter.js";
+import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter, newsletterLimiter, newsletterActionLimiter } from "./server/middleware/rateLimiter.js";
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
+import newsletterRoutes from "./server/newsletter/routes.js";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const app = Fastify({ logger: true });
@@ -110,6 +112,9 @@ await app.register(fastifyMultipart, {
   }
 });
 
+// Form body parser (for application/x-www-form-urlencoded)
+await app.register(fastifyFormbody);
+
 // Rate limiting
 await app.register(fastifyRateLimit, {
   global: false, // Pas de limite globale, on configure par route
@@ -147,6 +152,9 @@ if (!isProduction) {
     decorateReply: false
   });
 }
+
+// Newsletter Routes
+await app.register(newsletterRoutes, { prefix: '/newsletter' });
 
 // API Routes
 // Create new post (avec rate limiting)

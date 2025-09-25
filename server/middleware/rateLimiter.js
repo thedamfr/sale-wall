@@ -43,3 +43,19 @@ export const apiLimiter = {
   max: 50,
   timeWindow: 1000 * 60 * 60, // 1 heure en ms
 };
+
+// Newsletter : 5 inscriptions par heure par IP (sécurité anti-spam)
+export const newsletterLimiter = {
+  ...commonConfig,
+  max: 5,
+  timeWindow: 1000 * 60 * 60, // 1 heure en ms
+  message: 'Trop de tentatives d\'inscription, attendez un peu !'
+};
+
+// Newsletter confirmation/désinscription : 10 par heure par IP
+export const newsletterActionLimiter = {
+  ...commonConfig,
+  max: 10,
+  timeWindow: 1000 * 60 * 60, // 1 heure en ms
+  message: 'Trop d\'actions sur la newsletter, revenez plus tard !'
+};
