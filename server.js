@@ -64,8 +64,38 @@ async function ensureBucketExists() {
   }
 }
 
-// Initialize bucket
+// Initialize bucket and public policy for audio folder
 await ensureBucketExists();
+
+// Configure public read policy for /audio/ folder in development
+async function ensurePublicAudioPolicy() {
+  if (isProduction) return; // Don't modify production policies
+  
+  try {
+    const { PutBucketPolicyCommand } = await import('@aws-sdk/client-s3');
+    
+    const policy = {
+      Version: '2012-10-17',
+      Statement: [{
+        Effect: 'Allow',
+        Principal: '*',
+        Action: 's3:GetObject',
+        Resource: `arn:aws:s3:::${bucketName}/audio/*`
+      }]
+    };
+
+    await s3Client.send(new PutBucketPolicyCommand({
+      Bucket: bucketName,
+      Policy: JSON.stringify(policy)
+    }));
+
+    console.log(`✅ Public read policy set for ${bucketName}/audio/`);
+  } catch (error) {
+    console.warn(`⚠️ Could not set public policy (normal in dev):`, error.message);
+  }
+}
+
+await ensurePublicAudioPolicy();
 
 // Phase 3: Logs détaillés uniquement en dev
 if (!isProduction) {
