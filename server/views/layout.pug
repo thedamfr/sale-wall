@@ -10,9 +10,15 @@ html(lang="fr")
     link(rel="stylesheet", href="/style.css")
     link(rel="stylesheet", href="/custom.css")
   body(class="bg-[#0B0B0B] text-[#F2F2EF] font-sans min-h-screen")
-    // Top Banner
-    div(class="bg-[#D6B977] text-[#0B0B0B] text-center p-3 text-sm")
-      | ⚠️ Prototype en travaux. Certaines fonctionnalités ne sont pas encore disponibles.
+    // Newsletter Banner (only on homepage)
+    if title === 'Saleté Sincère'
+      div(class="bg-[#D6B977] text-[#0B0B0B] p-3")
+        .flex.items-center.justify-between.gap-4(class="flex-col sm:flex-row")
+          div.text-center(class="sm:text-left")
+            span.font-bold 📧 Passe en cuisine
+            span.ml-2.text-sm Rejoins la newsletter pour ne rien manquer
+          a.px-4.py-2.rounded-full.font-semibold.transition.text-sm(href="/newsletter", style="background: #0B0B0B; color: #D6B977;")
+            | S'inscrire →
     
     block header
     
@@ -20,15 +26,7 @@ html(lang="fr")
     div(class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8")
       block content
     
-    // Newsletter call-to-action (only on homepage)
-    if title === 'Accueil'
-      section.mx-4.my-8.p-6.rounded-lg(style="background: linear-gradient(to right, #D6B977, #B99E5A); color: #0B0B0B;")
-        .flex.items-center.justify-between.gap-4(class="flex-col md:flex-row")
-          div
-            h3.font-brush.text-lg.font-bold 📧 Passe en cuisine
-            p.text-sm(style="opacity: 0.9;") Rejoins la newsletter pour ne rien manquer des nouvelles histoires Saleté Sincère
-          a.px-4.py-2.rounded-full.font-semibold.transition.whitespace-nowrap(href="/newsletter", style="background: #0B0B0B; color: #D6B977;")
-            | S'inscrire →
+
     
     // JavaScript
     script(src="/js/record.js")
