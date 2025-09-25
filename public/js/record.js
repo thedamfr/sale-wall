@@ -343,142 +343,139 @@ class VoiceRecorder {
 /**
  * Audio Player System for post playback
  */
-class AudioPlayer {
+class AudioManager {
   constructor() {
+    console.log('🔊 AudioManager initialized');
     this.currentAudio = null;
     this.currentButton = null;
     this.initializeAudioButtons();
   }
 
   initializeAudioButtons() {
-    const audioButtons = document.querySelectorAll('.audio-play-btn');
-    audioButtons.forEach(button => {
-      button.addEventListener('click', (e) => this.handleAudioClick(e));
+    const buttons = document.querySelectorAll('.audio-play-btn');
+    console.log(`🔊 Found ${buttons.length} audio buttons to initialize`);
+    
+    buttons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.handleAudioToggle(button);
+      });
     });
   }
 
-  async handleAudioClick(e) {
-    e.preventDefault();
-    const button = e.currentTarget;
-    const audioUrl = button.dataset.audioUrl;
-
-    // If clicking the same button that's already playing, pause it
-    if (this.currentButton === button && this.currentAudio && !this.currentAudio.paused) {
-      this.pauseAudio();
-      return;
-    }
-
-    // Stop any currently playing audio
-    if (this.currentAudio) {
-      this.stopAudio();
-    }
-
-    try {
-      await this.playAudio(audioUrl, button);
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      this.showError('Impossible de lire l\'audio');
-    }
-  }
-
-  async playAudio(audioUrl, button) {
-    return new Promise((resolve, reject) => {
-      this.currentAudio = new Audio(audioUrl);
-      this.currentButton = button;
-
-      this.currentAudio.addEventListener('loadstart', () => {
-        this.setButtonState(button, 'loading');
-      });
-
-      this.currentAudio.addEventListener('canplay', () => {
-        this.setButtonState(button, 'playing');
-        this.currentAudio.play().then(resolve).catch(reject);
-      });
-
-      this.currentAudio.addEventListener('ended', () => {
-        this.setButtonState(button, 'idle');
-        this.currentAudio = null;
-        this.currentButton = null;
-      });
-
-      this.currentAudio.addEventListener('error', () => {
-        this.setButtonState(button, 'idle');
-        reject(new Error('Audio loading failed'));
-      });
-
-      this.currentAudio.load();
+  // Reset ALL buttons to play state
+  resetAllButtons() {
+    document.querySelectorAll('.audio-play-btn').forEach(button => {
+      const playIcon = button.querySelector('.play-icon');
+      const pauseIcon = button.querySelector('.pause-icon');
+      
+      if (playIcon && pauseIcon) {
+        button.disabled = false;
+        button.classList.remove('opacity-50', 'animate-pulse');
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+      }
     });
   }
 
-  pauseAudio() {
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.setButtonState(this.currentButton, 'paused');
+  // Set a specific button to pause state
+  setButtonToPause(button) {
+    const playIcon = button.querySelector('.play-icon');
+    const pauseIcon = button.querySelector('.pause-icon');
+    
+    if (playIcon && pauseIcon) {
+      button.disabled = false;
+      button.classList.remove('opacity-50', 'animate-pulse');
+      playIcon.classList.add('hidden');
+      pauseIcon.classList.remove('hidden');
     }
   }
 
-  stopAudio() {
+  // Stop and cleanup current audio completely
+  stopCurrentAudio() {
     if (this.currentAudio) {
+      // Remove all event listeners to prevent ghost triggers
+      this.currentAudio.removeEventListener('canplay', this.currentAudio._canplayHandler);
+      this.currentAudio.removeEventListener('ended', this.currentAudio._endedHandler);
+      this.currentAudio.removeEventListener('error', this.currentAudio._errorHandler);
+      
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
-      this.setButtonState(this.currentButton, 'idle');
+      this.currentAudio.src = ''; // Clear source
       this.currentAudio = null;
       this.currentButton = null;
     }
   }
 
-  setButtonState(button, state) {
-    const playIcon = button.querySelector('.play-icon');
-    const pauseIcon = button.querySelector('.pause-icon');
+  handleAudioToggle(button) {
+    const audioUrl = button.dataset.audioUrl;
     
-    // Reset all states
-    playIcon.classList.remove('hidden');
-    pauseIcon.classList.add('hidden');
-    button.classList.remove('animate-pulse');
-
-    switch (state) {
-      case 'loading':
-        button.classList.add('animate-pulse');
-        break;
-      case 'playing':
-        playIcon.classList.add('hidden');
-        pauseIcon.classList.remove('hidden');
-        break;
-      case 'paused':
-        playIcon.classList.remove('hidden');
-        pauseIcon.classList.add('hidden');
-        break;
-      case 'idle':
-      default:
-        playIcon.classList.remove('hidden');
-        pauseIcon.classList.add('hidden');
-        break;
+    if (!audioUrl) {
+      console.error('🔊 No audio URL found on button:', button);
+      return;
     }
-  }
 
-  showError(message) {
-    // Reuse the toast system from VoiceRecorder
-    const toast = document.createElement('div');
-    toast.className = 'fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 opacity-0 transform translate-y-2 transition-all duration-300';
+    // If same button clicked while playing, pause everything
+    if (this.currentButton === button && this.currentAudio && !this.currentAudio.paused) {
+      console.log('🔊 Pausing current audio');
+      this.stopCurrentAudio();
+      this.resetAllButtons();
+      return;
+    }
+
+    // Stop any currently playing audio and cleanup
+    this.stopCurrentAudio();
     
-    // Animate in
-    requestAnimationFrame(() => {
-      toast.classList.remove('opacity-0', 'translate-y-2');
-    });
+    // Reset ALL buttons to play state
+    this.resetAllButtons();
     
-    toast.innerHTML = `
-      <div class="flex items-center">
-        <span class="text-sm font-medium">${message}</span>
-      </div>
-    `;
+    console.log('🔊 Starting audio:', audioUrl);
     
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.remove();
+    // Create new audio
+    this.currentAudio = new Audio(audioUrl);
+    this.currentButton = button;
+
+    // Set current button to loading state
+    button.disabled = true;
+    button.classList.add('opacity-50', 'animate-pulse');
+
+    // Create handlers and store references for cleanup
+    const canplayHandler = () => {
+      console.log('🔊 Audio ready to play');
+      if (this.currentAudio && this.currentButton === button) {
+        this.setButtonToPause(button);
+        this.currentAudio.play().catch(error => {
+          console.error('🔊 Error playing audio:', error);
+          this.resetAllButtons();
+          this.stopCurrentAudio();
+        });
       }
-    }, 3000);
+    };
+
+    const endedHandler = () => {
+      console.log('🔊 Audio ended');
+      this.resetAllButtons();
+      this.stopCurrentAudio();
+    };
+
+    const errorHandler = (e) => {
+      console.error('🔊 Error loading audio:', audioUrl, e);
+      this.resetAllButtons();
+      this.stopCurrentAudio();
+    };
+
+    // Store handlers for cleanup
+    this.currentAudio._canplayHandler = canplayHandler;
+    this.currentAudio._endedHandler = endedHandler;
+    this.currentAudio._errorHandler = errorHandler;
+
+    // Add event listeners
+    this.currentAudio.addEventListener('canplay', canplayHandler);
+    this.currentAudio.addEventListener('ended', endedHandler);
+    this.currentAudio.addEventListener('error', errorHandler);
+
+    // Start loading
+    this.currentAudio.load();
   }
 }
 
@@ -494,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
   new VoiceRecorder();
   
   // Initialize audio player for post playback
-  new AudioPlayer();
+  new AudioManager();
   
   // Initialize vote system
   initVoteSystem();
@@ -503,16 +500,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // Vote system
 function initVoteSystem() {
   document.querySelectorAll('button[data-post-id]').forEach(button => {
+    // Skip buttons that don't have vote spans (probably audio buttons)
+    const voteSpan = button.querySelector('span');
+    if (!voteSpan) {
+      return; // Skip this button
+    }
+    
     button.addEventListener('click', async (e) => {
       e.preventDefault();
       
       const postId = button.dataset.postId;
-      const voteSpan = button.querySelector('span');
-      
-      if (!voteSpan) {
-        console.error('Vote span not found');
-        return;
-      }
       
       // Disable button during request
       button.disabled = true;
