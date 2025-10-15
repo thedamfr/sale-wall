@@ -2,12 +2,25 @@
 
 Guide complet pour déployer Castopod sur CleverCloud avec intégration au projet Saleté Sincère.
 
+## ⚠️ Configuration DNS Requise
+
+**Castopod doit être déployé sur un sous-domaine, pas un sous-chemin.**
+
+- ✅ **Bon** : `podcast.saletesincere.fr`
+- ❌ **Mauvais** : `saletesincere.fr/podcast` (génère des 404, Castopod ne supporte pas les sous-chemins)
+
+**Action requise avant finalisation** :
+1. Configurer DNS Cloudflare : CNAME `podcast` → `app_eaed31f5-389b-4324-9136-dd3392ba6224.cleverapps.io`
+2. Mettre à jour `CP_BASEURL` avec le sous-domaine final
+3. Redéployer l'application
+
 ## 📋 Prérequis
 
 - Compte CleverCloud actif
 - CLI CleverCloud installée : `brew install clever-tools`
 - Credentials Cellar S3 (disponibles dans les variables d'environnement de l'app principale)
 - `s3cmd` installé : `brew install s3cmd`
+- Accès DNS Cloudflare pour configurer le sous-domaine
 
 ## 🗂️ Étape 1 : Créer le bucket Cellar pour Castopod
 
@@ -186,7 +199,12 @@ CP_MEDIA_S3_PATH_STYLE_ENDPOINT=false
 CP_MEDIA_S3_PROTOCOL=https
 
 # Configuration Castopod
-CP_BASE_URL=https://<app-id>.cleverapps.io
+# ⚠️ À MODIFIER après configuration DNS Cloudflare
+CP_BASEURL=https://app_eaed31f5-389b-4324-9136-dd3392ba6224.cleverapps.io
+# Une fois le DNS configuré, changer pour :
+# CP_BASEURL=https://podcast.saletesincere.fr
+
+CP_MEDIA_BASEURL=https://cellar-c2.services.clever-cloud.com/salete-media-podcast
 CP_DISABLE_HTTPS=0
 CP_ANALYTICS_SALT=<GÉNÉRER_UN_SALT_ALÉATOIRE>
 
@@ -199,6 +217,7 @@ PORT=8080
 ```bash
 # Générer un salt aléatoire sécurisé
 openssl rand -hex 32
+# Exemple : 916d8ab2d640d405dd5ffc6bdb447e2897bf307f5802dbf9226c05e33584955a
 ```
 
 ### Via la CLI
@@ -279,21 +298,38 @@ docker push registry.clever-cloud.com/<app-id>/castopod:latest
 2. Aller dans votre profil utilisateur
 3. Activer l'authentification à deux facteurs
 
-## 🌐 Étape 10 : Router `/podcast` vers Castopod
+## 🌐 Configuration DNS et accès final
 
-Pour exposer Castopod sous `saletesincere.fr/podcast`, configurer le reverse proxy :
+### ⚠️ Important : Castopod nécessite un sous-domaine
 
-### Option A : Via Cloudflare Workers (recommandé)
+Castopod **ne fonctionne pas** sur un sous-chemin (`/podcast`). Il doit être configuré sur un sous-domaine dédié.
 
-Créer un Worker Cloudflare pour router `/podcast*` vers l'app Castopod.
+### Configuration Cloudflare requise
 
-### Option B : Via nom de domaine custom
+1. **Ajouter un enregistrement CNAME dans Cloudflare** :
+   - Type : `CNAME`
+   - Name : `podcast`
+   - Target : `app_eaed31f5-389b-4324-9136-dd3392ba6224.cleverapps.io`
+   - TTL : Auto
+   - Proxy : ✅ Activé (orange cloud)
 
-1. Dans l'application Castopod, ajouter un domaine custom
-2. Configurer `podcast.saletesincere.fr`
-3. Mettre à jour les DNS
+2. **Mettre à jour les variables d'environnement** :
+   ```bash
+   clever env set CP_BASEURL 'https://podcast.saletesincere.fr' --alias castopod
+   clever env set CP_MEDIA_BASEURL 'https://cellar-c2.services.clever-cloud.com/salete-media-podcast' --alias castopod
+   clever restart --alias castopod --without-cache
+   ```
 
-**Documentation détaillée à venir** : Voir ADR 0006 pour plus d'infos sur le routing.
+3. **Accéder au wizard d'installation** :
+   - URL : https://podcast.saletesincere.fr/cp-install
+   - Créer le compte super-admin
+   - ✅ **Activer 2FA obligatoirement**
+
+### Pourquoi pas `/podcast` ?
+
+Tentative effectuée avec `CP_BASEURL='https://saletesincere.fr/podcast'` → **404 systématiques**.
+
+Castopod génère des URLs absolues et ne gère pas la réécriture de chemin. Solution alternative (reverse proxy avec réécriture) trop complexe et fragile.
 
 ## 💰 Estimation des coûts
 

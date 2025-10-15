@@ -1,6 +1,62 @@
 ---
 title: Todolist MVP Saleté Sincère
-description: Liste des tâches et roadmap du projet audio ave## Bloc 3 — Monorepo Fastify 5 + Pug ✅ TERMINÉ
+description: Liste des tâches et roadmap---
+
+## 🎙️ Castopod Integration (Podcasting Platform)
+
+### Infrastructure CleverCloud ✅ TERMINÉ
+- [x] ⏱ 30′ **Bucket Cellar S3** : `salete-media-podcast` avec CORS et permissions publiques
+- [x] ⏱ 20′ **MySQL addon** : Plan DEV (gratuit) avec 10MB stockage
+- [x] ⏱ 15′ **Redis addon** : Plan S (~5€/mois) pour cache Castopod
+- [x] ⏱ 45′ **Application Docker** : Configuration complète avec variables d'environnement
+- [x] ⏱ 30′ **Déploiement initial** : Build et tests multiples pour corriger configuration
+
+### Configuration DNS et Routage ⏳ EN ATTENTE
+- [ ] ⚠️ 10′ **Cloudflare DNS** : Ajouter CNAME `podcast` → `app_eaed31f5-389b-4324-9136-dd3392ba6224.cleverapps.io`
+  - Type: CNAME
+  - Name: podcast
+  - Target: app_eaed31f5-389b-4324-9136-dd3392ba6224.cleverapps.io
+  - Proxy: ✅ Activé (orange cloud)
+
+- [ ] 🔄 5′ **Mise à jour variables** : Après configuration DNS
+  ```bash
+  clever env set CP_BASEURL 'https://podcast.saletesincere.fr' --alias castopod
+  clever restart --alias castopod --without-cache
+  ```
+
+### Installation et Configuration ⏳ À FAIRE
+- [ ] 🔄 15′ **Wizard d'installation** : Accéder à `/cp-install` une fois DNS configuré
+  - URL: https://podcast.saletesincere.fr/cp-install
+  - Créer compte super-admin
+  - ⚠️ **Activer 2FA obligatoirement** (sécurité production)
+
+- [ ] 🔄 20′ **Test upload podcast** : Vérifier intégration S3
+  - Créer un podcast de test
+  - Uploader un épisode audio
+  - Vérifier URLs média Cellar
+  - Tester flux RSS
+
+### Documentation ✅ TERMINÉ
+- [x] ⏱ 60′ **ADR 0007** : Décision architecture sous-domaine vs sous-chemin
+- [x] ⏱ 30′ **DEPLOY_CLEVERCLOUD.md** : Mise à jour avec contraintes routing
+- [x] ⏱ 10′ **Index ADRs** : Ajout ADR-0007 dans l'index
+- [x] ⏱ 5′ **Todolist** : Documentation des prochaines étapes
+
+**📋 Raison du sous-domaine** :
+- ❌ Castopod ne supporte PAS les sous-chemins (`/podcast` → 404 systématiques)
+- ✅ Sous-domaine requis : `podcast.saletesincere.fr`
+- Voir ADR-0007 pour détails techniques
+
+**💰 Coûts mensuels** :
+- Application Docker: Gratuit (plan Nano)
+- MySQL DEV: Gratuit
+- Redis S: ~5€
+- S3 Storage: ~0-2€
+- **Total: ~5-7€/mois**
+
+---
+
+## 🐛 Bugs à corriger projet audio ave## Bloc 3 — Monorepo Fastify 5 + Pug ✅ TERMINÉ
 - [x] ⏱ 15′ Installer **pnpm** et initialiser les *workspaces*  
 - [x] ⏱ 30′ Générer le squelette **Fastify 5** avec **@fastify/view** (Pug)  
 - [x] ⏱ 20′ Créer le dossier `server/views/` et ajouter les templates de base Pug (`layout.pug`, `index.pug`, `manifeste.pug`)  

@@ -22,13 +22,15 @@ tags: [adr, index, architecture, decisions]
 | [ADR-0004](./adr_0004_rate_limiting_security.md) | Rate Limiting & Security | ✅ **Actif** | 2025-07 | Sécurité | Critique |
 | [ADR-0005](./adr_0005_newsletter_brevo_integration.md) | Newsletter Brevo Integration | 🔄 **En cours** | 2025-09 | Newsletter, API | Feature |
 | [ADR-0006](./adr_0005_newsletter_doi_automation_approach.md) | Newsletter DOI Automation | ✅ **Accepté** | 2025-09 | Newsletter, DOI | Feature |
+| [ADR-0007](./adr_0007_castopod_subdomain_routing.md) | Castopod Subdomain Routing | ⏳ **Attente DNS** | 2025-10 | Podcasting, Routing | Feature |
 
 ## 📊 Statistiques
 
-- **Total ADRs** : 6
+- **Total ADRs** : 7
 - **Actifs** : 2 (infrastructure/sécurité)
 - **Implémentés/Acceptés** : 4 (features audio + newsletter)
 - **En cours** : 1 (newsletter intégration)
+- **Attente** : 1 (podcasting DNS)
 - **Draft** : 0
 - **Obsolètes** : 0
 
@@ -47,6 +49,9 @@ tags: [adr, index, architecture, decisions]
 ### 📧 Newsletter & API Integration  
 - [ADR-0005](./adr_0005_newsletter_brevo_integration.md) - Newsletter Brevo Integration (en cours)
 - [ADR-0006](./adr_0005_newsletter_doi_automation_approach.md) - Newsletter DOI Automation (accepté)
+
+### 🎙️ Podcasting
+- [ADR-0007](./adr_0007_castopod_subdomain_routing.md) - Castopod Subdomain Routing (attente DNS)
 
 ## ✍️ Créer un nouvel ADR
 
