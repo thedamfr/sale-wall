@@ -385,10 +385,16 @@ s3cmd info s3://salete-media-podcast/
 - [x] Addons liés à l'application (MySQL, Redis, S3)
 - [x] Variables d'environnement configurées
 - [x] Salt analytics généré (916d8ab2d640d405dd5ffc6bdb447e2897bf307f5802dbf9226c05e33584955a)
-- [x] Dockerfile préparé (Dockerfile.castopod)
-- [ ] Application déployée
-- [ ] Installation Castopod complétée
+- [x] Dockerfile préparé (castopod/Dockerfile)
+- [x] Application déployée ✅
+- [ ] Installation Castopod complétée (accéder à /cp-install)
 - [ ] Compte super-admin créé
 - [ ] 2FA activé
 - [ ] Test d'upload d'épisode réussi
 - [ ] Routing `/podcast` configuré (à venir)
+
+## 🎉 Application déployée
+
+**URL** : https://app-eaed31f5-389b-4324-9136-dd3392ba6224.cleverapps.io/
+
+**Installation** : https://app-eaed31f5-389b-4324-9136-dd3392ba6224.cleverapps.io/cp-install
