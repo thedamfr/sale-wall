@@ -8,17 +8,19 @@ Cette arborescence regroupe tout ce qu'il faut pour piloter Castopod à côté d
 - Préparer la configuration pour un déploiement sur CleverCloud (MariaDB + Cellar bucket dédié).
 
 ## ✅ Pré-requis
-- Docker + Docker Compose v2
+- Docker + Docker Compose v2 (Colima sur macOS)
 - `s3cmd` (ou `mc`) pour gérer MinIO/Cellar
 - Bucket `salete-media-podcast` (voir README racine pour la procédure) et des credentials S3 dédiés à Castopod
-- Variables d'environnement dans `castopod/.env.castopod`
+- Variables d'environnement dans `.env.castopod` (à la racine du projet)
+
+> ⚠️ **Note pour Apple Silicon (M1/M2/M3)** : Les images MariaDB et Castopod sont configurées pour `linux/amd64` (émulation Rosetta). C'est nécessaire car Castopod n'est pas encore disponible en version ARM64 native.
 
 ## 🔧 Mise en place locale
-1. Copier l'exemple d'environnement :
+1. Copier l'exemple d'environnement **à la racine du projet** :
    ```bash
-   cp castopod/.env.castopod.example castopod/.env.castopod
+   cp castopod/.env.castopod.example .env.castopod
    ```
-2. Éditer `castopod/.env.castopod` avec :
+2. Éditer `.env.castopod` avec :
    - Les secrets MariaDB (mot de passe root + user Castopod)
    - Un salt analytics (`CP_ANALYTICS_SALT`)
    - Les credentials S3 dédiés Castopod (`CASTOPOD_S3_KEY`, `CASTOPOD_S3_SECRET`)
@@ -28,9 +30,14 @@ Cette arborescence regroupe tout ce qu'il faut pour piloter Castopod à côté d
    # ou via 'mc' (voir README racine)
    ```
 
+> 💡 Le fichier `.env.castopod` doit être à la racine du projet (pas dans `castopod/`) pour être correctement lu par Docker Compose.
+
 ## ▶️ Démarrage local
 Depuis la racine du projet :
 ```bash
+# S'assurer que Docker est démarré (Colima sur macOS)
+colima start
+
 # Lancer (ou vérifier) les services communs : PostgreSQL + MinIO
 docker compose up db s3 -d
 
@@ -39,7 +46,7 @@ docker compose \
   -f docker-compose.yml \
   -f castopod/docker-compose.castopod.yml \
   --profile castopod \
-  up -d castopod
+  up -d
 ```
 
 - Le service Castopod écoute sur `http://localhost:8000`
@@ -48,6 +55,8 @@ docker compose \
   ```bash
   docker compose -f docker-compose.yml -f castopod/docker-compose.castopod.yml --profile castopod down
   ```
+
+> 💡 **Tip** : Vérifier l'état des conteneurs avec `docker ps` ou `docker compose ps`
 
 > ℹ️ Les services `db` (PostgreSQL) et `s3` (MinIO) du `docker-compose.yml` principal restent nécessaires pour le mur Fastify et pour exposer l'API S3 à Castopod.
 

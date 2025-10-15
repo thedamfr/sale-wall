@@ -3,6 +3,7 @@ version: "3.9"
 services:
   castopod-db:
     image: mariadb:11.4
+    platform: linux/amd64
     container_name: salete_castopod_db
     restart: unless-stopped
     environment:
@@ -15,7 +16,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}
+        - mariadb-admin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}
       interval: 10s
       timeout: 5s
       retries: 6
@@ -44,6 +45,7 @@ services:
 
   castopod:
     image: castopod/castopod:latest
+    platform: linux/amd64
     container_name: salete_castopod
     restart: unless-stopped
     env_file:
