@@ -7,6 +7,14 @@
       "git_ssh_url": "https://github.com/thedamfr/sale-wall.git",
       "name": "sale-wall",
       "alias": "sale-wall"
+    },
+    {
+      "app_id": "app_eaed31f5-389b-4324-9136-dd3392ba6224",
+      "org_id": "orga_3ced6d75-e51b-4578-98bb-740791728ff7",
+      "deploy_url": "https://push-n3-par-clevercloud-customers.services.clever-cloud.com/app_eaed31f5-389b-4324-9136-dd3392ba6224.git",
+      "git_ssh_url": "git+ssh://git@push-n3-par-clevercloud-customers.services.clever-cloud.com/app_eaed31f5-389b-4324-9136-dd3392ba6224.git",
+      "name": "castopod-server",
+      "alias": "castopod"
     }
   ]
 }

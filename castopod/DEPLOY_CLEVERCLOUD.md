@@ -218,20 +218,27 @@ clever env set CP_MEDIA_S3_BUCKET "salete-media-podcast"
 
 ## 🐳 Étape 7 : Préparer le Dockerfile pour CleverCloud
 
-Créer un `Dockerfile.castopod` à la racine du projet :
+Le Dockerfile est dans `castopod/Dockerfile` :
 
 ```dockerfile
 FROM castopod/castopod:latest
 
-# Configurer le port pour CleverCloud
-ENV PORT=8080
+# Configuration pour CleverCloud
+# CleverCloud attend que l'application écoute sur le port défini par la variable PORT
+# Castopod utilise Apache qui écoute sur le port 8000 par défaut
+
+# Exposer le port 8080 pour CleverCloud
 EXPOSE 8080
 
-# CleverCloud attend le serveur sur le port 8080
-CMD ["/bin/sh", "-c", "apache2-foreground"]
+# Modifier la configuration Apache pour écouter sur $PORT au lieu de 8000
+RUN sed -i 's/Listen 8000/Listen ${PORT}/' /etc/apache2/ports.conf && \
+    sed -i 's/:8000/:${PORT}/' /etc/apache2/sites-available/000-default.conf
+
+# Démarrer Apache en avant-plan
+CMD ["apache2-foreground"]
 ```
 
-**Note** : Castopod utilise Apache en interne sur le port 8000, mais CleverCloud attend le port 8080.
+**Note** : La variable `CC_DOCKERFILE=castopod/Dockerfile` est configurée pour indiquer à CleverCloud d'utiliser ce Dockerfile.
 
 ## 🚀 Étape 8 : Déployer
 
@@ -373,12 +380,12 @@ s3cmd info s3://salete-media-podcast/
 
 - [x] Bucket Cellar `salete-media-podcast` créé
 - [x] Addon MySQL créé (castopod-mysql)
-- [ ] Addon Redis créé et lié (optionnel)
-- [ ] Application Docker créée
-- [ ] Addons liés à l'application
-- [ ] Variables d'environnement configurées
-- [ ] Salt analytics généré
-- [ ] Dockerfile préparé
+- [x] Addon Redis créé (castopod-redis)
+- [x] Application Docker créée (castopod-server)
+- [x] Addons liés à l'application (MySQL, Redis, S3)
+- [x] Variables d'environnement configurées
+- [x] Salt analytics généré (916d8ab2d640d405dd5ffc6bdb447e2897bf307f5802dbf9226c05e33584955a)
+- [x] Dockerfile préparé (Dockerfile.castopod)
 - [ ] Application déployée
 - [ ] Installation Castopod complétée
 - [ ] Compte super-admin créé
