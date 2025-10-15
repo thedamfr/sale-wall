@@ -90,3 +90,8 @@ volumes:
   castopod_media:
   castopod_db:
   castopod_cache:
+
+networks:
+  salete_net:
+    external: true
+    name: sale-wall_salete_net

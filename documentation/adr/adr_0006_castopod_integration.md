@@ -2,12 +2,13 @@
 title: Intégration Castopod via /podcast
 description: Héberger Castopod aux côtés de l'application Fastify et l'exposer sous saletesincere.fr/podcast tout en réutilisant l'infrastructure existante
 owner: @thedamfr
-status: proposed
+status: implemented
 review_after: 2026-01-01
 canonical_url: https://github.com/thedamfr/sale-wall/blob/main/documentation/adr/adr_0006_castopod_integration.md
 tags: [adr, podcast, castopod, clevercloud, minio, reverse-proxy]
 adr_number: 0006
 date_created: 2025-10-15
+date_implemented: 2025-10-15
 impact: high
 ---
 
@@ -97,9 +98,44 @@ Documentation de référence :
 
 ## Suivi & tâches associées
 
-1. Étendre `docker-compose.yml` et fournir les fichiers `.env.castopod` (variables sensibles hors repository).
-2. Documenter la configuration CleverCloud/Cloudflare pour router `/podcast*` vers Castopod et prévoir des tests ciblés.
-3. Mettre à jour `README.md` avec les instructions d'installation Castopod, la création du bucket `salete-media-podcast` (MinIO & Cellar) et la marche à suivre CleverCloud.
-4. Mettre en place un audit sécurité ciblé Castopod via `security/plans/owasp_top10_audit_plan.md` (nouvelle section).
+1. ✅ **Créer `docker-compose.castopod.yml`** avec services MariaDB, Redis et Castopod
+2. ✅ **Configurer le réseau Docker** pour permettre la communication entre les services (réseau externe `sale-wall_salete_net`)
+3. ✅ **Fournir `.env.castopod.example`** avec les variables d'environnement nécessaires
+4. ✅ **Mettre à jour `README.md`** avec les instructions complètes de démarrage Castopod
+5. ⏳ **Documenter la configuration CleverCloud/Cloudflare** pour router `/podcast*` vers Castopod
+6. ⏳ **Créer le bucket S3 `salete-media-podcast`** sur MinIO local et Cellar production
+7. ⏳ **Audit sécurité Castopod** via `security/plans/owasp_top10_audit_plan.md`
 
-_Status: proposé — la mise en œuvre commencera après validation de cet ADR._
+## Mise en œuvre (15 octobre 2025)
+
+### Configuration Docker locale
+
+Le fichier `castopod/docker-compose.castopod.yml` a été créé avec :
+- **MariaDB 11.4** : Base de données dédiée avec healthcheck
+- **Redis 7.2** : Cache pour améliorer les performances
+- **Castopod latest** : Image officielle avec configuration S3
+
+Le réseau Docker `sale-wall_salete_net` est partagé avec le docker-compose principal pour permettre la communication entre MinIO et Castopod.
+
+### Commandes de démarrage
+
+```bash
+# Démarrer tous les services
+docker-compose up -d  # PostgreSQL + MinIO
+docker-compose -f castopod/docker-compose.castopod.yml --profile castopod up -d  # Castopod
+
+# Services disponibles
+# - Fastify : http://localhost:3000
+# - Castopod : http://localhost:8000
+# - MinIO Console : http://localhost:9001
+```
+
+### Documentation mise à jour
+
+Le README.md contient maintenant :
+- Section dédiée "Castopod - Plateforme Podcast"
+- Instructions de démarrage rapide
+- Liste des services et ports
+- Commande pour démarrer tous les serveurs en une fois
+
+_Status: implémenté en environnement local — déploiement CleverCloud à venir._

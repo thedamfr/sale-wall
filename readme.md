@@ -167,14 +167,11 @@ cp .env.example .env
 colima status    # Devrait afficher "Running"
 # Si arrêté : colima start
 
-# DÉVELOPPEMENT : Lancer seulement PostgreSQL + MinIO/S3 (mur + Castopod)
-docker compose up db s3 -d
-
-# PRODUCTION/TESTS : Lancer tout incluant le serveur
-docker compose --profile production up -d
+# DÉVELOPPEMENT : Lancer PostgreSQL + MinIO/S3
+docker-compose up -d
 
 # Vérifier que les services sont UP
-docker compose ps
+docker-compose ps
 ```
 
 ### 4. Initialiser la base de données
@@ -203,27 +200,74 @@ npm run dev:css      # Watch CSS (optionnel, terminal séparé)
 - **App** : http://localhost:3000
 - **S3 Console** : http://localhost:9001 (admin/password: salete/salete123)
 
-### Castopod (optionnel)
-Pour lancer Castopod dans le même docker-compose :
-1. Copier l'environnement : `cp castopod/.env.castopod.example castopod/.env.castopod`
-2. Adapter les credentials MariaDB/S3/Redis (bucket `salete-media-podcast` dédié).
-3. Démarrer le service (après avoir lancé `db` et `s3`) :
+---
+
+## 🎙️ Castopod - Plateforme Podcast (Optionnel)
+
+Castopod est une plateforme open-source pour héberger et gérer des podcasts. Elle est intégrée au projet pour publier des épisodes longs à partir des posts audio.
+
+### Démarrage rapide
 
 ```bash
-docker compose \
-  -f docker-compose.yml \
-  -f castopod/docker-compose.castopod.yml \
-  --profile castopod \
-  up -d castopod
+# 1. Créer le fichier de configuration
+cp castopod/.env.castopod.example castopod/.env.castopod
+
+# 2. Démarrer Castopod (nécessite PostgreSQL + MinIO déjà lancés)
+docker-compose -f castopod/docker-compose.castopod.yml --profile castopod up -d
+
+# 3. Accéder à Castopod
+# Interface web : http://localhost:8000
 ```
 
-Pour arrêter Castopod :
+### Services Castopod
+
+Castopod démarre 3 services supplémentaires :
+- **castopod** : Application web PHP (port 8000)
+- **castopod-db** : Base MariaDB 11.4 dédiée
+- **castopod-cache** : Cache Redis pour les performances
+
+### Configuration S3
+
+Castopod utilise un bucket S3 dédié `salete-media-podcast` pour stocker les médias podcast :
+- Bucket séparé du bucket principal (`salete-media`)
+- Préfixe : `podcast/`
+- Configuration dans `castopod/.env.castopod`
+
+### Arrêt de Castopod
 
 ```bash
-docker compose -f docker-compose.yml -f castopod/docker-compose.castopod.yml --profile castopod down
+docker-compose -f castopod/docker-compose.castopod.yml --profile castopod down
 ```
 
-Consultez `castopod/README.md` pour les détails (création d'utilisateur MinIO, arrêt des conteneurs, configuration CleverCloud).
+### Documentation complète
+
+Consultez [`castopod/README.md`](castopod/README.md) pour :
+- Configuration détaillée
+- Création utilisateur admin
+- Intégration avec MinIO/Cellar
+- Déploiement CleverCloud
+
+**Référence** : [ADR 0006 - Intégration Castopod](documentation/adr/adr_0006_castopod_integration.md)
+
+---
+
+## 🚀 Démarrer TOUS les serveurs en une commande
+
+```bash
+# 1. Démarrer PostgreSQL + MinIO/S3
+docker-compose up -d
+
+# 2. Démarrer Castopod (MariaDB + Redis + Castopod)
+docker-compose -f castopod/docker-compose.castopod.yml --profile castopod up -d
+
+# 3. Démarrer le serveur Fastify
+npm run dev
+```
+
+**Accès aux services** :
+- 🎙️ **App principale** : http://localhost:3000
+- 📻 **Castopod** : http://localhost:8000
+- 📦 **Console S3** : http://localhost:9001 (salete/salete123)
 
 ---
 
