@@ -120,6 +120,7 @@ salete-sincere/
 │   ├── plans/           # Plans d'audit
 │   └── reports/         # Rapports de sécurité
 ├── documentation/       # ADR et docs
+├── castopod/            # Config Docker & docs Castopod (image officielle)
 ├── style.css            # CSS source (Tailwind)
 ├── .env                 # Variables d'environnement (dev local)
 ├── docker-compose.yml   # PostgreSQL + MinIO
@@ -166,14 +167,14 @@ cp .env.example .env
 colima status    # Devrait afficher "Running"
 # Si arrêté : colima start
 
-# DÉVELOPPEMENT : Lancer seulement PostgreSQL + MinIO/S3
-docker-compose up db s3 -d
+# DÉVELOPPEMENT : Lancer seulement PostgreSQL + MinIO/S3 (mur + Castopod)
+docker compose up db s3 -d
 
 # PRODUCTION/TESTS : Lancer tout incluant le serveur
-docker-compose --profile production up -d
+docker compose --profile production up -d
 
 # Vérifier que les services sont UP
-docker-compose ps
+docker compose ps
 ```
 
 ### 4. Initialiser la base de données
@@ -201,6 +202,28 @@ npm run dev:css      # Watch CSS (optionnel, terminal séparé)
 ### 7. Accéder à l'application
 - **App** : http://localhost:3000
 - **S3 Console** : http://localhost:9001 (admin/password: salete/salete123)
+
+### Castopod (optionnel)
+Pour lancer Castopod dans le même docker-compose :
+1. Copier l'environnement : `cp castopod/.env.castopod.example castopod/.env.castopod`
+2. Adapter les credentials MariaDB/S3/Redis (bucket `salete-media-podcast` dédié).
+3. Démarrer le service (après avoir lancé `db` et `s3`) :
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f castopod/docker-compose.castopod.yml \
+  --profile castopod \
+  up -d castopod
+```
+
+Pour arrêter Castopod :
+
+```bash
+docker compose -f docker-compose.yml -f castopod/docker-compose.castopod.yml --profile castopod down
+```
+
+Consultez `castopod/README.md` pour les détails (création d'utilisateur MinIO, arrêt des conteneurs, configuration CleverCloud).
 
 ---
 
@@ -273,7 +296,7 @@ docker-compose --profile production up -d
 - **Format audio** : WebM/Opus (navigateurs modernes)
 - **Durée max** : 3 minutes
 - **Transcription** : Obligatoire pour l'accessibilité
-- **Stockage** : Local en dev (`/uploads/`), S3/Cellar en production (`salete-media` bucket)
+- **Stockage** : Local en dev (`/uploads/`), S3/Cellar en production (`salete-media` pour le mur, `salete-media-podcast` pour Castopod)
 - **URLs publiques** : `https://cellar-c2.services.clever-cloud.com/salete-media/audio/[filename]`
 
 ---
@@ -353,12 +376,34 @@ PGPASSWORD="<password>" psql -h <host> -p <port> -U <user> -d <database> -f sql/
 brew install s3cmd
 s3cmd --configure
 s3cmd mb s3://salete-media
+s3cmd mb s3://salete-media-podcast
 ```
+
+> ℹ️ `salete-media` reste dédié au mur Fastify tandis que `salete-media-podcast` héberge les médias Castopod. Pensez à générer une paire `ACCESS_KEY/SECRET` spécifique pour Castopod et à la restreindre à ce bucket (ou au préfixe `podcast/` si vous mutualisez le bucket).
+
+```bash
+# MinIO (exemple) : créer un utilisateur Castopod et attacher une policy restreinte
+mc alias set local http://localhost:9000 salete salete123
+mc admin user add local castopod castopod-secret
+mc admin policy create local castopod-policy <<'EOF'
+{
+	"Version": "2012-10-17",
+	"Statement": [{
+		"Effect": "Allow",
+		"Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject"],
+		"Resource": ["arn:aws:s3:::salete-media-podcast/*"]
+	}]
+}
+EOF
+mc admin policy attach local castopod-policy --user castopod
+```
+
+> Sur Cellar, créez le bucket équivalent depuis la console CleverCloud et générez un jeu de credentials séparé (menu **Access keys**) pour l'appli Castopod.
 
 ### 6. Statut du déploiement
 ✅ **Application déployée** : https://app-cb755f4a-25da-4a25-b40c-c395f5086569.cleverapps.io/  
 ✅ **Base de données** : PostgreSQL opérationnelle  
-✅ **Stockage S3** : Bucket `salete-media` créé  
+✅ **Stockage S3** : Buckets `salete-media` (mur) & `salete-media-podcast` (Castopod) créés  
 ✅ **Upload audio** : Testé et fonctionnel  
 ✅ **Accès public** : Fichiers accessibles via navigateur
 

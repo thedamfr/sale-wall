@@ -18,6 +18,8 @@ build/
 # Fichiers d'environnement
 .env
 .env.*
+.env.castopod.example
+!castopod/.env.castopod.example
 .envrc
 
 # Logs

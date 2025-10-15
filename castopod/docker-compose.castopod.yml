@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  castopod-db:
+    image: mariadb:11.4
+    container_name: salete_castopod_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${CASTOPOD_DB_ROOT_PASSWORD:-castopod-root}
+      MYSQL_DATABASE: ${CASTOPOD_DB_NAME:-castopod}
+      MYSQL_USER: ${CASTOPOD_DB_USER:-castopod}
+      MYSQL_PASSWORD: ${CASTOPOD_DB_PASSWORD:-castopod}
+    volumes:
+      - castopod_db:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [salete_net]
+    profiles: [castopod]
+
+  castopod-cache:
+    image: redis:7.2-alpine
+    container_name: salete_castopod_cache
+    command: ["redis-server", "--requirepass", "${CASTOPOD_REDIS_PASSWORD:-castopod-redis}"]
+    restart: unless-stopped
+    volumes:
+      - castopod_cache:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - -a
+        - ${CASTOPOD_REDIS_PASSWORD:-castopod-redis}
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [salete_net]
+    profiles: [castopod]
+
+  castopod:
+    image: castopod/castopod:latest
+    container_name: salete_castopod
+    restart: unless-stopped
+    env_file:
+      - .env.castopod
+    environment:
+      CP_DATABASE_HOSTNAME: castopod-db
+      CP_DATABASE_NAME: ${CASTOPOD_DB_NAME:-castopod}
+      CP_DATABASE_USERNAME: ${CASTOPOD_DB_USER:-castopod}
+      CP_DATABASE_PASSWORD: ${CASTOPOD_DB_PASSWORD:-castopod}
+      MYSQL_DATABASE: ${CASTOPOD_DB_NAME:-castopod}
+      MYSQL_USER: ${CASTOPOD_DB_USER:-castopod}
+      MYSQL_PASSWORD: ${CASTOPOD_DB_PASSWORD:-castopod}
+      MYSQL_HOST: castopod-db
+      MYSQL_PORT: 3306
+      CP_CACHE_HANDLER: redis
+      CP_REDIS_HOST: castopod-cache
+      CP_REDIS_PORT: 6379
+      CP_REDIS_PASSWORD: ${CASTOPOD_REDIS_PASSWORD:-castopod-redis}
+      CP_REDIS_DATABASE: 0
+      CP_MEDIA_S3_ENDPOINT: ${CASTOPOD_S3_ENDPOINT:-http://s3:9000}
+      CP_MEDIA_S3_REGION: ${CASTOPOD_S3_REGION:-us-east-1}
+      CP_MEDIA_S3_BUCKET: ${CASTOPOD_S3_BUCKET:-salete-media-podcast}
+      CP_MEDIA_S3_KEY: ${CASTOPOD_S3_KEY:-castopod}
+      CP_MEDIA_S3_SECRET: ${CASTOPOD_S3_SECRET:-castopodSecret}
+      CP_MEDIA_S3_KEY_PREFIX: ${CASTOPOD_S3_KEY_PREFIX:-podcast/}
+      CP_MEDIA_S3_PATH_STYLE_ENDPOINT: ${CASTOPOD_S3_PATH_STYLE_ENDPOINT:-1}
+      CP_MEDIA_S3_PROTOCOL: ${CASTOPOD_S3_PROTOCOL:-http}
+      CP_DISABLE_HTTPS: ${CP_DISABLE_HTTPS:-1}
+    depends_on:
+      castopod-db:
+        condition: service_healthy
+      castopod-cache:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - castopod_media:/var/www/castopod/public/media
+    networks: [salete_net]
+    profiles: [castopod]
+
+volumes:
+  castopod_media:
+  castopod_db:
+  castopod_cache:
