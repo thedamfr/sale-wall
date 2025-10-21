@@ -1,7 +1,19 @@
 ---
 title: Saleté Sincère
-description: Plateforme audio pour partager victoires "Wafer" et "Charbon" du quotidien avec système de votes
-owner: @thedamfr
+description: Plateforme audio pour partager victoires "Wafer" et "Charbon" du quotidien avec système de v### Migration depuis Pug (terminée)
+
+La migration de Pug vers Handlebars a été complétée en octobre 2025. Toutes les vues utilisent désormais Handlebars.
+
+**Commits de migration** :
+- `f0e9fc8` - Migration homepage + configuration initiale
+- `71dd497` - Migration manifeste + suppression fichiers Pug principaux  
+- `a8846a6` - Migration newsletter + désinstallation complète de Pug
+
+**📚 Documentation** : [`documentation/adr/adr_0009_migration_handlebars.md`](documentation/adr/adr_0009_migration_handlebars.md)
+
+---
+
+## 🛡️ Sécuritér: @thedamfr
 status: active
 review_after: 2026-01-01
 canonical_url: https://github.com/thedamfr/sale-wall
@@ -31,7 +43,7 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 ## 🚀 Stack technique
 
 - **Backend** : Fastify 5.x
-- **Templates** : 🔄 **Migration Pug → HTML en cours** (voir ci-dessous)
+- **Templates** : Handlebars (migration depuis Pug terminée ✅)
 - **Frontend** : Vanilla JS + MediaRecorder API
 - **Styling** : Tailwind CSS v4 + PostCSS + CSS custom
 - **Base de données** : PostgreSQL avec UUID
@@ -41,67 +53,93 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 
 ---
 
-## 🔄 Système de Templates : Migration Pug → HTML
+## 🎨 Système de Templates : Handlebars
 
-### Statut actuel
+### Templating Engine
 
-Le projet est en **migration progressive** de Pug vers HTML pur pour améliorer la **lisibilité** et **maintenabilité** du code.
+Le projet utilise **Handlebars** comme moteur de templating côté serveur via `@fastify/view`.
 
-### Pourquoi cette migration ?
+**Pourquoi Handlebars ?**
+- ✅ **Syntaxe proche du HTML** : `{{variable}}` au lieu de syntaxe propriétaire
+- ✅ **Lisibilité universelle** : Facile à comprendre sans formation
+- ✅ **Logique limitée** : Force à garder la logique métier côté serveur
+- ✅ **Support IDE natif** : Autocomplétion, validation, formatting
+- ✅ **Debugging simple** : Erreurs claires et compréhensibles
 
-- ✅ **Lisibilité universelle** : HTML est un standard connu de tous
-- ✅ **Pas de courbe d'apprentissage** : Pas de syntaxe propriétaire à apprendre
-- ✅ **Meilleur support IDE** : Autocomplétion et validation natives
-- ✅ **Debugging simplifié** : Pas d'erreurs de syntaxe cryptiques
-- ✅ **Contribution facilitée** : Barrière à l'entrée plus basse
+### Structure des vues
 
-### Règles de développement
-
-| Situation | Action | Exemple |
-|-----------|--------|---------|
-| **Nouvelle page** | ✅ Créer en `.html` | `server/views/podcast.html` |
-| **Modification légère** | ⚠️ Garder le `.pug` | Correction typo → pas de migration |
-| **Refonte feature** | ✅ Migrer vers `.html` | Redesign page → passer en HTML |
-| **Page très dynamique** | 🤔 Évaluer au cas par cas | Beaucoup de logique serveur → peut rester Pug |
-
-### Comment servir les templates ?
-
-```javascript
-// ✅ NOUVEAU : HTML pur
-app.get("/podcast", { config: { rateLimit: pageLimiter }}, (req, reply) =>
-  reply.sendFile("podcast.html", path.join(__dirname, "server", "views"))
-);
-
-// ⚠️ LEGACY : Pug (à migrer progressivement)
-app.get("/manifeste", { config: { rateLimit: pageLimiter }}, (req, reply) =>
-  reply.view("manifeste.pug", { title: "Manifeste" })
-);
+```
+server/views/
+├── index.hbs              # Homepage avec posts dynamiques
+├── manifeste.hbs          # Page manifeste
+├── layout.hbs             # Layout pour futures pages (non utilisé pour l'instant)
+├── partials/
+│   └── header.hbs         # Header réutilisable (enregistré manuellement)
+└── newsletter/
+    ├── subscribe.hbs      # Formulaire inscription
+    ├── pending.hbs        # Vérification email
+    ├── confirmed.hbs      # Confirmation réussie
+    └── error.hbs          # Gestion d'erreurs
 ```
 
-### Vues actuelles
+### Utilisation
 
-#### ✅ HTML (moderne)
-- `/podcast` → `podcast.html` - Page liens podcast (Linktree style)
+```javascript
+// Configuration Fastify
+import handlebars from "handlebars";
 
-#### ⚠️ Pug (legacy - à migrer)
-- `/` → `index.pug` - Homepage avec enregistrement vocal
-- `/manifeste` → `manifeste.pug` - Page manifeste
-- `/newsletter` → `newsletter.pug` - Formulaire inscription
-- `layout.pug` - Layout principal (header/footer)
+// Enregistrer helpers personnalisés
+handlebars.registerHelper('eq', (a, b) => a === b);
 
-### Checklist de migration
+// Enregistrer partials
+const headerPartial = fs.readFileSync("server/views/partials/header.hbs", "utf-8");
+handlebars.registerPartial('header', headerPartial);
 
-Quand vous migrez une vue Pug → HTML :
+await app.register(fastifyView, {
+  engine: { handlebars },
+  root: path.join(__dirname, "server/views")
+});
 
-1. [ ] Créer le fichier `.html` équivalent
-2. [ ] Convertir la syntaxe Pug en HTML standard
-3. [ ] Remplacer `reply.view()` par `reply.sendFile()` dans `server.js`
-4. [ ] Tester la page en local (http://localhost:3000)
-5. [ ] Vérifier le responsive mobile
-6. [ ] Supprimer le fichier `.pug` une fois validé
-7. [ ] Commit : `refactor(views): migrate [page] from Pug to HTML`
+// Dans les routes
+app.get("/", async (req, reply) => {
+  reply.view("index.hbs", { 
+    title: "Saleté Sincère",
+    posts,
+    stats
+  });
+});
+```
 
-**📚 Documentation complète** : [`documentation/adr/adr_0008_migration_pug_vers_html.md`](documentation/adr/adr_0008_migration_pug_vers_html.md)
+### Syntaxe Handlebars
+
+```handlebars
+{{!-- Variables --}}
+<h1>{{title}}</h1>
+<p>{{stats.total_posts}} récits partagés</p>
+
+{{!-- Conditions --}}
+{{#if posts.length}}
+  <p>Il y a des posts !</p>
+{{else}}
+  <p>Aucun post</p>
+{{/if}}
+
+{{!-- Boucles --}}
+{{#each posts}}
+  <article>
+    <h2>{{title}}</h2>
+    <p>{{duration}}</p>
+  </article>
+{{/each}}
+
+{{!-- Partials --}}
+{{> header}}
+
+{{!-- Helpers personnalisés --}}
+{{#if (eq badge 'wafer')}}
+  <span>Badge Wafer</span>
+{{/if}}
+```
 
 ---
 
@@ -160,9 +198,9 @@ salete-sincere/
 ├── server.js            # Serveur Fastify principal
 ├── CLAUDE.md            # Framework TDD générique (base contributeurs)
 ├── server/
-│   ├── views/           # 🔄 Templates (migration Pug → HTML en cours)
-│   │   ├── *.html       # ✅ Nouvelles vues (HTML pur)
-│   │   └── *.pug        # ⚠️ Vues legacy (à migrer progressivement)
+│   ├── views/           # ✅ Templates Handlebars
+│   │   ├── *.hbs        # Templates Handlebars
+│   │   └── partials/    # Composants réutilisables (header)
 │   ├── middleware/      # Middleware Fastify
 │   │   ├── rateLimiter.js
 │   │   └── security.js
@@ -188,7 +226,8 @@ salete-sincere/
 │   └── reports/         # Rapports de sécurité
 ├── documentation/       # ADR et docs
 │   └── adr/             # Architecture Decision Records
-│       └── adr_0008_migration_pug_vers_html.md  # 📄 Décision migration
+│       ├── adr_0008_migration_pug_vers_html.md  # 📄 Décision migration (historique)
+│       └── adr_0009_migration_handlebars.md     # 📄 Migration Handlebars (actuel)
 ├── castopod/            # Config Docker & docs Castopod (image officielle)
 ├── style.css            # CSS source (Tailwind)
 ├── .env                 # Variables d'environnement (dev local)
@@ -351,7 +390,7 @@ npm run dev
 npm run build:css
 ```
 
-**Explication** : Les classes Tailwind CSS ne sont générées que lors de la compilation. Si vous modifiez les templates `.pug` ou ajoutez de nouvelles classes, il faut recompiler.
+**Explication** : Les classes Tailwind CSS ne sont générées que lors de la compilation. Si vous modifiez les templates `.hbs` ou ajoutez de nouvelles classes, il faut recompiler.
 
 ### ❌ Erreur de connexion base de données
 **Symptôme** : `Connection refused` ou `database salete does not exist`
@@ -426,7 +465,7 @@ npm start            # Démarrage production
 
 **💡 Quand utiliser `npm run build:css` ?**
 - ✅ **Toujours** avant le premier lancement  
-- ✅ Après modification des templates Pug  
+- ✅ Après modification des templates Handlebars  
 - ✅ Après ajout de nouvelles classes Tailwind CSS  
 - ✅ Si l'interface semble cassée ou les boutons invisibles
 
@@ -554,7 +593,7 @@ psql <connection-string> -c "SELECT COUNT(*) FROM posts;"
 
 ### Technologies utilisées
 - **Fastify 5.x** : Framework web rapide + @fastify/multipart
-- **Pug** : Moteur de templates SSR
+- **Handlebars** : Moteur de templates SSR
 - **Tailwind CSS v4** : Framework CSS utilitaire
 - **PostCSS** : Processeur CSS
 - **MediaRecorder API** : Enregistrement audio natif
@@ -563,7 +602,7 @@ psql <connection-string> -c "SELECT COUNT(*) FROM posts;"
 
 ### Structure du code
 - Serveur principal dans `server.js` avec routes API intégrées
-- Templates Pug dans `server/views/` (layout + pages)
+- Templates Handlebars dans `server/views/` (*.hbs + partials/)
 - JavaScript client dans `public/js/record.js` (classe VoiceRecorder)
 - CSS source dans `style.css` (compilé vers `public/style.css`)
 - CSS custom dans `public/custom.css` (polices, boutons personnalisés)
