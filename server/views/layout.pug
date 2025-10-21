@@ -10,15 +10,15 @@ html(lang="fr")
     link(rel="stylesheet", href="/style.css")
     link(rel="stylesheet", href="/custom.css")
   body(class="bg-[#0B0B0B] text-[#F2F2EF] font-sans min-h-screen")
-    // Newsletter Banner (only on homepage)
+    // Podcast Banner (only on homepage)
     if title === 'Saleté Sincère'
       div(class="bg-[#D6B977] text-[#0B0B0B] p-3")
         .flex.items-center.justify-between.gap-4(class="flex-col sm:flex-row")
           div.text-center(class="sm:text-left")
-            span.font-bold 📧 Passe en cuisine
-            span.ml-2.text-sm Rejoins la newsletter pour ne rien manquer
-          a.px-4.py-2.rounded-full.font-semibold.transition.text-sm(href="/newsletter", style="background: #0B0B0B; color: #D6B977;")
-            | S'inscrire →
+            span.font-bold 🎙️ Le Podcast est sorti !
+            span.ml-2.text-sm Va l'écouter sur ta plateforme préférée
+          a.px-4.py-2.rounded-full.font-semibold.transition.text-sm(href="/podcast", style="background: #0B0B0B; color: #D6B977;")
+            | Écouter →
     
     block header
     
