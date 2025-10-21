@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{title}} – Saleté Sincère</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/custom.css">
+</head>
+<body class="bg-[#0B0B0B] text-[#F2F2EF] font-sans min-h-screen">
+  {{!-- Podcast Banner --}}
+  <div class="bg-[#D6B977] text-[#0B0B0B] p-3">
+    <div class="flex items-center justify-between gap-4 flex-col sm:flex-row">
+      <div class="text-center sm:text-left">
+        <span class="font-bold">🎙️ Le Podcast est sorti !</span>
+        <span class="ml-2 text-sm">Va l'écouter sur ta plateforme préférée</span>
+      </div>
+      <a href="/podcast" class="px-4 py-2 rounded-full font-semibold transition text-sm" style="background: #0B0B0B; color: #D6B977;">
+        Écouter →
+      </a>
+    </div>
+  </div>
+  
+  {{!-- Header --}}
+  {{> header}}
+  
+  {{!-- Main container --}}
+  <div class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    
+{{!-- Hero Section --}}
+<section class="relative mx-6 rounded-xl overflow-hidden min-h-96 bg-ivoire-sale">
+  {{!-- Background image --}}
+  <div class="absolute inset-0" style="background-image: url('/images/charbon-wafer-kintsugi.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat;"></div>
+  
+  {{!-- Semi-transparent overlay for text readability --}}
+  <div class="absolute inset-0" style="background-color: rgba(0, 0, 0, 0.4);"></div>
+  
+  {{!-- Content --}}
+  <div class="relative z-10 p-8 text-center space-y-4">
+    <h1 class="text-xl md:text-2xl font-brush font-bold text-white drop-shadow-lg">
+      Vos histoires méritent d'être entendues.
+    </h1>
+    <p class="italic text-white drop-shadow-md">
+      Brutes, sincères, sans filtre.
+    </p>
+    
+    {{!-- Toggle button --}}
+    <button id="toggle-record" class="mt-4 px-6 py-3 bg-or-kintsugi hover:bg-or-kintsugi-hover rounded-full text-noir-charbon font-semibold hover:scale-105 focus:outline-none focus:ring-2 focus:ring-or-kintsugi transition shadow-lg">
+      + Enregistrer votre histoire
+    </button>
+    
+    {{!-- Recording form (hidden by default) --}}
+    <div id="recording-form" class="mt-6 max-w-md mx-auto p-6 bg-noir-charbon bg-opacity-90 backdrop-blur-sm rounded-lg border border-or-kintsugi border-opacity-50 hidden">
+      <form id="voice-form" class="space-y-4">
+        {{!-- Title field --}}
+        <div>
+          <label for="title" class="block text-sm font-medium text-ivoire-sale mb-2">
+            Titre de votre histoire
+          </label>
+          <input id="title" type="text" name="title" required class="w-full px-3 py-2 bg-ivoire-sale bg-opacity-20 border border-or-kintsugi border-opacity-50 rounded-lg text-ivoire-sale placeholder-ivoire-sale placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-or-kintsugi focus:border-or-kintsugi" placeholder="Donnez un titre à votre récit...">
+        </div>
+        
+        {{!-- Recording controls --}}
+        <div class="text-center">
+          <button id="record-btn" type="button" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 transition">
+            <span class="record-text">Commencer l'enregistrement</span>
+          </button>
+          <p class="text-xs text-ivoire-sale text-opacity-70 mt-2">
+            Durée min : 30 secondes
+          </p>
+        </div>
+        
+        {{!-- Audio preview (hidden initially) --}}
+        <div id="audio-preview" class="hidden">
+          <audio id="audio-player" controls class="w-full mt-4"></audio>
+          <p class="text-xs text-ivoire-sale text-opacity-70 mt-2">
+            Écoutez votre enregistrement avant de l'envoyer
+          </p>
+        </div>
+        
+        {{!-- Transcription field --}}
+        <div>
+          <label for="transcription" class="block text-sm font-medium text-ivoire-sale mb-2">
+            Transcription (obligatoire)
+          </label>
+          <textarea id="transcription" name="transcription" rows="4" required class="w-full px-3 py-2 bg-ivoire-sale bg-opacity-20 border border-or-kintsugi border-opacity-50 rounded-lg text-ivoire-sale placeholder-ivoire-sale placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-or-kintsugi focus:border-or-kintsugi resize-none" placeholder="Retranscrivez votre histoire ici..."></textarea>
+        </div>
+        
+        {{!-- Badge selection --}}
+        <div>
+          <label class="block text-sm font-medium text-ivoire-sale mb-2">
+            Type de récit
+          </label>
+          <div class="flex gap-2">
+            <label class="flex items-center">
+              <input type="radio" name="badge" value="wafer" required class="sr-only">
+              <span class="px-3 py-1 bg-gradient-to-r from-[#E6D4A6] via-[#F2E8C8] to-[#E6D4A6] text-[#0B0B0B] rounded-full text-xs font-medium cursor-pointer hover:scale-105 transition badge-option">
+                Wafer
+              </span>
+            </label>
+            <label class="flex items-center">
+              <input type="radio" name="badge" value="charbon" required class="sr-only">
+              <span class="px-3 py-1 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full text-xs font-medium cursor-pointer hover:scale-105 transition badge-option">
+                Charbon
+              </span>
+            </label>
+          </div>
+        </div>
+        
+        {{!-- Submit button --}}
+        <div class="text-center">
+          <button id="submit-btn" type="submit" disabled class="submit-button">
+            <span class="submit-text">Partager votre histoire</span>
+          </button>
+        </div>
+        
+        {{!-- Cancel button --}}
+        <div class="text-center">
+          <button id="cancel-btn" type="button" class="px-4 py-2 text-or-kintsugi hover:text-or-kintsugi-hover underline text-sm transition">
+            Annuler
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <p class="text-sm font-medium text-white drop-shadow-md">
+      {{stats.total_posts}} récits partagés · {{stats.total_listens}} écoutes ce mois-ci
+    </p>
+  </div>
+</section>
+
+{{!-- Filters --}}
+<nav class="flex justify-center gap-4 mt-6">
+  <button class="px-4 py-2 bg-gradient-to-r from-[#E6D4A6] via-[#F2E8C8] to-[#E6D4A6] text-[#0B0B0B] rounded-full font-medium hover:scale-105 transition">
+    Wafer
+  </button>
+  <button class="px-4 py-2 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full font-medium hover:scale-105 transition">
+    Charbon
+  </button>
+  <button class="px-4 py-2 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full font-medium hover:scale-105 transition">
+    Tous
+  </button>
+</nav>
+
+{{!-- Feed --}}
+<main class="mt-6 space-y-4 px-6 pb-8">
+  {{#if posts.length}}
+    {{#each posts}}
+    <article class="flex items-center justify-between bg-[#0B0B0B] border border-gray-800 rounded-lg p-4 hover:shadow-lg hover:scale-105 transition">
+      <div class="flex items-center space-x-4">
+        <button class="audio-play-btn p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition" aria-label="Écouter" data-post-id="{{id}}" data-audio-url="{{audio_url}}">
+          <svg class="play-icon w-5 h-5 text-[#D6B977]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+          <svg class="pause-icon hidden w-5 h-5 text-[#D6B977]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"></path>
+          </svg>
+        </button>
+        <div>
+          <h2 class="font-serif font-bold text-xl text-[#F2F2EF]">
+            {{title}}
+          </h2>
+          <p class="text-base text-gray-400">
+            {{duration}} · 
+            {{#if (eq badge 'wafer')}}
+              <span class="px-2 py-0.5 bg-gradient-to-r from-[#E6D4A6] via-[#F2E8C8] to-[#E6D4A6] text-[#0B0B0B] rounded-full text-xs font-medium">Wafer</span>
+            {{else}}
+              <span class="px-2 py-0.5 bg-[#0B0B0B] text-[#F2F2EF] border border-[#F2F2EF] rounded-full text-xs font-medium">Charbon</span>
+            {{/if}}
+            · {{timeAgo}}
+          </p>
+        </div>
+      </div>
+      <button class="flex items-center space-x-2 text-[#D6B977] font-semibold hover:text-[#B99E5A] hover:scale-105 transition" aria-label="Voter" data-post-id="{{id}}">
+        <span>+{{votes}}</span>
+      </button>
+    </article>
+    {{/each}}
+  {{else}}
+    <div class="text-center py-8">
+      <p class="text-gray-400 text-lg">
+        Aucun récit partagé pour le moment.
+      </p>
+      <p class="text-gray-500 text-sm mt-2">
+        Soyez le premier à partager votre histoire !
+      </p>
+    </div>
+  {{/if}}
+</main>
+
+  </div>{{!-- End container --}}
+  
+  {{!-- JavaScript --}}
+  <script src="/js/record.js"></script>
+</body>
+</html>

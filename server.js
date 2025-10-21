@@ -8,14 +8,15 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyFormbody from "@fastify/formbody";
 import fastifyPostgres from "@fastify/postgres";
 import fastifyRateLimit from "@fastify/rate-limit";
-import pug from "pug";
+import handlebars from "handlebars";
 import { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter, newsletterLimiter, newsletterActionLimiter } from "./server/middleware/rateLimiter.js";
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
+import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = Fastify({ logger: true });
 
 // S3/Cellar configuration with performance optimizations
@@ -162,9 +163,21 @@ app.setNotFoundHandler((request, reply) => {
   });
 });
 
-// Views (Pug)
+// Register Handlebars helpers
+handlebars.registerHelper('eq', function(a, b) {
+  return a === b;
+});
+
+// Register Handlebars partials manually
+const headerPartial = fs.readFileSync(
+  path.join(__dirname, "server/views/partials/header.hbs"),
+  "utf-8"
+);
+handlebars.registerPartial('header', headerPartial);
+
+// Views (Handlebars)
 await app.register(fastifyView, {
-  engine: { pug },
+  engine: { handlebars },
   root: path.join(__dirname, "server/views")
 });
 
@@ -603,8 +616,9 @@ app.get("/", {
       
       const stats = statsResult.rows[0];
       
-      return reply.view("index.pug", { 
+      return reply.view("index.hbs", { 
         title: "Saleté Sincère",
+        isPodcastBanner: true,
         posts,
         stats: {
           total_posts: stats.total_posts || 0,
@@ -617,8 +631,9 @@ app.get("/", {
     }
   } catch (error) {
     app.log.error(error);
-    return reply.view("index.pug", { 
+    return reply.view("index.hbs", { 
       title: "Saleté Sincère",
+      isPodcastBanner: true,
       posts: [],
       stats: { total_posts: 0, total_listens: 0 }
     });

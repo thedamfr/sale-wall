@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{title}} – Saleté Sincère</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/custom.css">
+</head>
+<body class="bg-[#0B0B0B] text-[#F2F2EF] font-sans min-h-screen">
+  {{!-- Podcast Banner (only on homepage) --}}
+  {{#if isPodcastBanner}}
+  <div class="bg-[#D6B977] text-[#0B0B0B] p-3">
+    <div class="flex items-center justify-between gap-4 flex-col sm:flex-row">
+      <div class="text-center sm:text-left">
+        <span class="font-bold">🎙️ Le Podcast est sorti !</span>
+        <span class="ml-2 text-sm">Va l'écouter sur ta plateforme préférée</span>
+      </div>
+      <a href="/podcast" class="px-4 py-2 rounded-full font-semibold transition text-sm" style="background: #0B0B0B; color: #D6B977;">
+        Écouter →
+      </a>
+    </div>
+  </div>
+  {{/if}}
+  
+  {{!-- Header --}}
+  {{> header}}
+  
+  {{!-- Main container with better responsive design --}}
+  <div class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    {{{body}}}
+  </div>
+  
+  {{!-- JavaScript --}}
+  <script src="/js/record.js"></script>
+</body>
+</html>
