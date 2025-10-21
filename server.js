@@ -666,7 +666,7 @@ app.get("/manifeste", {
     rateLimit: pageLimiter
   }
 }, (req, reply) =>
-  reply.view("manifeste.pug", { title: "Manifeste" })
+  reply.view("manifeste.hbs", { title: "Manifeste" })
 );
 
 // Route podcast (liens style Linktree)
