@@ -30,13 +30,78 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 
 ## 🚀 Stack technique
 
-- **Backend** : Fastify 5.x + Pug (SSR)
+- **Backend** : Fastify 5.x
+- **Templates** : 🔄 **Migration Pug → HTML en cours** (voir ci-dessous)
 - **Frontend** : Vanilla JS + MediaRecorder API
 - **Styling** : Tailwind CSS v4 + PostCSS + CSS custom
 - **Base de données** : PostgreSQL avec UUID
 - **Stockage** : S3 (MinIO en dev) pour les fichiers audio
 - **Déploiement** : CleverCloud avec Docker
 - **Dev** : Nodemon + Docker Compose
+
+---
+
+## 🔄 Système de Templates : Migration Pug → HTML
+
+### Statut actuel
+
+Le projet est en **migration progressive** de Pug vers HTML pur pour améliorer la **lisibilité** et **maintenabilité** du code.
+
+### Pourquoi cette migration ?
+
+- ✅ **Lisibilité universelle** : HTML est un standard connu de tous
+- ✅ **Pas de courbe d'apprentissage** : Pas de syntaxe propriétaire à apprendre
+- ✅ **Meilleur support IDE** : Autocomplétion et validation natives
+- ✅ **Debugging simplifié** : Pas d'erreurs de syntaxe cryptiques
+- ✅ **Contribution facilitée** : Barrière à l'entrée plus basse
+
+### Règles de développement
+
+| Situation | Action | Exemple |
+|-----------|--------|---------|
+| **Nouvelle page** | ✅ Créer en `.html` | `server/views/podcast.html` |
+| **Modification légère** | ⚠️ Garder le `.pug` | Correction typo → pas de migration |
+| **Refonte feature** | ✅ Migrer vers `.html` | Redesign page → passer en HTML |
+| **Page très dynamique** | 🤔 Évaluer au cas par cas | Beaucoup de logique serveur → peut rester Pug |
+
+### Comment servir les templates ?
+
+```javascript
+// ✅ NOUVEAU : HTML pur
+app.get("/podcast", { config: { rateLimit: pageLimiter }}, (req, reply) =>
+  reply.sendFile("podcast.html", path.join(__dirname, "server", "views"))
+);
+
+// ⚠️ LEGACY : Pug (à migrer progressivement)
+app.get("/manifeste", { config: { rateLimit: pageLimiter }}, (req, reply) =>
+  reply.view("manifeste.pug", { title: "Manifeste" })
+);
+```
+
+### Vues actuelles
+
+#### ✅ HTML (moderne)
+- `/podcast` → `podcast.html` - Page liens podcast (Linktree style)
+
+#### ⚠️ Pug (legacy - à migrer)
+- `/` → `index.pug` - Homepage avec enregistrement vocal
+- `/manifeste` → `manifeste.pug` - Page manifeste
+- `/newsletter` → `newsletter.pug` - Formulaire inscription
+- `layout.pug` - Layout principal (header/footer)
+
+### Checklist de migration
+
+Quand vous migrez une vue Pug → HTML :
+
+1. [ ] Créer le fichier `.html` équivalent
+2. [ ] Convertir la syntaxe Pug en HTML standard
+3. [ ] Remplacer `reply.view()` par `reply.sendFile()` dans `server.js`
+4. [ ] Tester la page en local (http://localhost:3000)
+5. [ ] Vérifier le responsive mobile
+6. [ ] Supprimer le fichier `.pug` une fois validé
+7. [ ] Commit : `refactor(views): migrate [page] from Pug to HTML`
+
+**📚 Documentation complète** : [`documentation/adr/adr_0008_migration_pug_vers_html.md`](documentation/adr/adr_0008_migration_pug_vers_html.md)
 
 ---
 
@@ -95,7 +160,9 @@ salete-sincere/
 ├── server.js            # Serveur Fastify principal
 ├── CLAUDE.md            # Framework TDD générique (base contributeurs)
 ├── server/
-│   ├── views/           # Templates Pug
+│   ├── views/           # 🔄 Templates (migration Pug → HTML en cours)
+│   │   ├── *.html       # ✅ Nouvelles vues (HTML pur)
+│   │   └── *.pug        # ⚠️ Vues legacy (à migrer progressivement)
 │   ├── middleware/      # Middleware Fastify
 │   │   ├── rateLimiter.js
 │   │   └── security.js
@@ -120,6 +187,8 @@ salete-sincere/
 │   ├── plans/           # Plans d'audit
 │   └── reports/         # Rapports de sécurité
 ├── documentation/       # ADR et docs
+│   └── adr/             # Architecture Decision Records
+│       └── adr_0008_migration_pug_vers_html.md  # 📄 Décision migration
 ├── castopod/            # Config Docker & docs Castopod (image officielle)
 ├── style.css            # CSS source (Tailwind)
 ├── .env                 # Variables d'environnement (dev local)

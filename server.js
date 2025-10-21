@@ -654,6 +654,15 @@ app.get("/manifeste", {
   reply.view("manifeste.pug", { title: "Manifeste" })
 );
 
+// Route podcast (liens style Linktree)
+app.get("/podcast", {
+  config: {
+    rateLimit: pageLimiter
+  }
+}, (req, reply) =>
+  reply.sendFile("podcast.html", path.join(__dirname, "server", "views"))
+);
+
 // Health
 app.get("/health", () => ({ ok: true }));
 

@@ -23,12 +23,13 @@ tags: [adr, index, architecture, decisions]
 | [ADR-0005](./adr_0005_newsletter_brevo_integration.md) | Newsletter Brevo Integration | 🔄 **En cours** | 2025-09 | Newsletter, API | Feature |
 | [ADR-0006](./adr_0005_newsletter_doi_automation_approach.md) | Newsletter DOI Automation | ✅ **Accepté** | 2025-09 | Newsletter, DOI | Feature |
 | [ADR-0007](./adr_0007_castopod_subdomain_routing.md) | Castopod Subdomain Routing | ⏳ **Attente DNS** | 2025-10 | Podcasting, Routing | Feature |
+| [ADR-0008](./adr_0008_migration_pug_vers_html.md) | Migration Pug → HTML | ✅ **Accepté** | 2025-10 | Frontend, Templates | Architecture |
 
 ## 📊 Statistiques
 
-- **Total ADRs** : 7
+- **Total ADRs** : 8
 - **Actifs** : 2 (infrastructure/sécurité)
-- **Implémentés/Acceptés** : 4 (features audio + newsletter)
+- **Implémentés/Acceptés** : 5 (features audio + newsletter + templates)
 - **En cours** : 1 (newsletter intégration)
 - **Attente** : 1 (podcasting DNS)
 - **Draft** : 0
@@ -48,6 +49,12 @@ tags: [adr, index, architecture, decisions]
 
 ### 📧 Newsletter & API Integration  
 - [ADR-0005](./adr_0005_newsletter_brevo_integration.md) - Newsletter Brevo Integration (en cours)
+
+### 🎨 Frontend & Templates
+- [ADR-0008](./adr_0008_migration_pug_vers_html.md) - Migration Pug vers HTML (accepté)
+
+### 🎙️ Podcasting
+- [ADR-0007](./adr_0007_castopod_subdomain_routing.md) - Castopod Subdomain Routing (attente DNS)
 - [ADR-0006](./adr_0005_newsletter_doi_automation_approach.md) - Newsletter DOI Automation (accepté)
 
 ### 🎙️ Podcasting

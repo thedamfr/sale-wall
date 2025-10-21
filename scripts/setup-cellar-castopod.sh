@@ -42,6 +42,7 @@ cat > /tmp/castopod-cors.xml << 'EOF'
     <CORSRule>
         <AllowedOrigin>https://saletesincere.fr</AllowedOrigin>
         <AllowedOrigin>https://www.saletesincere.fr</AllowedOrigin>
+        <AllowedOrigin>https://podcasts.saletesincere.fr</AllowedOrigin>
         <AllowedOrigin>http://localhost:8000</AllowedOrigin>
         <AllowedMethod>GET</AllowedMethod>
         <AllowedMethod>HEAD</AllowedMethod>
