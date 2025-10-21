@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Newsletter – Saleté Sincère</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/custom.css">
+</head>
+<body class="bg-[#0B0B0B] text-[#F2F2EF] font-sans min-h-screen">
+  
+  {{!-- Header --}}
+  <header class="flex items-center justify-between px-6 py-6 lg:py-8">
+    <a href="/" class="text-2xl lg:text-3xl font-brush font-bold text-[#F2F2EF] hover:text-[#D6B977] transition">Saleté Sincère</a>
+    <div class="flex items-center gap-6">
+      <a class="text-sm text-[#D6B977] underline hover:text-[#B99E5A] transition" href="/">Retour à l'accueil</a>
+    </div>
+  </header>
+  
+  {{!-- Main container --}}
+  <div class="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    
+    <main class="max-w-xl mx-auto px-6 py-20 lg:py-28">
+      {{!-- Header section --}}
+      <div class="text-center mb-8">
+        <h1 class="text-3xl lg:text-4xl xl:text-5xl font-brush font-bold text-[#F2F2EF] mb-6">Newsletter Saleté Sincère</h1>
+        <p class="text-lg lg:text-xl text-[#D6B977] font-medium italic">{{tagline}}</p>
+      </div>
+      
+      {{!-- Event hook - NEW SECTION --}}
+      <div class="text-center mb-8 lg:mb-10">
+        <h2 class="text-xl lg:text-2xl font-bold text-[#F2F2EF] mb-4">🎙️ Pas de charbon, pas de wafer — dès le 15 octobre</h2>
+        <p class="text-base lg:text-lg text-gray-300 mb-4 leading-relaxed">4 épisodes. 4 invité·e·s. Leurs vraies vies professionnelles : colères, doutes, fiertés.</p>
+        <p class="text-base lg:text-lg font-bold text-[#F2F2EF]">🖤 Inscris-toi pour écouter la saison 1 en avant-première.</p>
+      </div>
+      
+      {{!-- Form section --}}
+      <div class="bg-[#111111] border border-gray-800 rounded-lg p-6 lg:p-8 mt-8 lg:mt-10">
+        <form method="POST" action="/newsletter/subscribe">
+          <div class="space-y-6">
+            {{!-- Email field --}}
+            <div>
+              <label for="email" class="block text-base font-medium text-[#F2F2EF] mb-3">Votre adresse email</label>
+              <input id="email" type="email" name="email" required class="w-full px-4 py-3 bg-[#0B0B0B] border border-gray-700 rounded-lg text-[#F2F2EF] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d4af37] focus:border-[#d4af37] transition text-base" placeholder="votre@email.fr">
+            </div>
+            
+            {{!-- Submit button --}}
+            <div class="text-center relative">
+              <button type="submit" class="relative z-50 w-full px-6 py-3 bg-[#d4af37] hover:bg-[#b8941f] text-[#0B0B0B] font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d4af37] focus:ring-offset-2 focus:ring-offset-[#111111] transition hover:scale-105 text-base shadow-lg border-2 border-[#d4af37]" style="min-height: 48px; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                S'inscrire à la newsletter
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      
+      {{!-- Legal and manifesto section --}}
+      <div class="mt-6 text-center">
+        <small class="block text-xs lg:text-sm text-gray-500 space-y-1 leading-relaxed">
+          Nous respectons votre vie privée. Vous recevrez un email de confirmation.
+        </small>
+      </div>
+    </main>
+
+  </div>{{!-- End container --}}
+  
+  <script src="/js/record.js"></script>
+</body>
+</html>

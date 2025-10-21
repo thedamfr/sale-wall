@@ -1,6 +1,6 @@
 {
   "watch": [".", "server/", "views/"],
-  "ext": "js,pug,css,json",
+  "ext": "js,hbs,css,json",
   "ignore": ["node_modules/", "public/", "dist/"],
   "exec": "node server.js"
 }
