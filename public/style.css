@@ -14,13 +14,18 @@
     --color-red-600: oklch(57.7% 0.245 27.325);
     --color-red-700: oklch(50.5% 0.213 27.518);
     --color-red-900: oklch(39.6% 0.141 25.723);
+    --color-yellow-300: oklch(90.5% 0.182 98.111);
     --color-yellow-400: oklch(85.2% 0.199 91.936);
     --color-green-500: oklch(72.3% 0.219 149.579);
     --color-green-600: oklch(62.7% 0.194 149.214);
     --color-green-700: oklch(52.7% 0.154 150.069);
     --color-blue-600: oklch(54.6% 0.245 262.881);
     --color-indigo-600: oklch(51.1% 0.262 276.966);
+    --color-indigo-900: oklch(35.9% 0.144 278.697);
+    --color-purple-400: oklch(71.4% 0.203 305.504);
     --color-purple-500: oklch(62.7% 0.265 303.9);
+    --color-purple-600: oklch(55.8% 0.288 302.321);
+    --color-purple-900: oklch(38.1% 0.176 304.987);
     --color-gray-200: oklch(92.8% 0.006 264.531);
     --color-gray-300: oklch(87.2% 0.01 258.338);
     --color-gray-400: oklch(70.7% 0.022 261.325);
@@ -590,6 +595,12 @@
   .border-gray-800 {
     border-color: var(--color-gray-800);
   }
+  .border-purple-600\/30 {
+    border-color: color-mix(in srgb, oklch(55.8% 0.288 302.321) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-purple-600) 30%, transparent);
+    }
+  }
   .border-red-600 {
     border-color: var(--color-red-600);
   }
@@ -657,6 +668,13 @@
     --tw-gradient-from: var(--color-purple-500);
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
+  .from-purple-900\/20 {
+    --tw-gradient-from: color-mix(in srgb, oklch(38.1% 0.176 304.987) 20%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-from: color-mix(in oklab, var(--color-purple-900) 20%, transparent);
+    }
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
   .via-\[\#F2E8C8\] {
     --tw-gradient-via: #F2E8C8;
     --tw-gradient-via-stops: var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-via) var(--tw-gradient-via-position), var(--tw-gradient-to) var(--tw-gradient-to-position);
@@ -676,6 +694,13 @@
   }
   .to-indigo-600 {
     --tw-gradient-to: var(--color-indigo-600);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+  .to-indigo-900\/20 {
+    --tw-gradient-to: color-mix(in srgb, oklch(35.9% 0.144 278.697) 20%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-to: color-mix(in oklab, var(--color-indigo-900) 20%, transparent);
+    }
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
   .object-cover {
@@ -810,9 +835,6 @@
   .text-\[\#F2F2EF\] {
     color: #F2F2EF;
   }
-  .text-\[\#d4af37\] {
-    color: #d4af37;
-  }
   .text-black {
     color: var(--color-black);
   }
@@ -828,6 +850,9 @@
   .text-green-500 {
     color: var(--color-green-500);
   }
+  .text-purple-400 {
+    color: var(--color-purple-400);
+  }
   .text-red-100 {
     color: var(--color-red-100);
   }
@@ -839,6 +864,9 @@
   }
   .text-yellow-400 {
     color: var(--color-yellow-400);
+  }
+  .uppercase {
+    text-transform: uppercase;
   }
   .italic {
     font-style: italic;
@@ -972,13 +1000,6 @@
       }
     }
   }
-  .hover\:text-\[\#b8941f\] {
-    &:hover {
-      @media (hover: hover) {
-        color: #b8941f;
-      }
-    }
-  }
   .hover\:text-gray-200 {
     &:hover {
       @media (hover: hover) {
@@ -990,6 +1011,13 @@
     &:hover {
       @media (hover: hover) {
         color: var(--color-white);
+      }
+    }
+  }
+  .hover\:text-yellow-300 {
+    &:hover {
+      @media (hover: hover) {
+        color: var(--color-yellow-300);
       }
     }
   }
