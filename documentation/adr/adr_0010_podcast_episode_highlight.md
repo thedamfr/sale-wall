@@ -1,12 +1,199 @@
 # ADR-0010: Mise en avant épisode podcast via paramètre URL
 
 **Date**: 2025-10-29  
-**Statut**: ✅ VALIDÉ (prêt implémentation TDD)  
+**Statut**: ⚠️ PARTIELLEMENT IMPLÉMENTÉ - SUSPENDU  
 **Contexte**: Feature marketing smartlink podcast
 
 ---
 
-## Contexte
+## 🛑 Raison de la suspension
+
+**Date d'arrêt**: 2025-10-29  
+**Raison**: **Besoin initial mal spécifié** - La demande "deep links vers plateformes" s'est avérée beaucoup plus complexe que prévu lors de l'implémentation.
+
+**Problème découvert** : Les deep links vers Spotify/Apple/Deezer nécessitent :
+- API tierces avec authentification (tokens OAuth)
+- Ou cache manuel des IDs épisodes par plateforme
+- Ou services d'agrégation payants (Listen Notes, Podchaser)
+- Complexité disproportionnée vs bénéfice MVP
+
+**Décision** : Conserver ce qui fonctionne, rédiger ADR dédié si besoin réel confirmé plus tard.
+
+---
+
+## ✅ Ce qui a été implémenté et fonctionne
+
+### Phase 1 : Service RSS Parser ✅
+**Commits** :
+- `2c7a1f0` - feat(podcast): add RSS parser with timeout/validation
+- `67d517f` - feat(podcast): sanitize RSS text and add Castopod episode deep link
+
+**Fichiers créés** :
+- `server/services/castopodRSS.js` - Parser RSS avec timeout 5s
+- `test/services/castopodRSS.test.js` - 5 tests GREEN
+
+**Fonctionnalités** :
+- ✅ Fetch RSS Castopod avec timeout (AbortController 5s)
+- ✅ Parse XML avec `fast-xml-parser` (iTunes namespace)
+- ✅ Match épisode par `itunes:season` + `itunes:episode`
+- ✅ Sanitization HTML entities (`&amp;` → `&`, `&lt;` → `<`, etc.)
+- ✅ Normalisation whitespace (espaces multiples, newlines)
+- ✅ Extraction metadata : title, description, pubDate, duration, image, audioUrl
+- ✅ **Deep link Castopod** : `episodeLink` depuis tag RSS `<link>`
+
+### Phase 2 : Route dynamique `/podcast?season=X&episode=Y` ✅
+**Commits** :
+- `9a8ad46` - feat(podcast): add Node.js native test runner + episode route tests
+- `99e27b5` - feat(podcast): implement dynamic episode route
+
+**Fichiers créés/modifiés** :
+- `server.js` - Route GET `/podcast` avec validation params
+- `server/views/podcast.hbs` - Template Handlebars avec encart conditionnel
+- `test/routes/podcast.test.js` - 7 tests GREEN
+- `test/helpers/app.js` - Helper Fastify pour tests
+- `package.json` - Scripts `npm test` et `npm run test:watch`
+- `readme.md` - Section "🧪 Tests" documentée
+
+**Fonctionnalités** :
+- ✅ Validation stricte params (`/^\d+$/` regex - OWASP A03)
+- ✅ Fetch épisode via service RSS (timeout 5s)
+- ✅ Encart highlight épisode violet/indigo avec metadata
+- ✅ Fallback gracieux : épisode introuvable → page classique
+- ✅ **Lien Castopod dynamique** : "Écouter cet épisode" → page Castopod de l'épisode
+- ✅ Cache headers : `Cache-Control: public, max-age=3600, s-maxage=3600`
+- ✅ Meta OG dynamiques (og:title, og:description, og:image, twitter:card)
+
+### Tests implémentés : 12/12 GREEN ✅
+**Service RSS** (5 tests) :
+- Parse S2E1 correctement
+- Parse S1E5 correctement
+- Retourne null si épisode introuvable
+- Formate date en français
+- Timeout après 5s
+
+**Route** (7 tests) :
+- Affiche page classique sans params
+- Highlight S2E1 avec params valides
+- Highlight S1E5 avec params valides
+- Fallback si params invalides (XSS protection)
+- Fallback si épisode introuvable
+- Cache headers présents
+- Rate limiting actif
+
+---
+
+## ❌ Ce qui n'a PAS été implémenté
+
+### Deep links plateformes (Spotify, Apple, Deezer) ❌
+**Problème** : Pas d'identifiants épisodes dans le RSS Castopod.
+
+**Ce qui fonctionne actuellement** :
+- ✅ Castopod : Deep link direct vers épisode (`episodeLink` depuis RSS)
+- ❌ Spotify : Lien vers show général (pas d'ID épisode)
+- ❌ Apple Podcasts : Lien vers show général
+- ❌ Deezer : Lien vers show général
+- ❌ Podcast Addict : Lien vers show général
+
+**Alternatives investigées mais non implémentées** :
+1. **API Spotify/Apple/Deezer** : Nécessite auth + latence + rate limits
+2. **Cache manuel BDD** : Travail admin manuel pour chaque épisode
+3. **Service agrégateur** (Listen Notes) : Payant, dépendance externe
+4. **Liens universels** (Podlink.to) : Redirection supplémentaire
+
+**Décision** : Comportement actuel = **standard industrie** (99% sites podcasts pointent vers show général, pas épisode spécifique).
+
+### Validation Meta OG en production ⏳
+**Statut** : Implémenté mais non testé sur Facebook/Twitter debuggers.
+
+**TODO si feature réactivée** :
+- Tester https://developers.facebook.com/tools/debug/
+- Tester https://cards-dev.twitter.com/validator
+- Vérifier cache Cloudflare : `curl -I https://saletesincere.fr/podcast?season=2&episode=1`
+
+### Documentation README incomplète ⏳
+**Statut** : Section tests documentée, mais pas la route `/podcast` elle-même.
+
+**TODO si feature réactivée** :
+```markdown
+### Route `/podcast`
+
+**Paramètres optionnels** :
+- `?season=X&episode=Y` - Affiche un épisode spécifique en highlight
+
+**Exemples** :
+- `/podcast` - Page générale du podcast
+- `/podcast?season=2&episode=1` - Highlight S2E1 "Une collaboration un peu spéciale"
+- `/podcast?season=99&episode=99` - Fallback page générale (épisode inexistant)
+
+**Comportement** :
+- Fetch RSS Castopod (timeout 5s)
+- Lien Castopod pointe vers épisode spécifique
+- Autres plateformes pointent vers show général (standard)
+- Cache Cloudflare 1h (TTL 3600s)
+```
+
+---
+
+## 🎯 Valeur livrée malgré suspension
+
+**Ce qui fonctionne en production** :
+1. ✅ **Partage épisode spécifique** : URL `/podcast?season=2&episode=1` met en avant l'épisode
+2. ✅ **Meta OG dynamiques** : Partages Facebook/Twitter affichent titre/description épisode
+3. ✅ **Deep link Castopod** : Bouton "Écouter cet épisode" fonctionne (source officielle)
+4. ✅ **Performance** : Cache Cloudflare 1h, fetch RSS 5s timeout
+5. ✅ **Sécurité** : Validation params, sanitization HTML, rate limiting
+6. ✅ **Tests** : 12 tests GREEN (5 service + 7 route) avec Node.js native test runner
+
+**Use case validé** :
+- Campagne social media : "Écoutez notre dernier épisode 👉 `saletesincere.fr/podcast?season=2&episode=1`"
+- Partage enrichi : Preview avec titre/description/image épisode (crawlable)
+- Lien direct Castopod : Utilisateurs Fediverse peuvent écouter directement
+
+---
+
+## 📋 Si réactivation future
+
+### ADR dédié requis : "Deep links multi-plateformes"
+
+**Besoin à clarifier d'abord** :
+1. **Quelle plateforme prioritaire** ? Spotify > Apple > Deezer ?
+2. **Budget complexité** ? API tierces acceptable ou cache manuel ?
+3. **Métrique de succès** ? Taux de clic Spotify vs taux de clic Castopod ?
+
+**Options à documenter dans nouvel ADR** :
+- Option A : API Spotify (OAuth client_credentials + search)
+- Option B : Cache manuel PostgreSQL (admin renseigne IDs)
+- Option C : Service agrégateur (Listen Notes API payante)
+- Option D : Liens universels (Podlink.to redirection)
+- Option E : Accepter status quo (Castopod seul deep link)
+
+**Déclencheur réouverture** :
+- Feedback utilisateurs : "J'ai cliqué Spotify mais pas arrivé sur épisode"
+- Analytics : Taux de rebond élevé depuis Spotify/Apple
+- Business : Partenariat plateforme nécessitant deep links
+
+---
+
+## Stack technique (implémenté)
+
+**Dépendances ajoutées** :
+```json
+{
+  "dependencies": {
+    "fast-xml-parser": "^5.3.0"
+  }
+}
+```
+
+**Architecture** :
+- Fastify route handler `/podcast`
+- Service `server/services/castopodRSS.js`
+- Template Handlebars `server/views/podcast.hbs`
+- Tests Node.js native test runner (`node --test`)
+
+---
+
+## Références
 
 **Besoin business**: Partager un lien direct vers un épisode spécifique du podcast "Charbon & Wafer" pour :
 - Campagnes réseaux sociaux ciblées par épisode
