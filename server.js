@@ -14,6 +14,7 @@ import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter, newsletterLimiter,
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
+import { fetchEpisodeFromRSS } from "./server/services/castopodRSS.js";
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -669,14 +670,44 @@ app.get("/manifeste", {
   reply.view("manifeste.hbs", { title: "Manifeste" })
 );
 
-// Route podcast (liens style Linktree)
+// Route podcast (liens style Linktree + episode highlight dynamique)
 app.get("/podcast", {
   config: {
     rateLimit: pageLimiter
   }
-}, (req, reply) =>
-  reply.sendFile("podcast.html", path.join(__dirname, "server", "views"))
-);
+}, async (req, reply) => {
+  const { season, episode } = req.query;
+  
+  // Validation stricte params (OWASP A03 - XSS prevention)
+  const seasonRegex = /^\d+$/;
+  const episodeRegex = /^\d+$/;
+  
+  if (season && episode && seasonRegex.test(season) && episodeRegex.test(episode)) {
+    try {
+      // Fetch episode from RSS with timeout
+      const episodeData = await fetchEpisodeFromRSS(
+        parseInt(season),
+        parseInt(episode),
+        5000 // 5s timeout
+      );
+
+      if (episodeData) {
+        // Cache headers (Cloudflare Edge)
+        reply.header('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+        
+        // Render with Handlebars template
+        return reply.view("podcast.hbs", { episodeData });
+      }
+    } catch (err) {
+      // RSS fetch failed, log and fallback to classic page
+      req.log.warn('RSS fetch failed, rendering classic page', { season, episode, error: err.message });
+    }
+  }
+  
+  // Fallback: classic page (no episode data)
+  reply.header('Cache-Control', 'public, max-age=3600');
+  return reply.view("podcast.hbs", { episodeData: null });
+});
 
 // Health
 app.get("/health", () => ({ ok: true }));

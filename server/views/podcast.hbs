@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    {{#if episodeData}}
+    <title>S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer</title>
+    <meta name="description" content="{{episodeData.description}}">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://saletesincere.fr/podcast?season={{episodeData.season}}&episode={{episodeData.episode}}">
+    <meta property="og:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
+    <meta property="og:description" content="{{episodeData.description}}">
+    {{#if episodeData.image}}
+    <meta property="og:image" content="{{episodeData.image}}">
+    {{else}}
+    <meta property="og:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
+    {{/if}}
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://saletesincere.fr/podcast?season={{episodeData.season}}&episode={{episodeData.episode}}">
+    <meta property="twitter:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
+    <meta property="twitter:description" content="{{episodeData.description}}">
+    {{#if episodeData.image}}
+    <meta property="twitter:image" content="{{episodeData.image}}">
+    {{else}}
+    <meta property="twitter:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
+    {{/if}}
+    {{else}}
+    <title>Charbon & Wafer - Podcast</title>
+    <meta name="description" content="Pas de Charbon, Pas de Wafer - Confidences brutes des travailleur·ses du numérique. Disponible sur toutes les plateformes.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://saletesincere.fr/podcast">
+    <meta property="og:title" content="Charbon & Wafer - Le Podcast est sorti !">
+    <meta property="og:description" content="Pas de Charbon, Pas de Wafer - Confidences brutes des travailleur·ses du numérique. Disponible sur toutes les plateformes.">
+    <meta property="og:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://saletesincere.fr/podcast">
+    <meta property="twitter:title" content="Charbon & Wafer - Le Podcast est sorti !">
+    <meta property="twitter:description" content="Pas de Charbon, Pas de Wafer - Confidences brutes des travailleur·ses du numérique. Disponible sur toutes les plateformes.">
+    <meta property="twitter:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
+    {{/if}}
+    
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="min-h-screen bg-gradient-to-b from-gray-900 to-black">
+    <main class="py-12 px-4">
+        <div class="max-w-md mx-auto">
+            
+            <!-- En-tête avec logo/image -->
+            <div class="text-center mb-8 text-white">
+                <div class="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden border-4 border-gray-700 shadow-xl">
+                    <img src="/images/charbon-wafer-kintsugi.webp" alt="Charbon & Wafer Podcast" class="w-full h-full object-cover">
+                </div>
+                <h1 class="text-3xl font-bold mb-2">Charbon & Wafer</h1>
+                {{#unless episodeData}}
+                <p class="text-xl font-semibold text-yellow-400 mb-1">🎉 Le Podcast est sorti !</p>
+                <p class="text-gray-400 text-sm">Va l'écouter sur ta plateforme préférée</p>
+                {{/unless}}
+            </div>
+            
+            {{#if episodeData}}
+            <!-- Episode Highlight -->
+            <div class="mb-8 bg-gradient-to-r from-purple-900/20 to-indigo-900/20 rounded-2xl p-6 border border-purple-600/30">
+                <div class="text-purple-400 text-sm uppercase mb-2">
+                    Saison {{episodeData.season}} • Épisode {{episodeData.episode}}
+                </div>
+                <h2 class="text-2xl font-bold text-white mb-3">{{episodeData.title}}</h2>
+                <p class="text-gray-300 mb-4">{{episodeData.description}}</p>
+                <div class="flex gap-4 text-sm text-gray-400">
+                    <span>📅 {{episodeData.pubDate}}</span>
+                    <span>⏱️ {{episodeData.duration}}</span>
+                </div>
+            </div>
+            {{/if}}
+            
+            <!-- Liste des liens -->
+            <div class="space-y-3">
+                
+                <!-- Site officiel -->
+                <a href="https://podcasts.saletesincere.fr" target="_blank" rel="noopener noreferrer" 
+                   class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20 text-black">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center p-2" style="background: #009486;">
+                                <img src="/images/castopod-logo.svg" alt="Castopod" class="w-full h-full">
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white text-left">Site Officiel</div>
+                                <div class="text-xs text-gray-300">podcasts.saletesincere.fr</div>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+                
+                <!-- Apple Podcasts -->
+                <a href="https://podcasts.apple.com/us/podcast/pas-de-charbon-pas-de-wafer/id1846531745" target="_blank" rel="noopener noreferrer" 
+                   class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: linear-gradient(135deg, #FA57C1, #AF3BB0);">
+                                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 21.428c-5.186 0-9.428-4.242-9.428-9.428S6.814 2.572 12 2.572s9.428 4.242 9.428 9.428-4.242 9.428-9.428 9.428z"/>
+                                    <path d="M12 7.286c-1.58 0-2.857 1.278-2.857 2.857v3.714c0 1.58 1.278 2.857 2.857 2.857s2.857-1.278 2.857-2.857v-3.714c0-1.58-1.278-2.857-2.857-2.857z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white text-left">Apple Podcasts</div>
+                                <div class="text-xs text-gray-300">iOS & Mac</div>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Spotify -->
+                <a href="https://open.spotify.com/show/07VuGnu0YSacC671s0DQ3a" target="_blank" rel="noopener noreferrer" 
+                   class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: #1DB954;">
+                                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white text-left">Spotify</div>
+                                <div class="text-xs text-gray-300">Partout</div>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Deezer -->
+                <a href="https://www.deezer.com/fr/show/1002292972" target="_blank" rel="noopener noreferrer" 
+                   class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: linear-gradient(135deg, #FF0092, #C70075);">
+                                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M18.81 4v8h3.19V4zm-6 0v12h3.19V4zm-6 0v16H10V4zm-6 4v12h3.19V8z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white text-left">Deezer</div>
+                                <div class="text-xs text-gray-300">France & International</div>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Podcast Addict -->
+                <a href="https://podcastaddict.com/podcast/pas-de-charbon-pas-de-wafer/6137997" target="_blank" rel="noopener noreferrer" 
+                   class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: #F4842D;">
+                                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1s-1-.45-1-1V5c0-.55.45-1 1-1zm0 14c-.825 0-1.5.675-1.5 1.5S11.175 21 12 21s1.5-.675 1.5-1.5S12.825 18 12 18z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white text-left">Podcast Addict</div>
+                                <div class="text-xs text-gray-300">Android</div>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-12 text-center text-gray-500 text-sm">
+                <p>Un podcast Saleté Sincère</p>
+                <p class="mt-2">
+                    <a href="/" class="text-yellow-400 hover:text-yellow-300 transition-colors">← Retour à l'accueil</a>
+                </p>
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>
