@@ -85,7 +85,7 @@
             <div class="space-y-3">
                 
                 <!-- Site officiel -->
-                <a href="https://podcasts.saletesincere.fr" target="_blank" rel="noopener noreferrer" 
+                <a href="{{#if episodeData}}{{episodeData.episodeLink}}{{else}}https://podcasts.saletesincere.fr{{/if}}" target="_blank" rel="noopener noreferrer" 
                    class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20 text-black">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -93,7 +93,7 @@
                                 <img src="/images/castopod-logo.svg" alt="Castopod" class="w-full h-full">
                             </div>
                             <div class="text-left">
-                                <div class="font-semibold text-black">Site officiel et Fediverse</div>
+                                <div class="font-semibold text-black">{{#if episodeData}}Écouter cet épisode{{else}}Site officiel et Fediverse{{/if}}</div>
                                 <div class="text-xs text-gray-500">podcasts.saletesincere.fr</div>
                             </div>
                         </div>

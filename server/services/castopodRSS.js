@@ -85,7 +85,8 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
       pubDate: formatDateFrench(pubDate),
       duration: formatDuration(durationSeconds),
       image: matchedItem['itunes:image']?.['@_href'] || null,
-      audioUrl: matchedItem.enclosure?.['@_url'] || ''
+      audioUrl: matchedItem.enclosure?.['@_url'] || '',
+      episodeLink: matchedItem.link || '' // Castopod episode page
     };
   } finally {
     clearTimeout(timeoutId);
@@ -131,4 +132,5 @@ function formatDateFrench(date) {
  * @property {string} duration - Formatted duration "43:11" or "1:43:11"
  * @property {string|null} image - Episode cover URL or null
  * @property {string} audioUrl - MP3 direct link
+ * @property {string} episodeLink - Castopod episode page URL
  */
