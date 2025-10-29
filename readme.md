@@ -310,6 +310,86 @@ npm run dev:css      # Watch CSS (optionnel, terminal séparé)
 
 ---
 
+## 🧪 Tests
+
+Le projet utilise le **Node.js Test Runner natif** (Node.js ≥ 24) — zéro dépendance externe.
+
+### Lancer les tests
+
+```bash
+# Lancer tous les tests
+npm test
+
+# Mode watch (relance automatique à chaque changement)
+npm run test:watch
+```
+
+### Structure des tests
+
+```
+test/
+├── services/
+│   └── castopodRSS.test.js    # Tests parser RSS podcast
+└── ...                         # Autres tests à venir
+```
+
+### Écrire un test
+
+```javascript
+// test/services/example.test.js
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { myFunction } from '../../server/services/example.js';
+
+describe('My Service', () => {
+  it('should do something', async () => {
+    const result = await myFunction();
+    
+    assert.strictEqual(result, 'expected value');
+    assert.ok(result !== null, 'Result should exist');
+    assert.match(result, /pattern/);
+  });
+});
+```
+
+### Assertions disponibles
+
+Node.js Test Runner utilise le module natif `node:assert/strict` :
+
+- `assert.strictEqual(actual, expected)` - Égalité stricte (`===`)
+- `assert.deepStrictEqual(actual, expected)` - Comparaison profonde d'objets
+- `assert.ok(value, message)` - Vérifie que value est truthy
+- `assert.match(string, regex)` - Test regex
+- `assert.throws(() => fn())` - Vérifie qu'une exception est levée
+- `assert.rejects(promise)` - Vérifie qu'une promesse est rejetée
+
+**Documentation complète** : https://nodejs.org/api/assert.html
+
+### Données de test
+
+Les fichiers de test data sont stockés dans `test_data/` :
+
+```
+test_data/
+├── castopod_rss_sample.xml     # RSS complet (20KB) pour tests d'intégration
+├── castopod_rss_minimal.xml    # RSS minimal (1KB) pour tests unitaires rapides
+└── fake_audio.txt              # Fichier audio fictif
+```
+
+### Philosophie TDD du projet
+
+Le projet suit une approche **Test-Driven Development** stricte :
+
+1. **RED** : Écrire le test qui échoue
+2. **GREEN** : Implémenter le minimum pour passer le test
+3. **REFACTOR** : Améliorer le code sans casser les tests
+
+Cycles courts (≤10 min) avec commits atomiques à chaque phase GREEN.
+
+**📚 Voir** : `.github/copilot-instructions.md` pour les règles TDD complètes
+
+---
+
 ## 🎙️ Castopod - Plateforme Podcast (Optionnel)
 
 Castopod est une plateforme open-source pour héberger et gérer des podcasts. Elle est intégrée au projet pour publier des épisodes longs à partir des posts audio.
