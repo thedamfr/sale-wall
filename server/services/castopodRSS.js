@@ -53,18 +53,34 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
     const durationSeconds = parseInt(matchedItem['itunes:duration']);
     const pubDate = new Date(matchedItem.pubDate);
 
-    // Strip HTML from description
+    // Strip HTML from description and decode entities
     const descriptionHtml = matchedItem.description || '';
     const descriptionText = descriptionHtml
       .replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1')
       .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ') // Normalize whitespace
       .trim()
       .substring(0, 300); // Limit to 300 chars
+
+    // Clean title (trim and decode entities)
+    const titleClean = (matchedItem.title || '')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
 
     return {
       season: parseInt(matchedItem['itunes:season']),
       episode: parseInt(matchedItem['itunes:episode']),
-      title: matchedItem.title,
+      title: titleClean,
       description: descriptionText,
       pubDate: formatDateFrench(pubDate),
       duration: formatDuration(durationSeconds),
