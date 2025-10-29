@@ -486,6 +486,119 @@ const PLATFORMS = {
 }
 ```
 
+**Stratégie de matching des épisodes** (validée Phase 0 TDD) :
+
+**Problème identifié** : Spotify ne renvoie PAS `season_number` ni `episode_number` dans l'API. Impossible de matcher par S01E01.
+
+**Solution validée** : Matching par **date de publication** (`release_date`)
+1. Extraire `pubDate` du RSS Castopod (format RFC 2822 : `Mon, 27 Oct 2025 22:13:48 +0000`)
+2. Convertir en format ISO 8601 date-only (`YYYY-MM-DD` : `2025-10-27`)
+3. Comparer avec `episode.release_date` de Spotify (déjà au format `YYYY-MM-DD`)
+4. Match exact → Extraire `episode.external_urls.spotify`
+
+**Workflow Spotify** :
+```javascript
+// 1. Authentification (Client Credentials)
+const token = await getSpotifyToken(clientId, clientSecret)
+
+// 2. Récupérer TOUS les épisodes du show (limite 50, paginer si besoin)
+const episodes = await fetch(
+  `https://api.spotify.com/v1/shows/${SPOTIFY_SHOW_ID}/episodes?market=FR&limit=50`,
+  { headers: { Authorization: `Bearer ${token}` } }
+)
+
+// 3. Matcher par date
+const rssDate = new Date(rssPubDate).toISOString().split('T')[0]
+const match = episodes.items.find(ep => ep.release_date === rssDate)
+
+// 4. Extraire deeplink
+const deeplink = match?.external_urls.spotify // https://open.spotify.com/episode/{id}
+```
+
+**Tests Phase 0 validés** :
+- ✅ Authentification Client Credentials (token 1h)
+- ✅ Recherche show "Pas de Charbon, pas de Wafer" (ID: `07VuGnu0YSacC671s0DQ3a`)
+- ✅ Récupération 6 épisodes du show
+- ✅ Matching par date : RSS `Mon, 27 Oct 2025` = Spotify `2025-10-27` → Trouvé "Une collaboration… un peu spéciale 🌶️"
+- ✅ Extraction deeplink : `https://open.spotify.com/episode/4uuRA1SjUKWPI3G0NmpCQx`
+
+**Apple Podcasts** (validé Phase 0) :
+
+**API disponible** : `GET /lookup?id={podcast_id}&entity=podcastEpisode&limit=200&country=fr`
+
+**Workflow Apple** :
+```javascript
+// 1. Récupérer podcast + tous ses épisodes
+const response = await fetch(
+  'https://itunes.apple.com/lookup?id=1846531745&entity=podcastEpisode&limit=200&country=fr'
+)
+const data = await response.json()
+
+// 2. Filtrer les épisodes
+const episodes = data.results.filter(r => r.wrapperType === 'podcastEpisode')
+
+// 3. Matcher par date
+const rssDate = new Date(rssPubDate).toISOString().split('T')[0] // 2025-10-27
+const match = episodes.find(ep => ep.releaseDate.split('T')[0] === rssDate)
+
+// 4. Extraire deeplink
+const deeplink = match?.trackViewUrl 
+// https://podcasts.apple.com/podcast/id1846531745?i=1000733777469
+```
+
+**Tests Phase 0 validés** :
+- ✅ Récupération 6 épisodes via `entity=podcastEpisode`
+- ✅ Matching par date : RSS `Mon, 27 Oct 2025` = Apple `2025-10-27T22:13:48Z` → Trouvé trackId `1000733777469`
+- ✅ Extraction deeplink : `https://podcasts.apple.com/fr/podcast/.../id1846531745?i=1000733777469`
+
+**Deezer** (validé Phase 0) :
+
+**API disponible** : `GET /podcast/{id}/episodes?limit=50`
+
+**Workflow Deezer** :
+```javascript
+// 1. Récupérer les épisodes
+const response = await fetch('https://api.deezer.com/podcast/1002292972/episodes?limit=50')
+const data = await response.json()
+
+// 2. Matcher par date
+const rssDate = new Date(rssPubDate).toISOString().split('T')[0] // 2025-10-27
+const match = data.data.find(ep => ep.release_date.split(' ')[0] === rssDate)
+
+// 3. Construire deeplink
+const deeplink = `https://www.deezer.com/fr/episode/${match.id}`
+```
+
+**Tests Phase 0 validés** :
+- ✅ Récupération 6 épisodes
+- ✅ Matching par date : RSS `Mon, 27 Oct 2025` = Deezer `2025-10-27 22:13:48` → Trouvé ID `804501282`
+- ✅ Construction deeplink : `https://www.deezer.com/fr/episode/804501282`
+
+**Podcast Addict** (validé Phase 0) :
+
+**Pas d'API publique**, mais deeplink prévisible basé sur l'URL audio du RSS !
+
+**Workflow Podcast Addict** :
+```javascript
+// 1. Extraire l'URL audio du RSS Castopod
+const audioUrl = rssEpisode.enclosure.url
+// https://op3.dev/e,pg=.../une-collaboration-un-peu-speciale.mp3?_from=podcastaddict.com
+
+// 2. Encoder l'URL
+const encodedUrl = encodeURIComponent(audioUrl)
+
+// 3. Construire le deeplink
+const deeplink = `https://podcastaddict.com/episode/${encodedUrl}&podcastId=6137997`
+// Redirige (301) vers la page de l'épisode
+```
+
+**Tests Phase 0 validés** :
+- ✅ Pattern découvert : `/episode/{encodedAudioUrl}&podcastId={id}`
+- ✅ Test navigateur : 301 redirect vers l'épisode correct
+- ✅ Deeplink : `https://podcastaddict.com/episode/https%3A%2F%2Fop3.dev%2F...%2Fune-collaboration-un-peu-speciale.mp3&podcastId=6137997`
+
+**Note** : L'URL audio doit être celle du RSS (avec `?_from=podcastaddict.com` ou sans).
+
 ---
 
 ### 2. Queue pg-boss
@@ -1077,20 +1190,79 @@ GROUP BY state;
 
 ## Migration depuis ADR-0010
 
+### URLs ADR-0010 déjà partagées sur LinkedIn ⚠️
+
+**Contexte** : Des URLs `/podcast?season=X&episode=Y` ont déjà été partagées publiquement (LinkedIn).
+
+**Obligation** : Assurer la **rétrocompatibilité totale** (pas de 404).
+
+**Solution** : Redirect permanent 301 vers nouvelle URL smartlink
+
+```javascript
+// server.js - Route de rétrocompatibilité ADR-0010
+fastify.get('/podcast', async (request, reply) => {
+  const { season, episode } = request.query
+  
+  // Si params season/episode présents → Redirect vers smartlink
+  if (season && episode) {
+    return reply.redirect(301, `/episode/${season}/${episode}`)
+  }
+  
+  // Sinon → Page podcast classique (liste épisodes)
+  return reply.view('podcast', { episodes: await fetchAllEpisodes() })
+})
+```
+
+**Tests de rétrocompatibilité** :
+```javascript
+// test/routes/podcast.test.js
+test('GET /podcast?season=2&episode=1 → 301 /episode/2/1', async () => {
+  const response = await fastify.inject({
+    method: 'GET',
+    url: '/podcast?season=2&episode=1'
+  })
+  
+  expect(response.statusCode).toBe(301)
+  expect(response.headers.location).toBe('/episode/2/1')
+})
+
+test('GET /podcast (sans params) → 200 page classique', async () => {
+  const response = await fastify.inject({
+    method: 'GET',
+    url: '/podcast'
+  })
+  
+  expect(response.statusCode).toBe(200)
+  expect(response.headers['content-type']).toContain('text/html')
+})
+```
+
+**Impact SEO** :
+- ✅ **301 Permanent Redirect** : Moteurs de recherche transfèrent le PageRank
+- ✅ **Liens LinkedIn préservés** : Pas de 404, utilisateurs redirigés automatiquement
+- ✅ **Nouvelle URL canonique** : `/episode/:season/:episode` indexée par Google
+
 ### Code réutilisable ✅
 - `server/services/castopodRSS.js` - Parser RSS (inchangé)
 - `test/services/castopodRSS.test.js` - Tests RSS (5 GREEN)
 - `server/views/podcast.hbs` - Page classique fallback
 
-### Code à remplacer
-- Route `/podcast?season=X&episode=Y` → Redirect vers `/episode/:season/:episode`
-- Template `podcast.hbs` → Garder comme fallback classique
-- Supprimer logique highlight épisode (remplacé par smartlink complet)
+### Code à adapter
+- Route `/podcast` → **Redirect 301** si `?season=X&episode=Y` présent
+- Route `/episode/:season/:episode` → **Nouvelle route smartlink** (cœur ADR-0011)
+- Template `podcast.hbs` → Garder comme page liste épisodes (sans params)
 
 ### Migrations BDD
 ```sql
 -- 008_episode_smartlinks.sql (nouvelle table)
--- Pas de migration de données (ADR-0010 jamais en prod)
+CREATE TABLE episode_links (
+  season INTEGER NOT NULL,
+  episode INTEGER NOT NULL,
+  -- ... colonnes smartlink
+  PRIMARY KEY (season, episode)
+);
+
+-- Aucune migration de données requise (table vide au départ)
 ```
 
 ---
@@ -1176,8 +1348,43 @@ GROUP BY state;
 - [x] Critères d'acceptation écrits (6 tests)
 - [x] Performance SLO définis
 - [x] Monitoring pg-boss documenté
-- [ ] **ACTION REQUISE** : Créer compte Spotify Developer (tokens)
-- [ ] **ACTION REQUISE** : Tester APIs Spotify/Apple/Deezer (Phase 0)
+- [x] ✅ Compte Spotify Developer créé (Client ID + Secret)
+- [x] ✅ Credentials Spotify ajoutés dans `.env` + CleverCloud
+- [x] ✅ **Phase 0 TDD (Spotify)** : Authentification + Recherche show + Récupération épisodes + Matching par date
+- [x] ✅ **Phase 0 TDD (Apple)** : Récupération épisodes via `entity=podcastEpisode` + Matching par date + Deeplinks avec trackId
+- [x] ✅ **Phase 0 TDD (Deezer)** : Récupération épisodes + Matching par date + Construction deeplinks
+- [x] ✅ **Phase 0 TDD (Podcast Addict)** : Découverte pattern deeplink via audioUrl encodée + Test navigateur 301 redirect
+- [x] ✅ **Phase 0 TDD complète** : 4 APIs validées (87.14% audience couverte avec deeplinks)
+- [ ] **PRÊT POUR PHASE 1** : Implémenter server/services/platformAPIs.js
+
+### Configuration `.env`
+
+```bash
+# .env (local + CleverCloud)
+
+# Spotify API (Client Credentials Flow)
+SPOTIFY_CLIENT_ID=2ec608bfda5841108e105c76522d684a
+SPOTIFY_CLIENT_SECRET=2e33788cf2274029b5d0c7dec4593431
+SPOTIFY_SHOW_ID=07VuGnu0YSacC671s0DQ3a  # "Pas de Charbon, pas de Wafer"
+
+# Apple Podcasts (pas d'auth requise)
+APPLE_PODCAST_ID=1846531745
+
+# Deezer (pas d'auth requise)
+DEEZER_SHOW_ID=1002292972
+
+# Pocket Casts (UUID podcast)
+POCKETCASTS_PODCAST_UUID=bb74e9c5-20e5-5226-8491-d512ad8ebe04
+```
+
+**CleverCloud configuration** :
+```bash
+# Ajouter les variables dans l'interface CleverCloud
+clever env set SPOTIFY_CLIENT_ID "2ec608bfda5841108e105c76522d684a"
+clever env set SPOTIFY_CLIENT_SECRET "2e33788cf2274029b5d0c7dec4593431"
+```
+
+**⚠️ Sécurité** : Ne JAMAIS commit `.env` dans Git (déjà dans `.gitignore`).
 
 ---
 
