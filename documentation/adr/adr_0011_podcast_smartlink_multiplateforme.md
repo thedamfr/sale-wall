@@ -1364,7 +1364,7 @@ CREATE TABLE episode_links (
 
 # Spotify API (Client Credentials Flow)
 SPOTIFY_CLIENT_ID=2ec608bfda5841108e105c76522d684a
-SPOTIFY_CLIENT_SECRET=2e33788cf2274029b5d0c7dec4593431
+SPOTIFY_CLIENT_SECRET=YOUR_SPOTIFY_CLIENT_SECRET_HERE
 SPOTIFY_SHOW_ID=07VuGnu0YSacC671s0DQ3a  # "Pas de Charbon, pas de Wafer"
 
 # Apple Podcasts (pas d'auth requise)
@@ -1381,7 +1381,7 @@ POCKETCASTS_PODCAST_UUID=bb74e9c5-20e5-5226-8491-d512ad8ebe04
 ```bash
 # Ajouter les variables dans l'interface CleverCloud
 clever env set SPOTIFY_CLIENT_ID "2ec608bfda5841108e105c76522d684a"
-clever env set SPOTIFY_CLIENT_SECRET "2e33788cf2274029b5d0c7dec4593431"
+clever env set SPOTIFY_CLIENT_SECRET "YOUR_SPOTIFY_CLIENT_SECRET_HERE"
 ```
 
 **⚠️ Sécurité** : Ne JAMAIS commit `.env` dans Git (déjà dans `.gitignore`).
