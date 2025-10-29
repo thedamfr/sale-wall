@@ -104,41 +104,103 @@ tags: [copilot, tdd, audio, fastify, security]
 - [ ] Risques OWASP identifiés
 - [ ] Stack de test définie
 
-### Cycle TDD
-1. **Liste des tests** (critères → comportements)
-2. **Tests RED** (AAA, 1 comportement/test, pas d'I/O réel)
-3. **GREEN minimal** (même naïf/en dur)
-4. **REFACTOR** (noms, duplication, structure - tout vert)
-5. **Sécurité** (1-2 tests OWASP pertinents)
-6. **Documentation** (README.md si feature terminée)
-7. **Pause state** (TODO, fichiers, prochain test)
+### Cycle RED → GREEN → REFACTOR (STRICT)
 
-### Exemple Audio TDD
+**⚠️ RÈGLE ABSOLUE : 1 test à la fois, implémentation VRAIMENT minimale**
 
-**RED 1**: Validation durée audio
-```js
-// test/audioValidator.test.js
-test('should reject audio shorter than 30s', () => {
-  const result = validateAudio(buffer, 'audio/webm', 25000)
-  expect(result.isValid).toBe(false)
-  expect(result.error).toContain('durée minimale')
+#### 1. Liste des comportements
+Identifier 3-5 comportements à tester maximum par fonction
+
+#### 2. RED : UN SEUL test qui échoue
+- **Commenter tous les autres tests** ou ne pas les écrire encore
+- Écrire le test, vérifier qu'il échoue (message d'erreur clair)
+- AAA (Arrange-Act-Assert), 1 comportement/test, pas d'I/O réel
+- **Lancer le test pour voir le RED** avant de coder
+
+#### 3. GREEN : Implémentation MINIMALE
+- **✅ AUTORISÉ : Valeurs hardcodées** (ex: `if (date === '2025-10-27') return 'https://...'`)
+- **✅ AUTORISÉ : Code naïf/répétitif** tant qu'un nouveau test ne force pas la généralisation
+- **❌ INTERDIT : Anticiper les tests suivants** (YAGNI strict)
+- **❌ INTERDIT : Écrire la solution complète** d'emblée
+- Vérifier que le test passe (GREEN) avant de continuer
+
+#### 4. Ajouter test suivant (RED)
+- Décommenter ou écrire le prochain test
+- Ce test doit **échouer** car l'implémentation hardcodée ne le couvre pas
+- Exemple : si `getToken()` retourne `'fake-token'`, ajouter un test qui valide le token avec une vraie API
+- **Répéter cycles GREEN → RED** jusqu'à forcer l'implémentation réelle
+
+#### 5. REFACTOR (quand plusieurs tests GREEN)
+- Éliminer duplication, améliorer noms/structure
+- **Tout reste vert** pendant le refactor
+- Lancer tests après chaque modification
+
+#### 6. Sécurité (1-2 tests OWASP pertinents)
+Validation d'entrée, rate limiting, etc.
+
+#### 7. Pause state
+TODO, fichiers, prochain test, commit suggéré
+
+### Exemple progression stricte
+
+**Comportements** : Auth Spotify → token valide → erreur si credentials manquants
+
+**Cycle 1 : RED → GREEN minimal**
+```javascript
+// RED : 1 seul test
+test('should return token', async () => {
+  const token = await getSpotifyToken()
+  assert.ok(token)
 })
-```
+// Autres tests commentés
 
-**GREEN 1**: Implémentation minimale
-```js
-// server/validators/audioValidator.js
-export function validateAudio(buffer, mimetype, duration) {
-  if (duration < 30000) {
-    return { isValid: false, error: 'Durée minimale 30s' }
-  }
-  return { isValid: true }
+// GREEN : Hardcodé !
+export async function getSpotifyToken() {
+  return 'fake-token-123' // ✅ Passe le test
 }
 ```
 
-## Anti-patterns à refuser
+**Cycle 2 : Nouveau test RED → GREEN réel**
+```javascript
+// RED : Test qui force la vraie impl
+test('token should work with Spotify API', async () => {
+  const token = await getSpotifyToken()
+  const res = await fetch('https://api.spotify.com/v1/shows/123', {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  assert.ok(res.ok) // ❌ Échoue avec fake token
+})
 
-- ❌ Code puis tests "si j'ai le temps"
+// GREEN : Vraie implémentation OAuth
+export async function getSpotifyToken() {
+  const auth = Buffer.from(`${id}:${secret}`).toString('base64')
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { Authorization: `Basic ${auth}`, ... },
+    body: 'grant_type=client_credentials'
+  })
+  return res.json().access_token // ✅ Les 2 tests passent
+}
+```
+
+**Cycle 3 : Test erreur**
+```javascript
+// RED
+test('should throw if credentials missing', async () => {
+  delete process.env.SPOTIFY_CLIENT_ID
+  await assert.rejects(() => getSpotifyToken())
+})
+
+// GREEN
+export async function getSpotifyToken() {
+  if (!process.env.SPOTIFY_CLIENT_ID) throw new Error('Missing credentials')
+  // ... reste
+}
+```
+
+### Anti-patterns TDD à refuser
+- ❌ Écrire tous les tests d'un coup puis implémenter
+- ❌ Implémenter la solution complète au premier test
 - ❌ Tests qui copient l'implémentation
 - ❌ Sur-mocking masquant défauts d'intégration
 - ❌ Features sans critères d'acceptation écrits

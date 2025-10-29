@@ -86,18 +86,105 @@ Risques OWASP ciblés:
 
 ## 2) Procédé TDD standard (ce que tu fais, dans l'ordre)
 **Pré‑étape — Documenter avant de coder** : ADR minimal validé + risques OWASP/a11y de la feature.
-1. **Reformuler les critères** d'acceptation en *batterie de tests* (liste brève).
-2. **Produire les tests (RED)** :
-   - 1 cas nominal + 1–2 cas bords
-   - AAA (Arrange–Act–Assert), *un seul comportement logique par test*
+
+### Cycle RED → GREEN → REFACTOR strict
+
+**⚠️ RÈGLE ABSOLUE : 1 test à la fois, implémentation VRAIMENT minimale**
+
+1. **Lister les comportements** à tester (liste brève, ≤ 5 items)
+
+2. **RED : Écrire UN SEUL test qui échoue**
+   - Commenter tous les autres tests (ou ne pas les écrire encore)
+   - Le test doit échouer pour une raison claire (fonction non implémentée, retourne mauvaise valeur, etc.)
+   - Vérifier que le test est RED avant de passer au GREEN
+   - AAA (Arrange–Act–Assert), *un seul comportement logique*
    - Pas de réseau/FS réel (mocks/fakes quand nécessaire)
-3. **Implémenter le minimum (GREEN)** — même **naïf**/**en dur** s'il le faut — pour faire passer **uniquement les tests en cours** (pas « la feature complète »).
-4. **Refactor** (noms, duplication, structure) → tout **vert**.
-5. **Sécurité ciblée** : ajoute 1–2 tests de sécurité concrets alignés OWASP Top 10 pertinent (p.ex. contrôle d'accès, validation d'entrée).
-6. **Livrer un *pause state*** : fichiers modifiés, TODO résiduels, prochaines étapes.
+
+3. **GREEN : Implémentation MINIMALE**
+   - **Autorisé : valeurs hardcodées** qui font passer CE test uniquement
+   - **Autorisé : code naïf/répétitif** tant qu'un nouveau test ne force pas la généralisation
+   - **Interdit : anticiper les tests suivants** (YAGNI strict)
+   - Exemple : `if (input === 'test') return 'expected'` est une implémentation minimale valide
+   - Vérifier que le test passe (GREEN) avant de continuer
+
+4. **Ajouter le test suivant (RED)**
+   - Décommenter ou écrire le prochain test
+   - Ce nouveau test doit échouer car l'implémentation hardcodée ne le couvre pas
+   - Répéter le cycle GREEN → ajout test RED jusqu'à ce que l'implémentation soit forcée à devenir réelle
+
+5. **REFACTOR** (une fois plusieurs tests GREEN)
+   - Éliminer le code dupliqué
+   - Améliorer les noms, la structure
+   - **Tout doit rester vert** pendant le refactor
+   - Lancer les tests après chaque modification
+
+6. **Sécurité ciblée** : ajoute 1–2 tests de sécurité concrets alignés OWASP Top 10 pertinent (p.ex. contrôle d'accès, validation d'entrée).
+
+7. **Livrer un *pause state*** : fichiers modifiés, TODO résiduels, prochaines étapes.
+
+### Exemple de progression TDD stricte
+
+**Liste des comportements** :
+1. Authentification Spotify retourne un token
+2. Token fonctionne avec l'API Spotify
+3. Erreur si credentials manquants
+
+**Cycle 1 : RED → GREEN**
+```javascript
+// RED : 1 seul test décommenté
+test('should return token', async () => {
+  const token = await getSpotifyToken()
+  assert.ok(token)
+})
+// Autres tests commentés...
+
+// GREEN : Implémentation minimale (hardcodée !)
+export async function getSpotifyToken() {
+  return 'fake-token-123' // ✅ Passe le test actuel
+}
+```
+
+**Cycle 2 : Ajouter test RED → GREEN réel**
+```javascript
+// RED : Décommenter 2ème test
+test('should work with Spotify API', async () => {
+  const token = await getSpotifyToken()
+  const response = await fetch('https://api.spotify.com/...', {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  assert.ok(response.ok) // ❌ ÉCHOUE car fake token
+})
+
+// GREEN : Forcer la vraie implémentation
+export async function getSpotifyToken() {
+  const auth = Buffer.from(`${id}:${secret}`).toString('base64')
+  const response = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { Authorization: `Basic ${auth}`, ... }
+  })
+  return response.json().access_token // ✅ Les 2 tests passent
+}
+```
+
+**Cycle 3 : Test d'erreur**
+```javascript
+// RED : 3ème test
+test('should throw if credentials missing', async () => {
+  delete process.env.SPOTIFY_CLIENT_ID
+  await assert.rejects(() => getSpotifyToken())
+})
+
+// GREEN : Ajouter validation
+export async function getSpotifyToken() {
+  if (!process.env.SPOTIFY_CLIENT_ID) throw new Error('Missing credentials')
+  // ... reste du code
+}
+```
 
 > **Stop-guardrails** (documenter avant de coder)
 > - **Stop** : aucun code tant que **ADR + risques sécu (OWASP)** ne sont pas validés.
+> - **Stop** : si tu écris plusieurs tests d'un coup, **commente-les tous sauf le premier**
+> - **Stop** : si l'implémentation fait plus que passer le test actuel, **simplifie-la**
 > - **Pas de développement sans critères écrits** : pas de features « au cas où ».
 > - Legacy non testée : **seams** + **characterization tests** avant refactor.
 
