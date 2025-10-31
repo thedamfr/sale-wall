@@ -5,6 +5,8 @@
 **Contexte**: Partage épisode podcast avec redirection intelligente  
 **Remplace**: ADR-0010 (besoin mal compris initialement)
 
+**⚠️ Note 2025-10-31** : La génération d'images Open Graph (OG Images) initialement prévue dans cet ADR est **reportée à un ADR ultérieur**. Cette approche lean permet de livrer la feature de smartlink sans dépendance à la génération d'images. Les métadonnées Open Graph pourront être ajoutées progressivement (ADR futur avec canvas/Jimp). Cette décision réduit la complexité initiale et permet une mise en production plus rapide.
+
 ---
 
 ## Contexte
@@ -82,13 +84,13 @@ https://saletesincere.fr/episode/2/1  (ou /e/2/1 en short)
                         ↓
 ┌─────────────────────────────────────────────────────┐
 │ [BACKGROUND] Worker pg-boss traite job              │
-│    ├─ Génère OG Image (Jimp 1-2s)                   │
-│    ├─ Upload S3 → og-images/s2e1.png                │
 │    ├─ Appels APIs parallèles (5-10s):               │
 │    │  ├─ Spotify Search API                         │
 │    │  ├─ Apple Lookup API                           │
 │    │  └─ Deezer Search API                          │
 │    └─ UPDATE episode_links (cache complet)          │
+│                                                      │
+│    Note: OG Image generation reportée (ADR futur)   │
 └─────────────────────────────────────────────────────┘
                         ↓
 ┌─────────────────────────────────────────────────────┐
@@ -716,62 +718,22 @@ export function getBoss() {
 
 ---
 
-### 3. Génération OG Image (Jimp)
+### 3. ~~Génération OG Image (Jimp)~~ → **REPORTÉ (ADR futur)**
 
-```javascript
-// server/services/ogImageGenerator.js
-import Jimp from 'jimp'
+**Décision 2025-10-31** : La génération d'images Open Graph est **retirée du scope de cet ADR** pour une approche lean. 
 
-export async function generateEpisodeOGImage(season, episode, title, imageUrl) {
-  // Canvas 1200x630 (format OG standard)
-  const image = new Jimp(1200, 630, 0x1e1b4bff) // Indigo-950
-  
-  // Gradient simulé (overlay layers)
-  const gradient = new Jimp(1200, 630, 0x312e81cc) // Indigo-900 alpha
-  image.composite(gradient, 0, 0)
-  
-  // Cover podcast (left side, rounded)
-  try {
-    const cover = await Jimp.read(imageUrl || './public/images/podcast-default.png')
-    cover.cover(300, 300) // Crop to fill
-    image.composite(cover, 60, 165)
-  } catch (err) {
-    console.error('Cover load failed', err)
-  }
-  
-  // Badge "Saison X • Épisode Y"
-  const fontSmall = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE)
-  image.print(fontSmall, 420, 180, `Saison ${season} • Épisode ${episode}`)
-  
-  // Titre épisode (wrap automatique)
-  const fontLarge = await Jimp.loadFont(Jimp.FONT_SANS_64_WHITE)
-  image.print(
-    fontLarge,
-    420, 250,
-    {
-      text: title,
-      alignmentX: Jimp.HORIZONTAL_ALIGN_LEFT
-    },
-    700, // max width
-    300  // max height (3 lignes)
-  )
-  
-  // Footer branding
-  const fontFooter = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE)
-  image.print(fontFooter, 420, 560, 'Charbon & Wafer')
-  image.print(fontFooter, 420, 595, 'Un podcast Saleté Sincère')
-  
-  // Export PNG
-  return await image.getBufferAsync(Jimp.MIME_PNG)
-}
-```
+**Raisons** :
+- ✅ Livraison plus rapide du smartlink (feature core)
+- ✅ Réduit complexité initiale (pas de dépendance Jimp/Canvas)
+- ✅ Permet validation user flow avant d'investir dans les images
+- ✅ Progressive enhancement : OG metadata textuelles suffisent pour v1
 
-**Pourquoi Jimp vs Canvas** :
-- ✅ Pure JavaScript (pas de build natif)
-- ✅ Deploy CleverCloud garanti sans souci
-- ✅ Performance 1-2s acceptable (background job)
-- ❌ Rendu texte moins joli (bitmap fonts)
-- **Déclencheur upgrade Canvas** : Si besoin custom fonts TrueType
+**Plan futur** :
+- ADR dédié pour génération images (canvas vs Jimp, fonts, style)
+- Intégration pg-boss pour génération asynchrone
+- Upload S3/MinIO avec CDN
+
+**Fallback actuel** : Meta tags Open Graph avec texte uniquement (titre, description) extraits du RSS Castopod.
 
 ---
 
