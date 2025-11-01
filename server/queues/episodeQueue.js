@@ -45,8 +45,12 @@ export async function queueEpisodeResolution(season, episode, title, imageUrl) {
   return boss.send('resolve-episode', 
     { season, episode, title, imageUrl },
     {
-      singletonKey: `episode-${season}-${episode}`,
-      singletonMinutes: 5  // Déduplication pendant 5 minutes
+      singletonKey: `episode-${season}-${episode}`,  // Idempotency key (throttling)
+      singletonSeconds: 300  // Throttle 5 min : 1 job max par slot temporel
+      // Note: Pas de retryLimit (pas de retry auto, worker doit être idempotent)
     }
   )
 }
+
+// Note : Worker DOIT être idempotent (vérifier si travail déjà fait avant d'appeler APIs)
+// OK de rejouer un job après expiration du slot (300s) si nécessaire

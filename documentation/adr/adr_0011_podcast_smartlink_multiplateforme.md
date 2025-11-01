@@ -706,17 +706,17 @@ export async function queueEpisodeResolution(season, episode, title, imageUrl) {
   return boss.send('resolve-episode', 
     { season, episode, title, imageUrl },
     {
-      singletonKey: `episode-${season}-${episode}`,  // Idempotency key (anti-doublon)
-      singletonMinutes: 5,   // Verrou temporaire : pas de doublon pendant 5 min
-      retryLimit: 3          // 3 tentatives max si échec
+      singletonKey: `episode-${season}-${episode}`,  // Idempotency key (throttling)
+      singletonSeconds: 300  // Throttle 5 min : max 1 job par slot temporel
+      // Note: Pas de retryLimit (worker DOIT être idempotent, pas de retry auto)
     }
   )
 }
 
-// Note : singletonKey = clé d'idempotence distribuée (verrou PostgreSQL)
-// - Garantit 1 seul job même avec 100 calls simultanés
-// - Fonctionne avec plusieurs instances (contrainte UNIQUE en BDD)
-// - Retourne null si job déjà en queue (pas d'erreur, juste skip)
+// Note : Worker DOIT être idempotent
+// - Vérifier si travail déjà fait avant d'appeler APIs (check episode_links.spotify_episode_id)
+// - OK de rejouer job après expiration slot (300s) si nécessaire
+// - Fonctionne avec plusieurs instances (verrou distribué PostgreSQL)
 
 export function getBoss() {
   return boss
@@ -1047,25 +1047,31 @@ fetch(RSS_URL, { redirect: 'manual' })
 
 **Mesures** :
 ```javascript
-// ✅ Déduplication native pg-boss (idempotency key distribuée)
+// ✅ Throttling pg-boss (idempotency key distribuée)
 await boss.send('resolve-episode', data, {
   singletonKey: `episode-${season}-${episode}`,  // Clé d'idempotence (anti-doublon)
-  singletonMinutes: 5  // Verrou temporaire 5 min → 100 calls = 1 seul job créé
+  singletonSeconds: 300  // Throttle 5 min → 100 calls = 1 seul job créé dans ce slot
 })
 
 // Note terminologie : pg-boss nomme ça "singletonKey" mais c'est techniquement
-// une IDEMPOTENCY KEY (clé de déduplication) avec verrou distribué PostgreSQL.
-// Garantit unicité même avec plusieurs instances CleverCloud (contrainte UNIQUE en BDD).
+// un THROTTLING avec idempotency key distribuée PostgreSQL.
+// Garantit max 1 job par time slot même avec plusieurs instances CleverCloud.
 
 // ✅ Backpressure workers
 teamSize: 3 // Max 3 jobs actifs (CPU/RAM contrôlé)
 ```
 
 **Explication technique** :
-- `singletonKey` crée une contrainte UNIQUE sur `(name, singletonKey)` dans PostgreSQL
-- Le verrou expire après `singletonMinutes` (ou quand le job est terminé)
+- `singletonKey` + `singletonSeconds` = throttling "one per time slot"
+- Si job existe déjà dans le slot : `boss.send()` retourne `null` (skip)
+- Verrou expire après le time slot OU quand le job est `completed`
 - Mécanisme distribué : fonctionne avec plusieurs instances (verrou en BDD, pas en mémoire)
-- Si doublon détecté : `boss.send()` retourne `null` au lieu de créer un nouveau job
+
+**⚠️ Design idempotent requis** :
+- Le worker DOIT vérifier si le travail est déjà fait (partiellement ou totalement)
+- Rejouable sans effets de bord : OK de rejouer un job après expiration du slot
+- Pas de retry automatique pg-boss (risque doublon APIs) → gérer manuellement si nécessaire
+- Exemple : Avant d'appeler API Spotify, vérifier si `episode_links.spotify_episode_id` existe déjà
 
 ---
 
