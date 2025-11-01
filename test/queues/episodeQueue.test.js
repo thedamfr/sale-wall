@@ -4,17 +4,39 @@
  */
 
 import 'dotenv/config'
-import { describe, test, before, after } from 'node:test'
+import { describe, test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert'
+import pg from 'pg'
 import { initQueue, getBoss, queueEpisodeResolution } from '../../server/queues/episodeQueue.js'
 
+const { Client } = pg
+
 describe('episodeQueue', () => {
+  let pgClient
+
   before(async () => {
-    // Init une seule fois avant tous les tests
+    // Init pg-boss une seule fois avant tous les tests
     await initQueue()
+
+    // Init client PostgreSQL pour queries directes BDD
+    pgClient = new Client({
+      connectionString: process.env.DATABASE_URL
+    })
+    await pgClient.connect()
+  })
+
+  afterEach(async () => {
+    // Cleanup: supprimer tous les jobs de test après chaque test
+    // pour éviter accumulation et garantir répétabilité
+    await pgClient.query(`DELETE FROM pgboss.job WHERE name = 'resolve-episode'`)
   })
 
   after(async () => {
+    // Cleanup: close PostgreSQL client
+    if (pgClient) {
+      await pgClient.end()
+    }
+
     // Cleanup: stop pg-boss après tous les tests
     const boss = getBoss()
     if (boss) {
@@ -63,6 +85,48 @@ describe('episodeQueue', () => {
       assert.ok(jobId1, 'Episode 4-1 should create job')
       assert.ok(jobId2, 'Episode 4-2 should create job')
       assert.notStrictEqual(jobId1, jobId2, 'Different episodes should have different job IDs')
+    })
+
+    test('should verify throttling in database (UNIQUE constraint on singleton_key)', async () => {
+      const season = 5
+      const episode = 10
+      const singletonKey = `episode-${season}-${episode}`
+      
+      // Premier appel : crée le job
+      const jobId1 = await queueEpisodeResolution(season, episode, 'DB Test', 'https://example.com/img.jpg')
+      assert.ok(jobId1, 'Should create first job')
+      
+      // Query BDD : vérifier qu'un seul job existe avec ce singletonKey
+      const result = await pgClient.query(
+        `SELECT id, name, singleton_key, state, data, singleton_on 
+         FROM pgboss.job 
+         WHERE name = $1 AND singleton_key = $2`,
+        ['resolve-episode', singletonKey]
+      )
+      
+      assert.strictEqual(result.rows.length, 1, 'Should have exactly 1 job in database')
+      assert.strictEqual(result.rows[0].id, jobId1, 'Job ID should match')
+      assert.strictEqual(result.rows[0].singleton_key, singletonKey, 'Singleton key should match')
+      assert.ok(result.rows[0].singleton_on, 'singleton_on timestamp should be set')
+      
+      // Vérifier données JSON
+      const jobData = result.rows[0].data
+      assert.strictEqual(jobData.season, season, 'Season should be stored in job data')
+      assert.strictEqual(jobData.episode, episode, 'Episode should be stored in job data')
+      
+      // Deuxième appel : throttled (retourne null)
+      const jobId2 = await queueEpisodeResolution(season, episode, 'DB Test', 'https://example.com/img.jpg')
+      assert.strictEqual(jobId2, null, 'Should return null when throttled')
+      
+      // Re-query BDD : toujours 1 seul job (pas de doublon)
+      const result2 = await pgClient.query(
+        `SELECT COUNT(*) as count 
+         FROM pgboss.job 
+         WHERE name = $1 AND singleton_key = $2`,
+        ['resolve-episode', singletonKey]
+      )
+      
+      assert.strictEqual(parseInt(result2.rows[0].count), 1, 'Should still have exactly 1 job (no duplicate created)')
     })
   })
 })
