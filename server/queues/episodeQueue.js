@@ -45,7 +45,8 @@ export async function queueEpisodeResolution(season, episode, title, imageUrl) {
   return boss.send('resolve-episode', 
     { season, episode, title, imageUrl },
     {
-      singletonKey: `episode-${season}-${episode}`
+      singletonKey: `episode-${season}-${episode}`,
+      singletonMinutes: 5  // Déduplication pendant 5 minutes
     }
   )
 }

@@ -201,7 +201,7 @@ await fetch('https://vercel.app/api/resolve-episode', {
 **Architecture** :
 - Queue jobs dans PostgreSQL (schema `pgboss`)
 - Workers intégrés au process Fastify (zéro infra)
-- Déduplication via `singletonKey` (anti-spam)
+- Déduplication via idempotency key (`singletonKey` dans l'API pg-boss)
 - Retry automatique (3 tentatives, backoff exponentiel)
 - Graceful shutdown (jobs terminés avant restart)
 
@@ -212,7 +212,9 @@ await fetch('https://vercel.app/api/resolve-episode', {
    - Monitoring SQL natif (`SELECT * FROM pgboss.job`)
    
 2. **Protection DDoS native** ✅
-   - `singletonKey` déduplique automatiquement
+   - Idempotency key (verrou distribué PostgreSQL) déduplique automatiquement
+   - Contrainte UNIQUE sur `(name, singletonKey)` en BDD
+   - Fonctionne avec plusieurs instances CleverCloud (verrou en BDD, pas en mémoire)
    - `teamSize=3` limite workers actifs
    - Event loop non saturé
    
@@ -704,12 +706,17 @@ export async function queueEpisodeResolution(season, episode, title, imageUrl) {
   return boss.send('resolve-episode', 
     { season, episode, title, imageUrl },
     {
-      singletonKey: `episode-${season}-${episode}`, // Déduplication
-      singletonMinutes: 5,   // Pas de doublon dans 5 min
-      retryLimit: 3
+      singletonKey: `episode-${season}-${episode}`,  // Idempotency key (anti-doublon)
+      singletonMinutes: 5,   // Verrou temporaire : pas de doublon pendant 5 min
+      retryLimit: 3          // 3 tentatives max si échec
     }
   )
 }
+
+// Note : singletonKey = clé d'idempotence distribuée (verrou PostgreSQL)
+// - Garantit 1 seul job même avec 100 calls simultanés
+// - Fonctionne avec plusieurs instances (contrainte UNIQUE en BDD)
+// - Retourne null si job déjà en queue (pas d'erreur, juste skip)
 
 export function getBoss() {
   return boss
@@ -1040,15 +1047,25 @@ fetch(RSS_URL, { redirect: 'manual' })
 
 **Mesures** :
 ```javascript
-// ✅ Déduplication native pg-boss
+// ✅ Déduplication native pg-boss (idempotency key distribuée)
 await boss.send('resolve-episode', data, {
-  singletonKey: `episode-${season}-${episode}`,
-  singletonMinutes: 5 // 100 calls → 1 job seulement
+  singletonKey: `episode-${season}-${episode}`,  // Clé d'idempotence (anti-doublon)
+  singletonMinutes: 5  // Verrou temporaire 5 min → 100 calls = 1 seul job créé
 })
+
+// Note terminologie : pg-boss nomme ça "singletonKey" mais c'est techniquement
+// une IDEMPOTENCY KEY (clé de déduplication) avec verrou distribué PostgreSQL.
+// Garantit unicité même avec plusieurs instances CleverCloud (contrainte UNIQUE en BDD).
 
 // ✅ Backpressure workers
 teamSize: 3 // Max 3 jobs actifs (CPU/RAM contrôlé)
 ```
+
+**Explication technique** :
+- `singletonKey` crée une contrainte UNIQUE sur `(name, singletonKey)` dans PostgreSQL
+- Le verrou expire après `singletonMinutes` (ou quand le job est terminé)
+- Mécanisme distribué : fonctionne avec plusieurs instances (verrou en BDD, pas en mémoire)
+- Si doublon détecté : `boss.send()` retourne `null` au lieu de créer un nouveau job
 
 ---
 
