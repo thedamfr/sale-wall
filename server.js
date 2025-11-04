@@ -15,6 +15,7 @@ import { validateAudio, audioValidationMiddleware } from "./server/validators/au
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
 import { fetchEpisodeFromRSS } from "./server/services/castopodRSS.js";
+import { initQueue, startWorker } from "./server/queues/episodeQueue.js";
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -711,5 +712,19 @@ app.get("/podcast", {
 
 // Health
 app.get("/health", () => ({ ok: true }));
+
+// Initialize pg-boss queue and worker before starting server
+try {
+  console.log('🚀 Initializing pg-boss queue...');
+  await initQueue();
+  console.log('✅ pg-boss queue initialized');
+  
+  console.log('🚀 Starting episode resolution worker...');
+  await startWorker();
+  console.log('✅ Worker started and ready to process jobs');
+} catch (err) {
+  console.error('❌ Failed to initialize queue/worker:', err);
+  process.exit(1);
+}
 
 await app.listen({ host: "0.0.0.0", port: process.env.PORT || 3000 });
