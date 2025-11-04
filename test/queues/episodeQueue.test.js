@@ -7,7 +7,7 @@ import 'dotenv/config'
 import { describe, test, before, after, afterEach } from 'node:test'
 import assert from 'node:assert'
 import pg from 'pg'
-import { initQueue, getBoss, queueEpisodeResolution } from '../../server/queues/episodeQueue.js'
+import { initQueue, getBoss, queueEpisodeResolution, startWorker } from '../../server/queues/episodeQueue.js'
 
 const { Client } = pg
 
@@ -17,6 +17,9 @@ describe('episodeQueue', () => {
   before(async () => {
     // Init pg-boss une seule fois avant tous les tests
     await initQueue()
+    
+    // Démarrer le worker une seule fois
+    await startWorker()
 
     // Init client PostgreSQL pour queries directes BDD
     pgClient = new Client({
@@ -127,6 +130,34 @@ describe('episodeQueue', () => {
       )
       
       assert.strictEqual(parseInt(result2.rows[0].count), 1, 'Should still have exactly 1 job (no duplicate created)')
+    })
+  })
+
+  describe('startWorker', () => {
+    test('should process job and call platform APIs', async (t) => {
+      // Worker déjà démarré dans before()
+      // On crée un job
+      const jobId = await queueEpisodeResolution(6, 1, 'Worker Test Episode', 'https://example.com/cover.jpg')
+      assert.ok(jobId, 'Job should be created')
+      
+      // Attendre que le worker traite le job (pg-boss poll interval + API calls)
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      
+      // Vérifier que le job a été traité
+      const result = await pgClient.query(
+        `SELECT state, output FROM pgboss.job WHERE id = $1`,
+        [jobId]
+      )
+      
+      const jobState = result.rows[0].state
+      const jobOutput = result.rows[0].output
+      
+      // Si retry ou failed, afficher l'erreur pour debug
+      if (jobState !== 'completed') {
+        console.log(`[DEBUG] Job state: ${jobState}, output:`, jobOutput)
+      }
+      
+      assert.strictEqual(jobState, 'completed', 'Job should be completed by worker')
     })
   })
 })

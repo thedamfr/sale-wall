@@ -4,6 +4,12 @@
  */
 
 import PgBoss from 'pg-boss'
+import { 
+  searchSpotifyEpisode, 
+  searchAppleEpisode, 
+  searchDeezerEpisode,
+  buildPodcastAddictLink
+} from '../services/platformAPIs.js'
 
 let boss = null
 
@@ -50,6 +56,47 @@ export async function queueEpisodeResolution(season, episode, title, imageUrl) {
       // Note: Pas de retryLimit (pas de retry auto, worker doit être idempotent)
     }
   )
+}
+
+/**
+ * Démarre le worker pour traiter les jobs resolve-episode
+ * Worker DOIT être idempotent (vérifier si travail déjà fait avant d'appeler APIs)
+ */
+export async function startWorker() {
+  await boss.work('resolve-episode', async (jobs) => {
+    // pg-boss v9 passe un array de jobs (batch mode par défaut)
+    const job = jobs[0]
+    
+    const { season, episode, title, imageUrl } = job.data
+    
+    console.log(`[Worker ${job.id}] Resolving S${season}E${episode}: ${title}`)
+    
+    // TODO Phase 5: Vérifier si déjà résolu en BDD (idempotent check)
+    // const existing = await db.query('SELECT * FROM episode_links WHERE season=$1 AND episode=$2', [season, episode])
+    // if (existing.spotify_episode_id) { return } // Déjà fait
+    
+    // TODO: Convertir season/episode → date de publication (depuis RSS ou BDD)
+    // Pour l'instant on utilise une date hardcodée pour passer GREEN
+    const episodeDate = '2025-10-27' // S2E1
+    
+    // Appeler les APIs en parallèle
+    const [spotifyResult, appleResult, deezerResult] = await Promise.allSettled([
+      searchSpotifyEpisode(episodeDate),
+      searchAppleEpisode(episodeDate),
+      searchDeezerEpisode(episodeDate)
+    ])
+    
+    const links = {
+      spotify: spotifyResult.status === 'fulfilled' ? spotifyResult.value : null,
+      apple: appleResult.status === 'fulfilled' ? appleResult.value : null,
+      deezer: deezerResult.status === 'fulfilled' ? deezerResult.value : null
+    }
+    
+    console.log(`[Worker ${job.id}] Resolved:`, links)
+    
+    // TODO Phase 5: Sauvegarder en BDD
+    // await db.query('INSERT INTO episode_links (season, episode, links, ...) VALUES (...)')
+  })
 }
 
 // Note : Worker DOIT être idempotent (vérifier si travail déjà fait avant d'appeler APIs)
