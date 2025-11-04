@@ -1160,6 +1160,39 @@ GROUP BY state;
 **REFACTOR 3** : Extraire monitoring helpers
 **Pause state** : 8 tests verts (queue + retry + singleton)
 
+**⚠️ BLOCKER CleverCloud (2025-11-04)** :
+
+Le serveur échoue au démarrage sur CleverCloud avec :
+```
+❌ Failed to initialize queue/worker: Error: connect ECONNREFUSED 127.0.0.1:5432
+```
+
+**Cause** : pg-boss crée sa propre connexion PostgreSQL et n'utilise PAS `fastify-postgres`. Il utilise `process.env.DATABASE_URL` mais sur CleverCloud, cette variable pointe vers l'addon PostgreSQL (pas localhost).
+
+**Problème identifié** : 
+- Local : `DATABASE_URL=postgresql://salete:salete@localhost:5432/salete` ✅ Fonctionne
+- CleverCloud : `DATABASE_URL=postgresql://xxx:xxx@addon-host:5432/xxx` ❌ pg-boss essaie 127.0.0.1
+
+**Solutions possibles** :
+1. **Vérifier DATABASE_URL sur CleverCloud** : `clever env | grep DATABASE_URL`
+2. **Désactiver worker si DATABASE_URL manquant** (mode dégradé) :
+   ```javascript
+   if (process.env.DATABASE_URL) {
+     await initQueue()
+     await startWorker()
+   } else {
+     console.warn('⚠️ DATABASE_URL missing, worker disabled (degraded mode)')
+   }
+   ```
+3. **Réutiliser connexion fastify-postgres** pour pg-boss (éviter double connexion)
+4. **Logs détaillés** : Ajouter `console.log('DATABASE_URL:', process.env.DATABASE_URL)` avant `initQueue()`
+
+**Action immédiate** : Tester `clever env` en production pour voir si `DATABASE_URL` est bien définie avec le bon host (pas 127.0.0.1).
+
+**Workaround temporaire** : Déployer sans worker (commenter initialisation) puis débugger en prod avec logs.
+
+---
+
 ### Phase 4 : Route dynamique
 **RED 4** : Test route `/episode/2/1` retourne placeholder si cache MISS
 **GREEN 4** : Implémenter route + template
