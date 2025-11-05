@@ -55,7 +55,7 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
 
     // Strip HTML from description and decode entities
     const descriptionHtml = matchedItem.description || '';
-    const descriptionText = descriptionHtml
+    const descriptionRaw = descriptionHtml
       .replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1')
       .replace(/<[^>]+>/g, '')
       .replace(/&amp;/g, '&')
@@ -64,8 +64,13 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim()
-      .substring(0, 300); // Limit to 300 chars
+      .trim();
+    
+    const MAX_DESC_LENGTH = 400;
+    const isTruncated = descriptionRaw.length > MAX_DESC_LENGTH;
+    const descriptionText = isTruncated 
+      ? descriptionRaw.substring(0, MAX_DESC_LENGTH).trim() + '...'
+      : descriptionRaw;
 
     // Clean title (trim and decode entities)
     const titleClean = (matchedItem.title || '')
@@ -82,6 +87,7 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
       episode: parseInt(matchedItem['itunes:episode']),
       title: titleClean,
       description: descriptionText,
+      isTruncated, // Flag pour afficher "Lire la suite"
       pubDate: formatDateFrench(pubDate),
       rawPubDate: pubDate.toISOString().split('T')[0], // YYYY-MM-DD pour smartlinks
       duration: formatDuration(durationSeconds),
