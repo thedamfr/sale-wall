@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+let queueInitialized = false;
+
 export async function build() {
   const app = Fastify({
     logger: false // Disable logs in tests
@@ -82,6 +84,42 @@ export async function build() {
       </body>
       </html>
     `);
+  });
+
+  // Phase 4 - Route smartlink /episode/:season/:episode
+  // GREEN minimal : Fetch RSS, retourner date (sans queue pour l'instant)
+  app.get('/episode/:season/:episode', async (request, reply) => {
+    const season = parseInt(request.params.season, 10);
+    const episode = parseInt(request.params.episode, 10);
+    
+    // Import RSS parser
+    const { fetchEpisodeFromRSS } = await import('../../server/services/castopodRSS.js');
+    const episodeData = await fetchEpisodeFromRSS(season, episode, 5000);
+    
+    if (!episodeData) {
+      return reply.code(404).send({ error: 'Episode not found' });
+    }
+    
+    // Utiliser rawPubDate du RSS parser
+    const episodeDate = episodeData.rawPubDate;
+    
+    // Queue job SEULEMENT si query param ?queue=true (pour test spécifique)
+    if (request.query.queue === 'true') {
+      // Initialize queue on first call
+      if (!queueInitialized) {
+        const { initQueue } = await import('../../server/queues/episodeQueue.js');
+        await initQueue();
+        queueInitialized = true;
+      }
+      
+      const { queueEpisodeResolution } = await import('../../server/queues/episodeQueue.js');
+      const jobId = await queueEpisodeResolution(season, episode);
+      
+      return reply.send({ season, episode, episodeDate, jobId, queued: true });
+    }
+    
+    // Par défaut : retour simple sans queue
+    return reply.send({ season, episode, episodeDate });
   });
 
   return app;

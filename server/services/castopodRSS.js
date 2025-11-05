@@ -83,6 +83,7 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
       title: titleClean,
       description: descriptionText,
       pubDate: formatDateFrench(pubDate),
+      rawPubDate: pubDate.toISOString().split('T')[0], // YYYY-MM-DD pour smartlinks
       duration: formatDuration(durationSeconds),
       image: matchedItem['itunes:image']?.['@_href'] || null,
       audioUrl: matchedItem.enclosure?.['@_url'] || '',
@@ -129,6 +130,7 @@ function formatDateFrench(date) {
  * @property {string} title - Episode title
  * @property {string} description - Episode summary (plain text, max 300 chars)
  * @property {string} pubDate - Formatted date "27 octobre 2025"
+ * @property {string} rawPubDate - ISO date "2025-10-27" for APIs
  * @property {string} duration - Formatted duration "43:11" or "1:43:11"
  * @property {string|null} image - Episode cover URL or null
  * @property {string} audioUrl - MP3 direct link

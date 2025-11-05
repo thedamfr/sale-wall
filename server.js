@@ -15,7 +15,7 @@ import { validateAudio, audioValidationMiddleware } from "./server/validators/au
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
 import { fetchEpisodeFromRSS } from "./server/services/castopodRSS.js";
-import { initQueue, startWorker } from "./server/queues/episodeQueue.js";
+import { initQueue, startWorker, queueEpisodeResolution } from "./server/queues/episodeQueue.js";
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -708,6 +708,44 @@ app.get("/podcast", {
   // Fallback: classic page (no episode data)
   reply.header('Cache-Control', 'public, max-age=3600');
   return reply.view("podcast.hbs", { episodeData: null });
+});
+
+// Route smartlink multiplateforme /episode/:season/:episode (ADR-0011)
+app.get("/episode/:season/:episode", {
+  config: {
+    rateLimit: pageLimiter
+  }
+}, async (req, reply) => {
+  const season = parseInt(req.params.season, 10);
+  const episode = parseInt(req.params.episode, 10);
+  
+  // Validation
+  if (isNaN(season) || isNaN(episode) || season < 1 || episode < 1) {
+    return reply.redirect('/podcast');
+  }
+  
+  // 1. Fetch RSS pour obtenir date épisode
+  const episodeData = await fetchEpisodeFromRSS(season, episode, 5000).catch(() => null);
+  
+  if (!episodeData) {
+    return reply.redirect('/podcast'); // Épisode introuvable
+  }
+  
+  // 2. Queue job pour résolution asynchrone des liens plateformes
+  // TODO Phase 5: Vérifier cache BDD (episode_links) avant de queuer
+  await queueEpisodeResolution(season, episode);
+  
+  // 3. Retour immédiat avec placeholder (liens seront résolus en arrière-plan)
+  // TODO Phase 4.4: User-Agent detection + redirect vers plateforme appropriée
+  // TODO Phase 5: Si liens déjà résolus en BDD, redirect direct
+  
+  return reply.send({
+    season,
+    episode,
+    title: episodeData.title,
+    episodeDate: episodeData.rawPubDate,
+    message: 'Smartlink en cours de résolution (worker actif)'
+  });
 });
 
 // Health
