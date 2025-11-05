@@ -763,7 +763,7 @@ if (WORKER_ENABLED) {
     console.log('✅ pg-boss queue initialized');
     
     console.log('🚀 Starting episode resolution worker...');
-    await startWorker();
+    await startWorker(app);
     console.log('✅ Worker started and ready to process jobs');
   } catch (err) {
     console.error('❌ Worker initialization failed:', err.message);

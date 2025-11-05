@@ -71,8 +71,9 @@ export async function queueEpisodeResolution(season, episode, episodeDate, title
 /**
  * Démarre le worker pour traiter les jobs resolve-episode
  * Worker DOIT être idempotent (vérifier si travail déjà fait avant d'appeler APIs)
+ * @param {object} fastify - Instance Fastify avec pool pg
  */
-export async function startWorker() {
+export async function startWorker(fastify) {
   await boss.work('resolve-episode', async (jobs) => {
     // pg-boss v9 passe un array de jobs (batch mode par défaut)
     const job = jobs[0]
@@ -102,14 +103,9 @@ export async function startWorker() {
     
     console.log(`[Worker ${job.id}] Resolved:`, links)
     
-    // Phase 5: Sauvegarder en BDD (idempotent avec ON CONFLICT UPDATE si vide)
+    // Phase 5: Sauvegarder en BDD (réutilise pool Fastify pour éviter too many connections)
     try {
-      const connectionString = process.env.DATABASE_URL 
-        || process.env.POSTGRESQL_ADDON_URI 
-        || 'postgresql://salete:salete@localhost:5432/salete'
-      
-      const client = new Client({ connectionString })
-      await client.connect()
+      const client = await fastify.pg.connect()
       
       try {
         await client.query(`
@@ -131,7 +127,7 @@ export async function startWorker() {
         
         console.log(`[Worker ${job.id}] ✅ Saved to database`)
       } finally {
-        await client.end()
+        client.release()
       }
     } catch (dbError) {
       console.error(`[Worker ${job.id}] ❌ Failed to save to database:`, dbError.message)
