@@ -714,17 +714,32 @@ app.get("/podcast", {
 app.get("/health", () => ({ ok: true }));
 
 // Initialize pg-boss queue and worker before starting server
-try {
-  console.log('🚀 Initializing pg-boss queue...');
-  await initQueue();
-  console.log('✅ pg-boss queue initialized');
-  
-  console.log('🚀 Starting episode resolution worker...');
-  await startWorker();
-  console.log('✅ Worker started and ready to process jobs');
-} catch (err) {
-  console.error('❌ Failed to initialize queue/worker:', err);
-  process.exit(1);
+// Mode dégradé : Si DATABASE_URL manquant ou worker échoue, serveur démarre quand même
+const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true' && !!process.env.DATABASE_URL;
+
+if (WORKER_ENABLED) {
+  try {
+    console.log('🚀 Initializing pg-boss queue...');
+    console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '✓ defined' : '✗ missing');
+    
+    await initQueue();
+    console.log('✅ pg-boss queue initialized');
+    
+    console.log('🚀 Starting episode resolution worker...');
+    await startWorker();
+    console.log('✅ Worker started and ready to process jobs');
+  } catch (err) {
+    console.error('⚠️  Worker initialization failed (degraded mode):', err.message);
+    console.error('   Server will start WITHOUT background job processing');
+    console.error('   Episode resolution will be synchronous (slower)');
+    // Ne pas exit(1) : mode dégradé OK
+  }
+} else {
+  const reason = process.env.DISABLE_WORKER === 'true' 
+    ? 'DISABLE_WORKER=true' 
+    : 'DATABASE_URL missing';
+  console.log(`⚠️  Worker disabled (${reason})`);
+  console.log('   Episode resolution will be synchronous (slower)');
 }
 
 await app.listen({ host: "0.0.0.0", port: process.env.PORT || 3000 });
