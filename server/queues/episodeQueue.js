@@ -18,8 +18,14 @@ let boss = null
  * @returns {Promise<PgBoss>} Instance pg-boss active
  */
 export async function initQueue() {
+  // Utiliser la même logique de fallback que fastify-postgres
+  // CleverCloud expose POSTGRESQL_ADDON_URI, pas forcément DATABASE_URL
+  const connectionString = process.env.DATABASE_URL 
+    || process.env.POSTGRESQL_ADDON_URI 
+    || 'postgresql://salete:salete@localhost:5432/salete';
+  
   boss = new PgBoss({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     schema: 'pgboss'
   })
   

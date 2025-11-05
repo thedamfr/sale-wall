@@ -1160,36 +1160,72 @@ GROUP BY state;
 **REFACTOR 3** : Extraire monitoring helpers
 **Pause state** : 8 tests verts (queue + retry + singleton)
 
-**⚠️ BLOCKER CleverCloud (2025-11-04)** :
+**⚠️ BLOCKER CleverCloud (2025-11-04) → ✅ RÉSOLU (2025-11-05)**
 
-Le serveur échoue au démarrage sur CleverCloud avec :
+**Problème initial** : Serveur échoue au démarrage sur CleverCloud avec :
 ```
 ❌ Failed to initialize queue/worker: Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
 
-**Cause** : pg-boss crée sa propre connexion PostgreSQL et n'utilise PAS `fastify-postgres`. Il utilise `process.env.DATABASE_URL` mais sur CleverCloud, cette variable pointe vers l'addon PostgreSQL (pas localhost).
+**Cause racine** : 
+- `fastify-postgres` utilise : `DATABASE_URL || POSTGRESQL_ADDON_URI || fallback localhost`
+- `pg-boss` utilisait UNIQUEMENT : `DATABASE_URL`
+- CleverCloud addon expose `POSTGRESQL_ADDON_URI`, pas forcément `DATABASE_URL`
+- Résultat : fastify-postgres connecté, pg-boss échoue
 
-**Problème identifié** : 
-- Local : `DATABASE_URL=postgresql://salete:salete@localhost:5432/salete` ✅ Fonctionne
-- CleverCloud : `DATABASE_URL=postgresql://xxx:xxx@addon-host:5432/xxx` ❌ pg-boss essaie 127.0.0.1
+**✅ Solution implémentée** :
 
-**Solutions possibles** :
-1. **Vérifier DATABASE_URL sur CleverCloud** : `clever env | grep DATABASE_URL`
-2. **Désactiver worker si DATABASE_URL manquant** (mode dégradé) :
-   ```javascript
-   if (process.env.DATABASE_URL) {
-     await initQueue()
-     await startWorker()
-   } else {
-     console.warn('⚠️ DATABASE_URL missing, worker disabled (degraded mode)')
-   }
-   ```
-3. **Réutiliser connexion fastify-postgres** pour pg-boss (éviter double connexion)
-4. **Logs détaillés** : Ajouter `console.log('DATABASE_URL:', process.env.DATABASE_URL)` avant `initQueue()`
+**1. Cohérence connexion PostgreSQL** :
+```javascript
+// server/queues/episodeQueue.js
+export async function initQueue() {
+  // Même logique que fastify-postgres (cohérence)
+  const connectionString = process.env.DATABASE_URL 
+    || process.env.POSTGRESQL_ADDON_URI 
+    || 'postgresql://salete:salete@localhost:5432/salete';
+  
+  boss = new PgBoss({ connectionString, schema: 'pgboss' })
+  await boss.start()
+}
+```
 
-**Action immédiate** : Tester `clever env` en production pour voir si `DATABASE_URL` est bien définie avec le bon host (pas 127.0.0.1).
+**2. Fail-hard par défaut + Bypass explicite** :
+```javascript
+// server.js
+const hasDatabase = !!(process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI);
+const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true' && hasDatabase;
+const ALLOW_DEGRADED = process.env.ALLOW_DEGRADED_MODE === 'true';
 
-**Workaround temporaire** : Déployer sans worker (commenter initialisation) puis débugger en prod avec logs.
+if (WORKER_ENABLED) {
+  try {
+    await initQueue()
+    await startWorker()
+  } catch (err) {
+    if (ALLOW_DEGRADED) {
+      console.warn('⚠️ ALLOW_DEGRADED_MODE=true: Starting in degraded mode')
+    } else {
+      console.error('💥 Deployment BLOCKED: Worker initialization failed')
+      process.exit(1) // ✅ Fail-hard : CleverCloud garde version précédente
+    }
+  }
+}
+```
+
+**Variables d'environnement** :
+- `DISABLE_WORKER=true` → Worker désactivé proprement (résolution synchrone)
+- `ALLOW_DEGRADED_MODE=true` → Bypass fail-hard (⚠️ debug/urgence uniquement)
+- `DATABASE_URL` ou `POSTGRESQL_ADDON_URI` → Worker actif automatiquement
+
+**Bénéfices sécurité** :
+- ✅ **Commits hasardeux bloqués** : Si pg-boss casse, déploiement refuse (exit 1)
+- ✅ **CleverCloud rollback auto** : Garde la version précédente en prod
+- ✅ **Bypass explicite** : `ALLOW_DEGRADED_MODE=true` pour urgences
+- ✅ **Logs explicites** : Distingue worker actif ✅ vs mode dégradé ⚠️ vs bloqué ❌
+
+**Tests manuels validés** :
+- ✅ Mode normal : Worker actif avec `DATABASE_URL`
+- ❌ Fail-hard : `exit(1)` si `DATABASE_URL` cassée (sans bypass)
+- ⚠️ Mode dégradé : Démarre si `ALLOW_DEGRADED_MODE=true` (avec bypass)
 
 ---
 

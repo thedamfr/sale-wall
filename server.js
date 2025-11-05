@@ -714,13 +714,18 @@ app.get("/podcast", {
 app.get("/health", () => ({ ok: true }));
 
 // Initialize pg-boss queue and worker before starting server
-// Mode dégradé : Si DATABASE_URL manquant ou worker échoue, serveur démarre quand même
-const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true' && !!process.env.DATABASE_URL;
+// Fail-hard par défaut : Si worker échoue, déploiement bloqué (sécurité)
+// Bypass explicite : ALLOW_DEGRADED_MODE=true pour autoriser mode dégradé
+// CleverCloud : Utiliser DATABASE_URL OU POSTGRESQL_ADDON_URI (comme fastify-postgres)
+const hasDatabase = !!(process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI);
+const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true' && hasDatabase;
+const ALLOW_DEGRADED = process.env.ALLOW_DEGRADED_MODE === 'true';
 
 if (WORKER_ENABLED) {
   try {
     console.log('🚀 Initializing pg-boss queue...');
     console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '✓ defined' : '✗ missing');
+    console.log('   POSTGRESQL_ADDON_URI:', process.env.POSTGRESQL_ADDON_URI ? '✓ defined' : '✗ missing');
     
     await initQueue();
     console.log('✅ pg-boss queue initialized');
@@ -729,15 +734,24 @@ if (WORKER_ENABLED) {
     await startWorker();
     console.log('✅ Worker started and ready to process jobs');
   } catch (err) {
-    console.error('⚠️  Worker initialization failed (degraded mode):', err.message);
-    console.error('   Server will start WITHOUT background job processing');
-    console.error('   Episode resolution will be synchronous (slower)');
-    // Ne pas exit(1) : mode dégradé OK
+    console.error('❌ Worker initialization failed:', err.message);
+    console.error('   Stack:', err.stack);
+    
+    if (ALLOW_DEGRADED) {
+      console.warn('⚠️  ALLOW_DEGRADED_MODE=true: Starting in degraded mode');
+      console.warn('   Server will run WITHOUT background job processing');
+      console.warn('   Episode resolution will be synchronous (slower)');
+    } else {
+      console.error('💥 Deployment BLOCKED: Worker initialization failed');
+      console.error('   To bypass this check (not recommended), set: ALLOW_DEGRADED_MODE=true');
+      console.error('   Or disable worker entirely with: DISABLE_WORKER=true');
+      process.exit(1); // Fail-hard : CleverCloud garde la version précédente
+    }
   }
 } else {
   const reason = process.env.DISABLE_WORKER === 'true' 
     ? 'DISABLE_WORKER=true' 
-    : 'DATABASE_URL missing';
+    : 'No database connection (DATABASE_URL or POSTGRESQL_ADDON_URI missing)';
   console.log(`⚠️  Worker disabled (${reason})`);
   console.log('   Episode resolution will be synchronous (slower)');
 }
