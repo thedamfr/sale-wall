@@ -1,6 +1,7 @@
 # ADR-0011: Smartlink podcast multi-plateformes (hub de redirection)
 
 **Date**: 2025-10-29  
+**Auteur**: Damien Cavaillès  
 **Statut**: ✅ VALIDÉ (prêt implémentation TDD)  
 **Contexte**: Partage épisode podcast avec redirection intelligente  
 **Remplace**: ADR-0010 (besoin mal compris initialement)
@@ -1409,7 +1410,11 @@ CREATE TABLE episode_links (
 - [x] ✅ **Phase 0 TDD (Deezer)** : Récupération épisodes + Matching par date + Construction deeplinks
 - [x] ✅ **Phase 0 TDD (Podcast Addict)** : Découverte pattern deeplink via audioUrl encodée + Test navigateur 301 redirect
 - [x] ✅ **Phase 0 TDD complète** : 4 APIs validées (87.14% audience couverte avec deeplinks)
-- [ ] **PRÊT POUR PHASE 1** : Implémenter server/services/platformAPIs.js
+- [x] ✅ **Phase 1-4** : Services platformAPIs.js + worker episodeQueue.js + route /podcast/:season/:episode
+- [x] ✅ **Phase 5.1** : Migration SQL `episode_links` (cache BDD) déployée en production
+- [x] ✅ **UX polish** : Description tronquée (400 chars) + lien cliquable vers Castopod
+- [x] ✅ **Backward compatibility** : Redirection 301 `/podcast?season=X&episode=Y` → `/podcast/X/Y`
+- [ ] **Phase 5.2-5.4** : Worker save BDD + route check cache + tests end-to-end
 
 ### Configuration `.env`
 
