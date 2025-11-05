@@ -677,6 +677,12 @@ app.get("/podcast", {
     rateLimit: pageLimiter
   }
 }, async (req, reply) => {
+  // Redirect old query params to new path-based route
+  const { season, episode } = req.query;
+  if (season && episode) {
+    return reply.code(301).redirect(`/podcast/${season}/${episode}`);
+  }
+  
   reply.header('Cache-Control', 'public, max-age=3600');
   return reply.view("podcast.hbs", { episodeData: null });
 });
