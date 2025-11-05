@@ -53,12 +53,12 @@ https://saletesincere.fr/episode/2/1  (ou /e/2/1 en short)
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ User partage /episode/2/1                           │
+│ User partage /podcast/2/1                           │
 └─────────────────────────────────────────────────────┘
                         ↓
 ┌─────────────────────────────────────────────────────┐
 │ 1. Check cache BDD : episode_links(2,1)             │
-│    ├─ HIT (résolu) → Detect User-Agent → Redirect  │
+│    ├─ HIT (résolu) → Page avec liens directs ✅     │
 │    └─ MISS (vide) → Continue                        │
 └─────────────────────────────────────────────────────┘
                         ↓
@@ -76,11 +76,13 @@ https://saletesincere.fr/episode/2/1  (ou /e/2/1 en short)
                         ↓
 ┌─────────────────────────────────────────────────────┐
 │ 4. Reply immédiat (200ms)                           │
-│    └─ Page HTML placeholder avec:                   │
-│       ├─ Castopod link ✅ (disponible)              │
+│    └─ Page HTML avec liste de liens:                │
+│       ├─ Castopod link ✅ (lien direct épisode)     │
 │       ├─ Spotify ⏳ (recherche en cours...)         │
 │       ├─ Apple ⏳ (recherche en cours...)           │
 │       └─ Deezer ⏳ (recherche en cours...)          │
+│                                                      │
+│       User CHOISIT sa plateforme (clic explicite)   │
 └─────────────────────────────────────────────────────┘
                         ↓
 ┌─────────────────────────────────────────────────────┐
@@ -96,10 +98,13 @@ https://saletesincere.fr/episode/2/1  (ou /e/2/1 en short)
                         ↓
 ┌─────────────────────────────────────────────────────┐
 │ 5. Visite suivante (cache HIT)                      │
-│    ├─ User-Agent iOS → Redirect Apple (50ms)        │
-│    ├─ User-Agent Android → Redirect Podcast Addict  │
-│    │  (ou Deezer si indisponible, ou Spotify)       │
-│    └─ Desktop → Redirect Spotify (ou Deezer si FR)  │
+│    └─ Page avec TOUS les liens directs ✅           │
+│       ├─ Castopod (lien épisode)                    │
+│       ├─ Spotify (lien épisode)                     │
+│       ├─ Apple Podcasts (lien épisode)              │
+│       └─ Deezer (lien épisode)                      │
+│                                                      │
+│       User CHOISIT sa plateforme préférée           │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -750,8 +755,8 @@ export function getBoss() {
 ```javascript
 // server.js
 
-// Route smartlink courte
-app.get('/episode/:season/:episode', async (req, reply) => {
+// Route smartlink : Page avec liste de liens (choix explicite utilisateur)
+app.get('/podcast/:season/:episode', async (req, reply) => {
   const { season, episode } = req.params
   
   // Validation
@@ -766,43 +771,9 @@ app.get('/episode/:season/:episode', async (req, reply) => {
   let episodeData = await getEpisodeLinks(seasonInt, episodeInt)
   
   if (episodeData && episodeData.resolutionStatus === 'complete') {
-    // Cache HIT + complet: redirect direct User-Agent
-    const userAgent = req.headers['user-agent']
-    
-    // iOS → Apple Podcasts (38.64% audience)
-    if (/iPhone|iPad|iPod/.test(userAgent) && episodeData.links.apple.isDirect) {
-      reply.header('Cache-Control', 'public, max-age=3600')
-      return reply.redirect(episodeData.links.apple.url)
-    }
-    
-    // Android → Priorité Podcast Addict (26.14%) > Deezer (11.36%) > Spotify (hidden audience)
-    if (/Android/.test(userAgent)) {
-      if (episodeData.links.podcastAddict.isDirect) {
-        reply.header('Cache-Control', 'public, max-age=3600')
-        return reply.redirect(episodeData.links.podcastAddict.url)
-      }
-      if (episodeData.links.deezer.isDirect) {
-        reply.header('Cache-Control', 'public, max-age=3600')
-        return reply.redirect(episodeData.links.deezer.url)
-      }
-      if (episodeData.links.spotify.isDirect) {
-        reply.header('Cache-Control', 'public, max-age=3600')
-        return reply.redirect(episodeData.links.spotify.url)
-      }
-    }
-    
-    // Desktop → Priorité Spotify (universel) > Deezer (FR)
-    if (episodeData.links.spotify.isDirect) {
-      reply.header('Cache-Control', 'public, max-age=3600')
-      return reply.redirect(episodeData.links.spotify.url)
-    }
-    if (episodeData.links.deezer.isDirect) {
-      reply.header('Cache-Control', 'public, max-age=3600')
-      return reply.redirect(episodeData.links.deezer.url)
-    }
-    
-    // Desktop: page choix
-    return reply.view('episode-smartlink.hbs', { episodeData })
+    // Cache HIT : Page avec tous les liens directs ✅
+    reply.header('Cache-Control', 'public, max-age=3600')
+    return reply.view('podcast.hbs', { episodeData })
   }
   
   // 2. Cache MISS ou partiel: fetch RSS + queue job
@@ -819,7 +790,7 @@ app.get('/episode/:season/:episode', async (req, reply) => {
     rssEpisode.image
   )
   
-  // 4. Reply immédiat avec placeholder
+  // 4. Reply immédiat avec page placeholder
   episodeData = {
     metadata: {
       season: seasonInt,
@@ -858,18 +829,18 @@ app.get('/episode/:season/:episode', async (req, reply) => {
     resolutionStatus: 'pending'
   }
   
-  return reply.view('episode-smartlink.hbs', { episodeData })
+  return reply.view('podcast.hbs', { episodeData })
 })
 
-// Route fallback (compatibilité ADR-0010)
+// Route fallback (compatibilité liens partagés LinkedIn)
 app.get('/podcast', async (req, reply) => {
   const { season, episode } = req.query
   
   if (season && episode && /^\d+$/.test(season) && /^\d+$/.test(episode)) {
-    return reply.redirect(`/episode/${season}/${episode}`)
+    return reply.redirect(301, `/podcast/${season}/${episode}`)
   }
   
-  return reply.view('podcast.hbs') // Page classique
+  return reply.view('podcast.hbs') // Page liste épisodes
 })
 
 // Graceful shutdown
@@ -1324,25 +1295,32 @@ CREATE TABLE episode_links (
 
 ## Critères d'acceptation (Given/When/Then)
 
-### Test 1 : Cache HIT - Redirect User-Agent
-- **Given** : Épisode S2E1 résolu en BDD (Spotify ID = `abc123`)
-- **When** : User Android visite `/episode/2/1`
+### Test 1 : Cache HIT - Page avec tous les liens directs
+- **Given** : Épisode S2E1 résolu en BDD (tous liens disponibles)
+- **When** : User visite `/podcast/2/1`
 - **Then** : 
-  - HTTP 302 vers `https://open.spotify.com/episode/abc123`
+  - Page HTML affichée avec liste de liens
+  - Castopod ✅ lien direct épisode
+  - Spotify ✅ lien direct épisode
+  - Apple Podcasts ✅ lien direct épisode
+  - Deezer ✅ lien direct épisode
   - Header `Cache-Control: public, max-age=3600`
   - Temps réponse <200ms
+  - **User choisit** sa plateforme (clic explicite)
 
 ### Test 2 : Cache MISS - Placeholder + Queue job
 - **Given** : Épisode S2E1 absent en BDD
-- **When** : User visite `/episode/2/1`
+- **When** : User visite `/podcast/2/1`
 - **Then** :
   - Page HTML placeholder affichée (<3s)
   - Castopod link ✅ disponible (RSS)
-  - Spotify/Apple ⏳ "Recherche en cours..."
+  - Spotify/Apple/Deezer ⏳ "Recherche en cours..."
+  - Message : "Actualisez dans 10 secondes"
   - Job pg-boss créé avec `singletonKey=episode-2-1`
+  - **User choisit** sa plateforme (Castopod disponible immédiatement)
 
 ### Test 3 : Spam protection (singletonKey)
-- **Given** : 100 users visitent `/episode/2/1` simultanément (cache MISS)
+- **Given** : 100 users visitent `/podcast/2/1` simultanément (cache MISS)
 - **When** : pg-boss reçoit 100 appels `boss.send()`
 - **Then** :
   - 1 seul job créé en queue
@@ -1412,9 +1390,105 @@ CREATE TABLE episode_links (
 - [x] ✅ **Phase 0 TDD complète** : 4 APIs validées (87.14% audience couverte avec deeplinks)
 - [x] ✅ **Phase 1-4** : Services platformAPIs.js + worker episodeQueue.js + route /podcast/:season/:episode
 - [x] ✅ **Phase 5.1** : Migration SQL `episode_links` (cache BDD) déployée en production
+- [x] ✅ **Phase 5.2** : Worker save BDD avec INSERT idempotent (ON CONFLICT UPDATE si vide)
+- [x] ✅ **Phase 5.3** : Route vérifie cache BDD et affiche page smartlink avec liens résolus
+- [x] ✅ **Phase 5.4** : Tests end-to-end production réussis (worker + BDD + variables env)
 - [x] ✅ **UX polish** : Description tronquée (400 chars) + lien cliquable vers Castopod
 - [x] ✅ **Backward compatibility** : Redirection 301 `/podcast?season=X&episode=Y` → `/podcast/X/Y`
-- [ ] **Phase 5.2-5.4** : Worker save BDD + route check cache + tests end-to-end
+- [x] ✅ **Fix production** : Pool connections Fastify réutilisé (évite "too many connections")
+
+---
+
+## ✅ État d'implémentation - PRODUCTION FONCTIONNELLE (2025-11-05)
+
+### Phase 5 complète : Cache BDD + Worker + Page Smartlink
+
+#### 5.1 Migration SQL - `episode_links` ✅
+- **Table créée** : `episode_links (season, episode, spotify_url, apple_url, deezer_url, resolved_at, created_at)`
+- **Contrainte** : `UNIQUE (season, episode)` pour déduplication
+- **Déploiement** : Migration jouée manuellement en prod via `psql` (2025-11-05)
+
+#### 5.2 Worker sauvegarde BDD ✅
+- **Fichier** : `server/queues/episodeQueue.js`
+- **Logique** : `INSERT ... ON CONFLICT (season, episode) DO UPDATE SET ...`
+- **Idempotence** : UPDATE uniquement si colonnes vides (`spotify_url IS NULL OR spotify_url = ''`)
+- **Pool connections** : Réutilise `fastify.pg.connect()` au lieu de `new Client()`
+
+**Problème résolu** : "too many connections for role"
+- **Cause** : Plan PostgreSQL gratuit = 5 connexions max. Worker créait `new Client()` à chaque job
+- **Solution** : Passer instance Fastify au worker → `startWorker(fastify)` → `fastify.pg.connect()` réutilise pool
+- **Configuration** : Limite pool Fastify (`max: 2`) + pg-boss (`max: 1`) = 3 connexions/instance max
+
+#### 5.3 Route vérifie cache et affiche smartlink ✅
+- **Route** : `GET /podcast/:season/:episode`
+- **Workflow** :
+  1. Fetch RSS Castopod (metadata épisode)
+  2. Query `episode_links` pour liens plateformes résolus
+  3. Render page Handlebars avec boutons cliquables
+  4. Si cache MISS : queue job worker en arrière-plan
+- **UX** : Utilisateur **choisit** sa plateforme (pas de redirect automatique)
+
+#### 5.4 Tests production end-to-end ✅
+
+**Variables d'environnement ajoutées** (CleverCloud) :
+```bash
+SPOTIFY_CLIENT_ID=2ec608bfda5841108e105c76522d684a
+SPOTIFY_CLIENT_SECRET=8b7fcba903c04cdaa638124dc255117e
+SPOTIFY_SHOW_ID=07VuGnu0YSacC671s0DQ3a
+APPLE_PODCAST_ID=1846531745
+DEEZER_SHOW_ID=1002292972
+PODCASTADDICT_PODCAST_ID=6137997
+POCKETCASTS_PODCAST_UUID=bb74e9c5-20e5-5226-8491-d512ad8ebe04
+```
+
+**Problème détecté** : Worker résolvait `{ spotify: null, apple: null, deezer: null }`
+- **Cause** : Variables d'environnement manquantes en prod
+- **Solution** : `clever env set` + redéploiement
+
+**Test réussi** :
+1. Visite `https://saletesincere.fr/podcast/2/1`
+2. Logs worker : `[Worker xxx] Resolved: { spotify: 'https://...', apple: '...', deezer: '...' }`
+3. Query BDD confirme URLs sauvegardées
+4. Page affiche liens directs actifs
+
+**Statut** : ✅ Production fonctionnelle
+
+---
+
+## Leçons apprises
+
+### 1. PostgreSQL Connection Pooling (plans gratuits)
+**Problème** : "too many connections" avec limite 5 connexions (plan gratuit CleverCloud)
+
+**Solution** :
+- Limiter pool size Fastify (`max: 2`)
+- Limiter pool pg-boss (`max: 1`)
+- Réutiliser pool Fastify dans worker (pas de `new Client()`)
+- Total/instance : 3 connexions → reste marge pour scaling
+
+**Recommandation** : Pour plans PostgreSQL limités :
+1. Documenter limite connexions dans ADR
+2. Configurer `max` pool explicitement
+3. Réutiliser pools existants
+4. Monitorer : `SELECT count(*) FROM pg_stat_activity WHERE datname='...'`
+
+### 2. Variables d'environnement production
+**Problème** : Worker résolvait null (credentials manquantes)
+
+**Checklist déploiement** :
+- [ ] `.env` local contient toutes les vars
+- [ ] `clever env` liste les vars en prod
+- [ ] Logs production confirment utilisation (pas de null inattendu)
+- [ ] Tests end-to-end après déploiement
+
+### 3. ON CONFLICT stratégie
+**Évolution** : `DO NOTHING` → `DO UPDATE SET ... WHERE ... IS NULL`
+
+**Raison** : Permet de re-résoudre les épisodes avec liens vides (échecs temporaires APIs, credentials manquantes initiales)
+
+**Trade-off** : Perte d'idempotence pure (ligne modifiée même si déjà résolue), mais gain en robustesse (auto-correction des erreurs)
+
+---
 
 ### Configuration `.env`
 
@@ -1447,4 +1521,23 @@ clever env set SPOTIFY_CLIENT_SECRET "YOUR_SPOTIFY_CLIENT_SECRET_HERE"
 
 ---
 
-**Prochain cycle TDD** : Phase 0 (investigation APIs) → Phase 1 (RED platform search)
+## Statut final : ✅ ADR-0011 IMPLÉMENTÉ ET DÉPLOYÉ
+
+**Date de complétion** : 2025-11-05  
+**Environnement** : Production CleverCloud  
+**URL** : https://saletesincere.fr/podcast/:season/:episode  
+
+**Features livrées** :
+- ✅ Page smartlink avec choix utilisateur explicite (4 plateformes : Castopod, Spotify, Apple, Deezer)
+- ✅ Worker pg-boss résolution background APIs
+- ✅ Cache PostgreSQL `episode_links` avec UPDATE auto si vides
+- ✅ Pool connections optimisé (max 3/instance pour plan gratuit 5 connexions)
+- ✅ Variables env production configurées
+- ✅ Backward compatibility `/podcast?season=X&episode=Y` → 301 redirect
+- ✅ UX polish : Description 400 chars + lien Castopod cliquable
+
+**Prochaines évolutions possibles** (ADRs futurs) :
+- Analytics clics plateformes (quel bouton le plus utilisé)
+- Génération images Open Graph custom (reporté de cet ADR)
+- Support plateformes supplémentaires (YouTube Music, Amazon Music)
+- Cache warming (pré-résoudre tous les épisodes au lancement)
