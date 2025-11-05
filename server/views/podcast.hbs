@@ -104,7 +104,7 @@
                 </a>
                 
                 <!-- Apple Podcasts -->
-                <a href="https://podcasts.apple.com/us/podcast/pas-de-charbon-pas-de-wafer/id1846531745" target="_blank" rel="noopener noreferrer" 
+                <a href="{{#if platformLinks.apple_url}}{{platformLinks.apple_url}}{{else}}https://podcasts.apple.com/us/podcast/pas-de-charbon-pas-de-wafer/id1846531745{{/if}}" target="_blank" rel="noopener noreferrer" 
                    class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20 text-black">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -113,7 +113,7 @@
                             </div>
                             <div class="text-left">
                                 <div class="font-semibold text-black">Apple Podcasts</div>
-                                <div class="text-xs text-gray-500">Écouter sur Apple</div>
+                                <div class="text-xs text-gray-500">{{#if episodeData}}Écouter {{episodeData.title}}{{else}}Écouter le podcast{{/if}}</div>
                             </div>
                         </div>
                         <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -123,7 +123,7 @@
                 </a>
                 
                 <!-- Spotify -->
-                <a href="https://open.spotify.com/show/07VuGnu0YSacC671s0DQ3a" target="_blank" rel="noopener noreferrer" 
+                <a href="{{#if platformLinks.spotify_url}}{{platformLinks.spotify_url}}{{else}}https://open.spotify.com/show/07VuGnu0YSacC671s0DQ3a{{/if}}" target="_blank" rel="noopener noreferrer" 
                    class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20 text-black">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -132,7 +132,7 @@
                             </div>
                             <div class="text-left">
                                 <div class="font-semibold text-black">Spotify</div>
-                                <div class="text-xs text-gray-500">Écouter sur Spotify</div>
+                                <div class="text-xs text-gray-500">{{#if episodeData}}Écouter {{episodeData.title}}{{else}}Écouter le podcast{{/if}}</div>
                             </div>
                         </div>
                         <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -142,7 +142,7 @@
                 </a>
                 
                 <!-- Deezer -->
-                <a href="https://www.deezer.com/fr/show/1002292972" target="_blank" rel="noopener noreferrer" 
+                <a href="{{#if platformLinks.deezer_url}}{{platformLinks.deezer_url}}{{else}}https://www.deezer.com/fr/show/1002292972{{/if}}" target="_blank" rel="noopener noreferrer" 
                    class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20 text-black">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -151,7 +151,7 @@
                             </div>
                             <div class="text-left">
                                 <div class="font-semibold text-black">Deezer</div>
-                                <div class="text-xs text-gray-500">Écouter sur Deezer</div>
+                                <div class="text-xs text-gray-500">{{#if episodeData}}Écouter {{episodeData.title}}{{else}}Écouter le podcast{{/if}}</div>
                             </div>
                         </div>
                         <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -161,7 +161,7 @@
                 </a>
                 
                 <!-- Podcast Addict -->
-                <a href="https://podcastaddict.com/podcast/pas-de-charbon-pas-de-wafer/6137997" target="_blank" rel="noopener noreferrer" 
+                <a href="{{#if platformLinks.podcast_addict_url}}{{platformLinks.podcast_addict_url}}{{else}}https://podcastaddict.com/podcast/pas-de-charbon-pas-de-wafer/6137997{{/if}}" target="_blank" rel="noopener noreferrer" 
                    class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20 text-black">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -170,7 +170,7 @@
                             </div>
                             <div class="text-left">
                                 <div class="font-semibold text-black">Podcast Addict</div>
-                                <div class="text-xs text-gray-500">Écouter sur Podcast Addict</div>
+                                <div class="text-xs text-gray-500">{{#if episodeData}}Écouter {{episodeData.title}}{{else}}Écouter le podcast{{/if}}</div>
                             </div>
                         </div>
                         <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

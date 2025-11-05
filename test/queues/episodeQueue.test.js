@@ -61,7 +61,7 @@ describe('episodeQueue', () => {
   describe('queueEpisodeResolution', () => {
     test('should create job with episode data and return job ID', async () => {
       // Premier appel : doit créer le job
-      const jobId = await queueEpisodeResolution(2, 1, 'Test Episode', 'https://example.com/cover.jpg')
+      const jobId = await queueEpisodeResolution(2, 1, '2025-10-27', 'Test Episode', 'https://example.com/cover.jpg')
       
       assert.ok(jobId, 'Should return job ID')
       assert.strictEqual(typeof jobId, 'string', 'Job ID should be a string')
@@ -70,11 +70,11 @@ describe('episodeQueue', () => {
 
     test('should throttle duplicate jobs within singletonSeconds window (returns null)', async () => {
       // Premier appel : crée le job
-      const jobId1 = await queueEpisodeResolution(3, 5, 'Throttle Test', 'https://example.com/cover.jpg')
+      const jobId1 = await queueEpisodeResolution(3, 5, '2025-09-15', 'Throttle Test', 'https://example.com/cover.jpg')
       assert.ok(jobId1, 'First call should create job and return job ID')
       
       // Deuxième appel immédiat : throttling actif (singletonSeconds: 300)
-      const jobId2 = await queueEpisodeResolution(3, 5, 'Throttle Test', 'https://example.com/cover.jpg')
+      const jobId2 = await queueEpisodeResolution(3, 5, '2025-09-15', 'Throttle Test', 'https://example.com/cover.jpg')
       
       // ⚠️ Comportement pg-boss "one per time slot" : retourne null si job existe dans le slot
       assert.strictEqual(jobId2, null, 'Should return null when throttled (job exists in singletonSeconds window)')
@@ -82,8 +82,8 @@ describe('episodeQueue', () => {
 
     test('should accept different episode numbers as separate jobs', async () => {
       // Deux épisodes différents : pas de throttling car singletonKey différent
-      const jobId1 = await queueEpisodeResolution(4, 1, 'Episode 1', 'https://example.com/cover.jpg')
-      const jobId2 = await queueEpisodeResolution(4, 2, 'Episode 2', 'https://example.com/cover.jpg')
+      const jobId1 = await queueEpisodeResolution(4, 1, '2025-08-10', 'Episode 1', 'https://example.com/cover.jpg')
+      const jobId2 = await queueEpisodeResolution(4, 2, '2025-08-17', 'Episode 2', 'https://example.com/cover.jpg')
       
       assert.ok(jobId1, 'Episode 4-1 should create job')
       assert.ok(jobId2, 'Episode 4-2 should create job')
@@ -96,7 +96,7 @@ describe('episodeQueue', () => {
       const singletonKey = `episode-${season}-${episode}`
       
       // Premier appel : crée le job
-      const jobId1 = await queueEpisodeResolution(season, episode, 'DB Test', 'https://example.com/img.jpg')
+      const jobId1 = await queueEpisodeResolution(season, episode, '2025-07-20', 'DB Test', 'https://example.com/img.jpg')
       assert.ok(jobId1, 'Should create first job')
       
       // Query BDD : vérifier qu'un seul job existe avec ce singletonKey
@@ -118,7 +118,7 @@ describe('episodeQueue', () => {
       assert.strictEqual(jobData.episode, episode, 'Episode should be stored in job data')
       
       // Deuxième appel : throttled (retourne null)
-      const jobId2 = await queueEpisodeResolution(season, episode, 'DB Test', 'https://example.com/img.jpg')
+      const jobId2 = await queueEpisodeResolution(season, episode, '2025-07-20', 'DB Test', 'https://example.com/img.jpg')
       assert.strictEqual(jobId2, null, 'Should return null when throttled')
       
       // Re-query BDD : toujours 1 seul job (pas de doublon)
@@ -137,7 +137,7 @@ describe('episodeQueue', () => {
     test('should process job and call platform APIs', async (t) => {
       // Worker déjà démarré dans before()
       // On crée un job
-      const jobId = await queueEpisodeResolution(6, 1, 'Worker Test Episode', 'https://example.com/cover.jpg')
+      const jobId = await queueEpisodeResolution(6, 1, '2025-10-27', 'Worker Test Episode', 'https://example.com/cover.jpg')
       assert.ok(jobId, 'Job should be created')
       
       // Attendre que le worker traite le job (pg-boss poll interval + API calls)
@@ -158,6 +158,80 @@ describe('episodeQueue', () => {
       }
       
       assert.strictEqual(jobState, 'completed', 'Job should be completed by worker')
+    })
+
+    test('REGRESSION: different episodes should resolve to DIFFERENT platform URLs', async (t) => {
+      // ⚠️ CE TEST AURAIT DÛ EMPÊCHER LE BUG !
+      // Avant fix : worker utilisait hardcoded date '2025-10-27' pour TOUS les épisodes
+      // → Toutes les résolutions pointaient vers le même épisode
+      
+      // Cleanup : supprimer les entrées existantes pour S2E1 et S2E2
+      await pgClient.query(`DELETE FROM episode_links WHERE season = 2 AND episode IN (1, 2)`)
+      
+      // 1. Queue résolution pour S2E1 avec SA date de publication (vraie date du RSS)
+      const jobId1 = await queueEpisodeResolution(2, 1, '2025-10-27', 'S2E1 Episode Title', 'https://example.com/s2e1.jpg')
+      assert.ok(jobId1, 'S2E1 job should be created')
+      
+      // 2. Queue résolution pour S2E2 avec SA date de publication (vraie date du RSS : 4 nov 2025, pas 27 oct)
+      const jobId2 = await queueEpisodeResolution(2, 2, '2025-11-04', 'S2E2 Episode Title', 'https://example.com/s2e2.jpg')
+      assert.ok(jobId2, 'S2E2 job should be created')
+      
+      // 3. Attendre que les deux workers traitent les jobs
+      await new Promise(resolve => setTimeout(resolve, 10000))
+      
+      // 4. Vérifier que les deux jobs sont completed
+      const jobs = await pgClient.query(
+        `SELECT id, state, output FROM pgboss.job WHERE id = ANY($1::uuid[])`,
+        [[jobId1, jobId2]]
+      )
+      
+      for (const job of jobs.rows) {
+        if (job.state !== 'completed') {
+          console.log(`[DEBUG] Job ${job.id} state: ${job.state}, output:`, job.output)
+        }
+        assert.strictEqual(job.state, 'completed', `Job ${job.id} should be completed`)
+      }
+      
+      // 5. Vérifier que les URLs dans episode_links sont DIFFÉRENTES
+      const links = await pgClient.query(
+        `SELECT season, episode, spotify_url, apple_url, deezer_url 
+         FROM episode_links 
+         WHERE season = 2 AND episode IN (1, 2)
+         ORDER BY episode`
+      )
+      
+      assert.strictEqual(links.rows.length, 2, 'Should have 2 episode_links entries')
+      
+      const s2e1 = links.rows[0]
+      const s2e2 = links.rows[1]
+      
+      // ⚠️ ASSERTION CRITIQUE : Les URLs doivent être DIFFÉRENTES
+      assert.notStrictEqual(
+        s2e1.spotify_url, 
+        s2e2.spotify_url, 
+        'S2E1 and S2E2 should have DIFFERENT Spotify URLs (bug: hardcoded date returned same URL)'
+      )
+      
+      assert.notStrictEqual(
+        s2e1.apple_url, 
+        s2e2.apple_url, 
+        'S2E1 and S2E2 should have DIFFERENT Apple URLs'
+      )
+      
+      assert.notStrictEqual(
+        s2e1.deezer_url, 
+        s2e2.deezer_url, 
+        'S2E1 and S2E2 should have DIFFERENT Deezer URLs'
+      )
+      
+      // 6. Vérifier que les URLs sont valides (non null, format correct)
+      assert.ok(s2e1.spotify_url, 'S2E1 Spotify URL should exist')
+      assert.ok(s2e2.spotify_url, 'S2E2 Spotify URL should exist')
+      assert.match(s2e1.spotify_url, /^https:\/\/open\.spotify\.com\/episode\//, 'S2E1 Spotify URL should be valid')
+      assert.match(s2e2.spotify_url, /^https:\/\/open\.spotify\.com\/episode\//, 'S2E2 Spotify URL should be valid')
+      
+      console.log(`✅ S2E1 Spotify: ${s2e1.spotify_url.substring(0, 60)}...`)
+      console.log(`✅ S2E2 Spotify: ${s2e2.spotify_url.substring(0, 60)}...`)
     })
   })
 })

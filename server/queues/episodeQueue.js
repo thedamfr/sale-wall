@@ -4,12 +4,15 @@
  */
 
 import PgBoss from 'pg-boss'
+import pg from 'pg'
 import { 
   searchSpotifyEpisode, 
   searchAppleEpisode, 
   searchDeezerEpisode,
   buildPodcastAddictLink
 } from '../services/platformAPIs.js'
+
+const { Client } = pg
 
 let boss = null
 
@@ -49,13 +52,14 @@ export function getBoss() {
  * Enqueue job résolution épisode (avec déduplication)
  * @param {number} season - Numéro saison
  * @param {number} episode - Numéro épisode
- * @param {string} title - Titre épisode
+ * @param {string} episodeDate - Date publication ISO (YYYY-MM-DD)
+ * @param {string} title - Titre épisode  
  * @param {string} imageUrl - URL image cover
  * @returns {Promise<string>} Job ID
  */
-export async function queueEpisodeResolution(season, episode, title, imageUrl) {
+export async function queueEpisodeResolution(season, episode, episodeDate, title, imageUrl) {
   return boss.send('resolve-episode', 
-    { season, episode, title, imageUrl },
+    { season, episode, episodeDate, title, imageUrl },
     {
       singletonKey: `episode-${season}-${episode}`,  // Idempotency key (throttling)
       singletonSeconds: 300  // Throttle 5 min : 1 job max par slot temporel
@@ -73,7 +77,7 @@ export async function startWorker() {
     // pg-boss v9 passe un array de jobs (batch mode par défaut)
     const job = jobs[0]
     
-    const { season, episode, title, imageUrl } = job.data
+    const { season, episode, episodeDate, title, imageUrl } = job.data
     
     console.log(`[Worker ${job.id}] Resolving S${season}E${episode}: ${title}`)
     
@@ -81,9 +85,7 @@ export async function startWorker() {
     // const existing = await db.query('SELECT * FROM episode_links WHERE season=$1 AND episode=$2', [season, episode])
     // if (existing.spotify_episode_id) { return } // Déjà fait
     
-    // TODO: Convertir season/episode → date de publication (depuis RSS ou BDD)
-    // Pour l'instant on utilise une date hardcodée pour passer GREEN
-    const episodeDate = '2025-10-27' // S2E1
+    // Use episode date from RSS for platform API lookups
     
     // Appeler les APIs en parallèle
     const [spotifyResult, appleResult, deezerResult] = await Promise.allSettled([
@@ -100,8 +102,31 @@ export async function startWorker() {
     
     console.log(`[Worker ${job.id}] Resolved:`, links)
     
-    // TODO Phase 5: Sauvegarder en BDD
-    // await db.query('INSERT INTO episode_links (season, episode, links, ...) VALUES (...)')
+    // Phase 5: Sauvegarder en BDD (idempotent avec ON CONFLICT DO NOTHING)
+    try {
+      const connectionString = process.env.DATABASE_URL 
+        || process.env.POSTGRESQL_ADDON_URI 
+        || 'postgresql://salete:salete@localhost:5432/salete'
+      
+      const client = new Client({ connectionString })
+      await client.connect()
+      
+      try {
+        await client.query(`
+          INSERT INTO episode_links (season, episode, spotify_url, apple_url, deezer_url, resolved_at)
+          VALUES ($1, $2, $3, $4, $5, NOW())
+          ON CONFLICT (season, episode) DO NOTHING
+        `, [season, episode, links.spotify, links.apple, links.deezer])
+        
+        console.log(`[Worker ${job.id}] ✅ Saved to database`)
+      } finally {
+        await client.end()
+      }
+    } catch (dbError) {
+      console.error(`[Worker ${job.id}] ❌ Failed to save to database:`, dbError.message)
+      // Ne pas throw : le job est marqué completed même si save échoue
+      // Les liens seront re-résolus au prochain appel
+    }
   })
 }
 

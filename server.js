@@ -671,47 +671,18 @@ app.get("/manifeste", {
   reply.view("manifeste.hbs", { title: "Manifeste" })
 );
 
-// Route podcast (liens style Linktree + episode highlight dynamique)
+// Route podcast générale (liens show)
 app.get("/podcast", {
   config: {
     rateLimit: pageLimiter
   }
 }, async (req, reply) => {
-  const { season, episode } = req.query;
-  
-  // Validation stricte params (OWASP A03 - XSS prevention)
-  const seasonRegex = /^\d+$/;
-  const episodeRegex = /^\d+$/;
-  
-  if (season && episode && seasonRegex.test(season) && episodeRegex.test(episode)) {
-    try {
-      // Fetch episode from RSS with timeout
-      const episodeData = await fetchEpisodeFromRSS(
-        parseInt(season),
-        parseInt(episode),
-        5000 // 5s timeout
-      );
-
-      if (episodeData) {
-        // Cache headers (Cloudflare Edge)
-        reply.header('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-        
-        // Render with Handlebars template
-        return reply.view("podcast.hbs", { episodeData });
-      }
-    } catch (err) {
-      // RSS fetch failed, log and fallback to classic page
-      req.log.warn('RSS fetch failed, rendering classic page', { season, episode, error: err.message });
-    }
-  }
-  
-  // Fallback: classic page (no episode data)
   reply.header('Cache-Control', 'public, max-age=3600');
   return reply.view("podcast.hbs", { episodeData: null });
 });
 
-// Route smartlink multiplateforme /episode/:season/:episode (ADR-0011)
-app.get("/episode/:season/:episode", {
+// Route smartlink multiplateforme /podcast/:season/:episode (ADR-0011)
+app.get("/podcast/:season/:episode", {
   config: {
     rateLimit: pageLimiter
   }
@@ -724,27 +695,44 @@ app.get("/episode/:season/:episode", {
     return reply.redirect('/podcast');
   }
   
-  // 1. Fetch RSS pour obtenir date épisode
+  // 1. Fetch episode metadata from RSS
   const episodeData = await fetchEpisodeFromRSS(season, episode, 5000).catch(() => null);
   
   if (!episodeData) {
     return reply.redirect('/podcast'); // Épisode introuvable
   }
   
-  // 2. Queue job pour résolution asynchrone des liens plateformes
-  // TODO Phase 5: Vérifier cache BDD (episode_links) avant de queuer
-  await queueEpisodeResolution(season, episode);
+  // 2. Check cache BDD (episode_links) pour liens plateformes
+  const client = await app.pg.connect();
+  let platformLinks = null;
   
-  // 3. Retour immédiat avec placeholder (liens seront résolus en arrière-plan)
-  // TODO Phase 4.4: User-Agent detection + redirect vers plateforme appropriée
-  // TODO Phase 5: Si liens déjà résolus en BDD, redirect direct
+  try {
+    const cacheResult = await client.query(
+      'SELECT spotify_url, apple_url, deezer_url, podcast_addict_url FROM episode_links WHERE season = $1 AND episode = $2',
+      [season, episode]
+    );
+    
+    if (cacheResult.rows.length > 0) {
+      platformLinks = cacheResult.rows[0];
+    }
+  } finally {
+    client.release();
+  }
   
-  return reply.send({
-    season,
-    episode,
-    title: episodeData.title,
-    episodeDate: episodeData.rawPubDate,
-    message: 'Smartlink en cours de résolution (worker actif)'
+  // 3. Si pas en cache, queue job pour résolution asynchrone
+  if (!platformLinks || !platformLinks.spotify_url) {
+    await queueEpisodeResolution(season, episode, episodeData.rawPubDate, episodeData.title, episodeData.image);
+  }
+  
+  // 4. Render page avec données épisode + liens plateformes (ou null si pas encore résolus)
+  reply.header('Cache-Control', 'public, max-age=3600');
+  return reply.view("podcast.hbs", { 
+    episodeData: {
+      ...episodeData,
+      season,
+      episode
+    },
+    platformLinks 
   });
 });
 
