@@ -102,7 +102,7 @@ export async function startWorker() {
     
     console.log(`[Worker ${job.id}] Resolved:`, links)
     
-    // Phase 5: Sauvegarder en BDD (idempotent avec ON CONFLICT DO NOTHING)
+    // Phase 5: Sauvegarder en BDD (idempotent avec ON CONFLICT UPDATE si vide)
     try {
       const connectionString = process.env.DATABASE_URL 
         || process.env.POSTGRESQL_ADDON_URI 
@@ -115,7 +115,18 @@ export async function startWorker() {
         await client.query(`
           INSERT INTO episode_links (season, episode, spotify_url, apple_url, deezer_url, resolved_at)
           VALUES ($1, $2, $3, $4, $5, NOW())
-          ON CONFLICT (season, episode) DO NOTHING
+          ON CONFLICT (season, episode) 
+          DO UPDATE SET
+            spotify_url = EXCLUDED.spotify_url,
+            apple_url = EXCLUDED.apple_url,
+            deezer_url = EXCLUDED.deezer_url,
+            resolved_at = NOW()
+          WHERE episode_links.spotify_url IS NULL 
+             OR episode_links.spotify_url = ''
+             OR episode_links.apple_url IS NULL
+             OR episode_links.apple_url = ''
+             OR episode_links.deezer_url IS NULL
+             OR episode_links.deezer_url = ''
         `, [season, episode, links.spotify, links.apple, links.deezer])
         
         console.log(`[Worker ${job.id}] ✅ Saved to database`)
