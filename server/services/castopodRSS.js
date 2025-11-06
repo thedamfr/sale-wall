@@ -35,6 +35,9 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
     });
     const rss = parser.parse(xmlText);
 
+    // Extract feed-level lastBuildDate (channel-level, not item-level)
+    const feedLastBuildDate = rss.rss?.channel?.lastBuildDate || null;
+
     // Find episode matching season and episode number
     const items = rss.rss?.channel?.item || [];
     const itemsArray = Array.isArray(items) ? items : [items];
@@ -93,7 +96,8 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
       duration: formatDuration(durationSeconds),
       image: matchedItem['itunes:image']?.['@_href'] || null,
       audioUrl: matchedItem.enclosure?.['@_url'] || '',
-      episodeLink: matchedItem.link || '' // Castopod episode page
+      episodeLink: matchedItem.link || '', // Castopod episode page
+      feedLastBuildDate // Channel-level lastBuildDate pour cache invalidation OG Images
     };
   } finally {
     clearTimeout(timeoutId);
@@ -135,10 +139,12 @@ function formatDateFrench(date) {
  * @property {number} episode - Episode number
  * @property {string} title - Episode title
  * @property {string} description - Episode summary (plain text, max 300 chars)
+ * @property {boolean} isTruncated - Whether description was truncated
  * @property {string} pubDate - Formatted date "27 octobre 2025"
  * @property {string} rawPubDate - ISO date "2025-10-27" for APIs
  * @property {string} duration - Formatted duration "43:11" or "1:43:11"
  * @property {string|null} image - Episode cover URL or null
  * @property {string} audioUrl - MP3 direct link
  * @property {string} episodeLink - Castopod episode page URL
+ * @property {string|null} feedLastBuildDate - RSS channel lastBuildDate (for OG image cache invalidation)
  */

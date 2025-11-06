@@ -43,5 +43,13 @@ describe('Castopod RSS Parser', () => {
       const episode = await fetchEpisodeFromRSS(2, 1, 5000);
       assert.ok(episode !== undefined);
     });
+
+    it('should include feedLastBuildDate from RSS channel', async () => {
+      const episode = await fetchEpisodeFromRSS(2, 1);
+      
+      assert.ok(episode.feedLastBuildDate, 'feedLastBuildDate should exist');
+      assert.ok(episode.feedLastBuildDate instanceof Date || typeof episode.feedLastBuildDate === 'string', 
+        'feedLastBuildDate should be a Date or ISO string');
+    });
   });
 });
