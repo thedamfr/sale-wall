@@ -1,6 +1,6 @@
 /**
  * Episode Queue - pg-boss pour résolution épisodes en background
- * Phase 3 TDD
+ * Phase 3 TDD + Phase 3 OG Images
  */
 
 import PgBoss from 'pg-boss'
@@ -11,6 +11,8 @@ import {
   searchDeezerEpisode,
   buildPodcastAddictLink
 } from '../services/platformAPIs.js'
+import { generateOGImage } from '../services/ogImageGenerator.js'
+import { uploadToS3, deleteFromS3 } from '../services/s3Service.js'
 
 const { Client } = pg
 
@@ -78,7 +80,7 @@ export async function startWorker(fastify) {
     // pg-boss v9 passe un array de jobs (batch mode par défaut)
     const job = jobs[0]
     
-    const { season, episode, episodeDate, title, imageUrl } = job.data
+    const { season, episode, episodeDate, title, imageUrl, feedLastBuildDate } = job.data
     
     console.log(`[Worker ${job.id}] Resolving S${season}E${episode}: ${title}`)
     
@@ -87,6 +89,45 @@ export async function startWorker(fastify) {
     // if (existing.spotify_episode_id) { return } // Déjà fait
     
     // Use episode date from RSS for platform API lookups
+    
+    // Phase 3: Générer OG Image (ADR-0012)
+    let ogImageUrl = null;
+    let ogImageS3Key = null;
+    
+    try {
+      console.log(`[Worker ${job.id}] Generating OG Image from ${imageUrl}`)
+      
+      // 1. Générer PNG buffer avec blur effect
+      const ogImageBuffer = await generateOGImage(imageUrl);
+      
+      // 2. S3 Key: og-images/s{season}e{episode}.png
+      ogImageS3Key = `og-images/s${season}e${episode}.png`;
+      
+      // 3. Cleanup: DELETE ancienne OG Image si existe
+      const client = await fastify.pg.connect();
+      try {
+        const existingResult = await client.query(
+          'SELECT og_image_s3_key FROM episode_links WHERE season = $1 AND episode = $2',
+          [season, episode]
+        );
+        
+        if (existingResult.rows.length > 0 && existingResult.rows[0].og_image_s3_key) {
+          const oldKey = existingResult.rows[0].og_image_s3_key;
+          console.log(`[Worker ${job.id}] Deleting old OG Image: ${oldKey}`);
+          await deleteFromS3(oldKey);
+        }
+      } finally {
+        client.release();
+      }
+      
+      // 4. Upload nouveau PNG vers S3
+      ogImageUrl = await uploadToS3(ogImageBuffer, ogImageS3Key, 'image/png');
+      console.log(`[Worker ${job.id}] ✅ OG Image uploaded: ${ogImageUrl}`);
+      
+    } catch (ogError) {
+      console.error(`[Worker ${job.id}] ⚠️ OG Image generation failed:`, ogError.message);
+      // Continue sans bloquer la résolution des liens plateformes
+    }
     
     // Appeler les APIs en parallèle
     const [spotifyResult, appleResult, deezerResult] = await Promise.allSettled([
@@ -108,24 +149,40 @@ export async function startWorker(fastify) {
       const client = await fastify.pg.connect()
       
       try {
+        // Phase 3: Sauvegarder aussi OG Image (colonnes ajoutées en Phase 4 migration)
         await client.query(`
-          INSERT INTO episode_links (season, episode, spotify_url, apple_url, deezer_url, resolved_at)
-          VALUES ($1, $2, $3, $4, $5, NOW())
+          INSERT INTO episode_links (
+            season, episode, 
+            spotify_url, apple_url, deezer_url, 
+            og_image_url, og_image_s3_key, feed_last_build, generated_at,
+            resolved_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
           ON CONFLICT (season, episode) 
           DO UPDATE SET
-            spotify_url = EXCLUDED.spotify_url,
-            apple_url = EXCLUDED.apple_url,
-            deezer_url = EXCLUDED.deezer_url,
+            spotify_url = COALESCE(EXCLUDED.spotify_url, episode_links.spotify_url),
+            apple_url = COALESCE(EXCLUDED.apple_url, episode_links.apple_url),
+            deezer_url = COALESCE(EXCLUDED.deezer_url, episode_links.deezer_url),
+            og_image_url = COALESCE(EXCLUDED.og_image_url, episode_links.og_image_url),
+            og_image_s3_key = COALESCE(EXCLUDED.og_image_s3_key, episode_links.og_image_s3_key),
+            feed_last_build = COALESCE(EXCLUDED.feed_last_build, episode_links.feed_last_build),
+            generated_at = CASE 
+              WHEN EXCLUDED.og_image_url IS NOT NULL THEN NOW() 
+              ELSE episode_links.generated_at 
+            END,
             resolved_at = NOW()
-          WHERE episode_links.spotify_url IS NULL 
-             OR episode_links.spotify_url = ''
-             OR episode_links.apple_url IS NULL
-             OR episode_links.apple_url = ''
-             OR episode_links.deezer_url IS NULL
-             OR episode_links.deezer_url = ''
-        `, [season, episode, links.spotify, links.apple, links.deezer])
+        `, [
+          season, 
+          episode, 
+          links.spotify, 
+          links.apple, 
+          links.deezer,
+          ogImageUrl,
+          ogImageS3Key,
+          feedLastBuildDate
+        ])
         
-        console.log(`[Worker ${job.id}] ✅ Saved to database`)
+        console.log(`[Worker ${job.id}] ✅ Saved to database (OG Image: ${ogImageUrl ? 'YES' : 'NO'})`)
       } finally {
         client.release()
       }
