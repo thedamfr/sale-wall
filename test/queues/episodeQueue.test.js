@@ -18,14 +18,27 @@ describe('episodeQueue', () => {
     // Init pg-boss une seule fois avant tous les tests
     await initQueue()
     
-    // Démarrer le worker une seule fois
-    await startWorker()
-
     // Init client PostgreSQL pour queries directes BDD
     pgClient = new Client({
       connectionString: process.env.DATABASE_URL
     })
     await pgClient.connect()
+    
+    // Mock fastify avec pool pg pour le worker
+    const mockFastify = {
+      pg: {
+        connect: async () => {
+          const client = await pgClient
+          return {
+            query: (...args) => client.query(...args),
+            release: () => {} // No-op pour les tests
+          }
+        }
+      }
+    }
+    
+    // Démarrer le worker avec mock fastify
+    await startWorker(mockFastify)
   })
 
   afterEach(async () => {
