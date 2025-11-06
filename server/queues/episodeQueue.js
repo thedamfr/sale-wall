@@ -57,9 +57,9 @@ export function getBoss() {
  * @param {string} imageUrl - URL image cover
  * @returns {Promise<string>} Job ID
  */
-export async function queueEpisodeResolution(season, episode, episodeDate, title, imageUrl) {
+export async function queueEpisodeResolution(season, episode, episodeDate, title, imageUrl, feedLastBuildDate = null) {
   return boss.send('resolve-episode', 
-    { season, episode, episodeDate, title, imageUrl },
+    { season, episode, episodeDate, title, imageUrl, feedLastBuildDate },
     {
       singletonKey: `episode-${season}-${episode}`,  // Idempotency key (throttling)
       singletonSeconds: 300  // Throttle 5 min : 1 job max par slot temporel

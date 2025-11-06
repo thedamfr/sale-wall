@@ -687,6 +687,41 @@ app.get("/podcast", {
   return reply.view("podcast.hbs", { episodeData: null });
 });
 
+/**
+ * Vérifie si l'OG Image doit être régénérée (ADR-0012)
+ * 
+ * @param {string|null} ogImageUrl - URL actuelle de l'OG Image
+ * @param {string|null} cachedFeedLastBuild - feed_last_build en BDD
+ * @param {string|null} generatedAt - Timestamp génération OG Image
+ * @param {string|Date} rssFeedLastBuildDate - lastBuildDate du RSS
+ * @returns {boolean} true si OG Image doit être régénérée
+ */
+function checkOGImageNeeds(ogImageUrl, cachedFeedLastBuild, generatedAt, rssFeedLastBuildDate) {
+  // Condition 1: Pas d'OG Image → doit générer
+  if (!ogImageUrl) return true;
+  
+  // Condition 2: RSS lastBuildDate a changé → doit régénérer
+  if (cachedFeedLastBuild && rssFeedLastBuildDate) {
+    const cachedDate = new Date(cachedFeedLastBuild);
+    const rssDate = new Date(rssFeedLastBuildDate);
+    
+    if (rssDate > cachedDate) {
+      return true; // RSS plus récent que cache
+    }
+  }
+  
+  // Condition 3: OG Image > 7 jours (fallback staleness)
+  if (generatedAt) {
+    const daysSinceGeneration = (Date.now() - new Date(generatedAt)) / (1000 * 60 * 60 * 24);
+    if (daysSinceGeneration > 7) {
+      return true; // Image trop ancienne
+    }
+  }
+  
+  // Sinon, OG Image up-to-date
+  return false;
+}
+
 // Route smartlink multiplateforme /podcast/:season/:episode (ADR-0011)
 app.get("/podcast/:season/:episode", {
   config: {
@@ -708,26 +743,50 @@ app.get("/podcast/:season/:episode", {
     return reply.redirect('/podcast'); // Épisode introuvable
   }
   
-  // 2. Check cache BDD (episode_links) pour liens plateformes
+  // 2. Check cache BDD (episode_links) pour liens plateformes + OG Image
   const client = await app.pg.connect();
   let platformLinks = null;
+  let shouldQueueJob = false;
   
   try {
     const cacheResult = await client.query(
-      'SELECT spotify_url, apple_url, deezer_url, podcast_addict_url FROM episode_links WHERE season = $1 AND episode = $2',
+      `SELECT spotify_url, apple_url, deezer_url, podcast_addict_url,
+              og_image_url, feed_last_build, generated_at 
+       FROM episode_links WHERE season = $1 AND episode = $2`,
       [season, episode]
     );
     
     if (cacheResult.rows.length > 0) {
       platformLinks = cacheResult.rows[0];
+      
+      // Check si OG Image doit être régénérée (ADR-0012)
+      const needsOGRegeneration = checkOGImageNeeds(
+        platformLinks.og_image_url,
+        platformLinks.feed_last_build,
+        platformLinks.generated_at,
+        episodeData.feedLastBuildDate
+      );
+      
+      // Queue job si liens manquants OU OG Image à régénérer
+      shouldQueueJob = !platformLinks.spotify_url || needsOGRegeneration;
+    } else {
+      // Pas de cache du tout → queue job
+      shouldQueueJob = true;
     }
   } finally {
     client.release();
   }
   
-  // 3. Si pas en cache, queue job pour résolution asynchrone
-  if (!platformLinks || !platformLinks.spotify_url) {
-    await queueEpisodeResolution(season, episode, episodeData.rawPubDate, episodeData.title, episodeData.image);
+  // 3. Si pas en cache OU OG Image obsolète, queue job pour résolution asynchrone
+  if (shouldQueueJob) {
+    await queueEpisodeResolution(
+      season, 
+      episode, 
+      episodeData.rawPubDate, 
+      episodeData.title, 
+      episodeData.image,
+      episodeData.feedLastBuildDate // Nouveau param pour cache invalidation
+    );
   }
   
   // 4. Render page avec données épisode + liens plateformes (ou null si pas encore résolus)
