@@ -127,6 +127,7 @@ export async function startWorker(fastify) {
       
     } catch (ogError) {
       console.error(`[Worker ${job.id}] ⚠️ OG Image generation failed:`, ogError.message);
+      console.error(`[Worker ${job.id}] Full error:`, ogError);
       // Continue sans bloquer la résolution des liens plateformes
     }
     
