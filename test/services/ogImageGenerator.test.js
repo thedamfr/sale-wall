@@ -16,7 +16,7 @@ test('generateOGImage - should return PNG buffer with correct dimensions', async
   const episodeImageUrl = TEST_THUMBNAIL;
   
   // Act
-  const buffer = await generateOGImage({ episodeImageUrl });
+  const buffer = await generateOGImage(episodeImageUrl);
   
   // Assert
   assert.ok(buffer instanceof Buffer, 'Should return a Buffer');
@@ -32,7 +32,7 @@ test('generateOGImage - should apply blur effect to background', async () => {
   const episodeImageUrl = TEST_THUMBNAIL;
   
   // Act
-  const buffer = await generateOGImage({ episodeImageUrl });
+  const buffer = await generateOGImage(episodeImageUrl);
   
   // Assert
   const image = await Jimp.read(buffer);
@@ -51,7 +51,7 @@ test('generateOGImage - should composite center image 400x400', async () => {
   const episodeImageUrl = TEST_THUMBNAIL;
   
   // Act
-  const buffer = await generateOGImage({ episodeImageUrl });
+  const buffer = await generateOGImage(episodeImageUrl);
   
   // Assert
   const image = await Jimp.read(buffer);

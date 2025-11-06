@@ -16,12 +16,11 @@ const BG_COLOR = 0x333333ff; // Gris foncé
 
 /**
  * Génère une OG Image 1200×630 avec effet blur
- * @param {Object} options
- * @param {string} options.episodeImageUrl - URL vignette épisode (depuis RSS)
+ * @param {string} episodeImageUrl - URL vignette épisode (depuis RSS)
  * @returns {Promise<Buffer>} PNG buffer
  * @throws {Error} Si chargement vignette échoue
  */
-export async function generateOGImage({ episodeImageUrl }) {
+export async function generateOGImage(episodeImageUrl) {
   // 1. Charger vignette épisode
   const thumbnail = await Jimp.read(episodeImageUrl);
   

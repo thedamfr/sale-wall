@@ -767,7 +767,7 @@ app.get("/podcast/:season/:episode", {
         episodeData.feedLastBuildDate
       );
       
-      // Queue job si liens manquants OU OG Image à régénérer
+      // Queue job si liens manquants OU OG Image manquante/obsolète
       shouldQueueJob = !platformLinks.spotify_url || needsOGRegeneration;
     } else {
       // Pas de cache du tout → queue job

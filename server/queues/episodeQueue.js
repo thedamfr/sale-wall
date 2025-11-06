@@ -83,6 +83,7 @@ export async function startWorker(fastify) {
     const { season, episode, episodeDate, title, imageUrl, feedLastBuildDate } = job.data
     
     console.log(`[Worker ${job.id}] Resolving S${season}E${episode}: ${title}`)
+    console.log(`[Worker ${job.id}] imageUrl:`, imageUrl, '| feedLastBuildDate:', feedLastBuildDate)
     
     // TODO Phase 5: Vérifier si déjà résolu en BDD (idempotent check)
     // const existing = await db.query('SELECT * FROM episode_links WHERE season=$1 AND episode=$2', [season, episode])
