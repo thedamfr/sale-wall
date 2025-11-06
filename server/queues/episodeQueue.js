@@ -59,9 +59,9 @@ export function getBoss() {
  * @param {string} imageUrl - URL image cover
  * @returns {Promise<string>} Job ID
  */
-export async function queueEpisodeResolution(season, episode, episodeDate, title, imageUrl, feedLastBuildDate = null) {
+export async function queueEpisodeResolution(season, episode, episodeDate, title, imageUrl, feedLastBuildDate = null, audioUrl = null) {
   return boss.send('resolve-episode', 
-    { season, episode, episodeDate, title, imageUrl, feedLastBuildDate },
+    { season, episode, episodeDate, title, imageUrl, feedLastBuildDate, audioUrl },
     {
       singletonKey: `episode-${season}-${episode}`,  // Idempotency key (throttling)
       singletonSeconds: 300  // Throttle 5 min : 1 job max par slot temporel
@@ -80,7 +80,7 @@ export async function startWorker(fastify) {
     // pg-boss v9 passe un array de jobs (batch mode par défaut)
     const job = jobs[0]
     
-    const { season, episode, episodeDate, title, imageUrl, feedLastBuildDate } = job.data
+    const { season, episode, episodeDate, title, imageUrl, feedLastBuildDate, audioUrl } = job.data
     
     console.log(`[Worker ${job.id}] Resolving S${season}E${episode}: ${title}`)
     console.log(`[Worker ${job.id}] imageUrl:`, imageUrl, '| feedLastBuildDate:', feedLastBuildDate)
@@ -137,10 +137,21 @@ export async function startWorker(fastify) {
       searchDeezerEpisode(episodeDate)
     ])
     
+    // Podcast Addict: Pas d'API, juste un deeplink avec audioUrl
+    let podcastAddictLink = null;
+    if (audioUrl) {
+      try {
+        podcastAddictLink = buildPodcastAddictLink(audioUrl);
+      } catch (error) {
+        console.error(`[Worker ${job.id}] ⚠️ Podcast Addict link failed:`, error.message);
+      }
+    }
+    
     const links = {
       spotify: spotifyResult.status === 'fulfilled' ? spotifyResult.value : null,
       apple: appleResult.status === 'fulfilled' ? appleResult.value : null,
-      deezer: deezerResult.status === 'fulfilled' ? deezerResult.value : null
+      deezer: deezerResult.status === 'fulfilled' ? deezerResult.value : null,
+      podcastAddict: podcastAddictLink
     }
     
     console.log(`[Worker ${job.id}] Resolved:`, links)
@@ -154,16 +165,17 @@ export async function startWorker(fastify) {
         await client.query(`
           INSERT INTO episode_links (
             season, episode, 
-            spotify_url, apple_url, deezer_url, 
+            spotify_url, apple_url, deezer_url, podcast_addict_url,
             og_image_url, og_image_s3_key, feed_last_build, generated_at,
             resolved_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
           ON CONFLICT (season, episode) 
           DO UPDATE SET
             spotify_url = COALESCE(EXCLUDED.spotify_url, episode_links.spotify_url),
             apple_url = COALESCE(EXCLUDED.apple_url, episode_links.apple_url),
             deezer_url = COALESCE(EXCLUDED.deezer_url, episode_links.deezer_url),
+            podcast_addict_url = COALESCE(EXCLUDED.podcast_addict_url, episode_links.podcast_addict_url),
             og_image_url = COALESCE(EXCLUDED.og_image_url, episode_links.og_image_url),
             og_image_s3_key = COALESCE(EXCLUDED.og_image_s3_key, episode_links.og_image_s3_key),
             feed_last_build = COALESCE(EXCLUDED.feed_last_build, episode_links.feed_last_build),
@@ -178,6 +190,7 @@ export async function startWorker(fastify) {
           links.spotify, 
           links.apple, 
           links.deezer,
+          links.podcastAddict,
           ogImageUrl,
           ogImageS3Key,
           feedLastBuildDate

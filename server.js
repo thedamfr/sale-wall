@@ -785,7 +785,8 @@ app.get("/podcast/:season/:episode", {
       episodeData.rawPubDate, 
       episodeData.title, 
       episodeData.image,
-      episodeData.feedLastBuildDate // Nouveau param pour cache invalidation
+      episodeData.feedLastBuildDate, // Cache invalidation OG
+      episodeData.audioUrl // Podcast Addict deeplink
     );
   }
   
