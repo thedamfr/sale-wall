@@ -24,21 +24,23 @@ Quand on partage `/podcast/2/1` sur LinkedIn/Twitter/Facebook, tous les épisode
 
 ### L'idée en une phrase
 
-Au lieu de faire du text rendering complexe, on prend la **vignette de l'épisode** (déjà dans le RSS), on la **floute en fond**, et on la **superpose nette au centre** avec bords ronds + shadow.
+Au lieu de faire du text rendering complexe, on prend la **vignette de l'épisode** (déjà dans le RSS), on la **floute en fond**, et on la **superpose nette au centre** ~~avec bords ronds + shadow~~.
+
+**⚠️ Note Phase 0** : Rounded corners retirés du MVP (masking Jimp complexe). Image carrée au centre suffit pour validation. Amélioration future si besoin.
 
 ### Résultat visuel
 
 ```
 ┌────────────────────────────────────────────┐
-│  🌫️ Fond = vignette blurée + assombrie    │
+│  🌫️ Fond = vignette blurée (blur 40px)    │
 │                                             │
 │           ┌───────────────┐                 │
-│           │   Vignette    │  ← Shadow       │
+│           │   Vignette    │                 │
 │           │   nette       │                 │
 │           │   centrée     │                 │
 │           │   400×400     │                 │
 │           └───────────────┘                 │
-│              (bords ronds)                  │
+│              (carrée MVP)                   │
 └────────────────────────────────────────────┘
 ```
 
@@ -46,8 +48,11 @@ Au lieu de faire du text rendering complexe, on prend la **vignette de l'épisod
 
 ✅ **Zéro fonts** : Pas de text rendering = pas de galère fonts  
 ✅ **Zéro template** : Vignette déjà dans Castopod  
-✅ **Simple** : 30 lignes Canvas (`blur()` + `drawImage()` + `roundRect()`)  
-✅ **Pro** : Même style que Ausha/Linkfire/Estamitech
+✅ **Simple** : 20 lignes Jimp (`blur(40)` + `composite()`)  
+✅ **Pro** : Même style que Ausha/Linkfire/Estamitech  
+✅ **Phase 0 validée** : `scripts/phase0-simple-test.js` - blur visible, <1s, 214KB
+
+**MVP scope** : Image carrée (pas de rounded corners pour simplifier masking)
 
 ---
 
@@ -103,15 +108,16 @@ Complexité inutile (SVG → PNG → composite)
 
 ---
 
-### 1. Service génération : `ogImageGenerator.js` (30 lignes)
+### 1. Service génération : `ogImageGenerator.js` (~20 lignes)
 
 ```javascript
 // Jimp : charge vignette → blur(40) → composite image nette → PNG
+// MVP : Image carrée (pas de rounded corners)
 ```
 
-- Génération : ~1-2s
+- Génération : ~800ms (Phase 0 validé)
 - RAM : ~50MB
-- Output : ~150KB PNG
+- Output : ~200KB PNG
 
 ---
 
@@ -156,25 +162,25 @@ Si vide → Vignette RSS directe
 
 ## Plan TDD
 
-### Phase 0 : Validation Jimp (1h)
+### ✅ Phase 0 : Validation Jimp (1h) - TERMINÉ
 
-Script `test-jimp-og-blur.js` : Charge vignette → blur(40) → composite → PNG
+Script `phase0-simple-test.js` : Charge vignette → blur(40) → composite → PNG
 
-**Critère** : Effet blur visible
+**Résultat** : ✅ Blur visible, 800ms, 214KB, tous risques validés
 
----
-
-### Phase 1 : RSS + Fastify check (2h)
-
-- Ajouter `feedLastBuildDate` dans `castopodRSS.js`
-- Check BDD dans `server.js` avant queue
-- 3 tests : skip si up-to-date, queue si RSS changé, queue si > 7j
+**MVP decision** : Image carrée (rounded corners reportés pour simplifier)
 
 ---
 
-### Phase 2 : Service génération (2h)
+### Phase 1 : Service ogImageGenerator (2h)
 
-3 tests : dimensions 1200×630, blur, rounded corners
+- Créer `server/services/ogImageGenerator.js`
+- 3 tests : dimensions 1200×630, blur, composite center
+- Pas de rounded corners (MVP)
+
+---
+
+### Phase 2 : RSS + Fastify check (2h)
 
 ---
 
