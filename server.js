@@ -122,7 +122,8 @@ if (!isProduction) {
 
 try {
   await app.register(fastifyPostgres, {
-    connectionString: databaseUrl
+    connectionString: databaseUrl,
+    max: 1 // Une seule connexion suffit (pas de requêtes longues)
   });
   console.log('✅ Database connected successfully');
 } catch (error) {
@@ -849,3 +850,32 @@ if (WORKER_ENABLED) {
 }
 
 await app.listen({ host: "0.0.0.0", port: process.env.PORT || 3000 });
+
+// Graceful shutdown pour déploiements CleverCloud
+// Libère les connexions DB rapidement quand SIGTERM reçu
+const gracefulShutdown = async (signal) => {
+  console.log(`\n📡 ${signal} received, closing gracefully...`);
+  
+  try {
+    // 1. Arrêter d'accepter nouvelles requêtes
+    await app.close();
+    console.log('✅ HTTP server closed');
+    
+    // 2. Arrêter le worker pg-boss (si actif)
+    if (boss) {
+      await boss.stop();
+      console.log('✅ Worker stopped');
+    }
+    
+    // 3. Fermer pool PostgreSQL (fastify-postgres le fait automatiquement)
+    console.log('✅ Database connections released');
+    
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

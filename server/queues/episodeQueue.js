@@ -30,7 +30,8 @@ export async function initQueue() {
   
   boss = new PgBoss({
     connectionString,
-    schema: 'pgboss'
+    schema: 'pgboss',
+    max: 1 // Une seule connexion suffit (trafic très faible ~10 req/h)
   })
   
   await boss.start()
