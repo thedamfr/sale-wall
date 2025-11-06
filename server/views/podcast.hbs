@@ -13,7 +13,12 @@
     <meta property="og:url" content="https://saletesincere.fr/podcast?season={{episodeData.season}}&episode={{episodeData.episode}}">
     <meta property="og:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
     <meta property="og:description" content="{{episodeData.description}}">
-    {{#if episodeData.image}}
+    {{!-- Phase 5: OG Image custom (ADR-0012) avec fallback RSS thumbnail --}}
+    {{#if platformLinks.og_image_url}}
+    <meta property="og:image" content="{{platformLinks.og_image_url}}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    {{else if episodeData.image}}
     <meta property="og:image" content="{{episodeData.image}}">
     {{else}}
     <meta property="og:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
@@ -24,7 +29,10 @@
     <meta property="twitter:url" content="https://saletesincere.fr/podcast?season={{episodeData.season}}&episode={{episodeData.episode}}">
     <meta property="twitter:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
     <meta property="twitter:description" content="{{episodeData.description}}">
-    {{#if episodeData.image}}
+    {{!-- Phase 5: Twitter Card custom OG Image avec fallback --}}
+    {{#if platformLinks.og_image_url}}
+    <meta property="twitter:image" content="{{platformLinks.og_image_url}}">
+    {{else if episodeData.image}}
     <meta property="twitter:image" content="{{episodeData.image}}">
     {{else}}
     <meta property="twitter:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
