@@ -7,7 +7,9 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client
 
 // Configuration S3 (MinIO local ou Cellar production)
 const s3Config = {
-  endpoint: process.env.CELLAR_ADDON_HOST || process.env.S3_ENDPOINT || 'http://localhost:9000',
+  endpoint: process.env.CELLAR_ADDON_HOST 
+    ? `https://${process.env.CELLAR_ADDON_HOST}` 
+    : (process.env.S3_ENDPOINT || 'http://localhost:9000'),
   credentials: {
     accessKeyId: process.env.CELLAR_ADDON_KEY_ID || process.env.S3_ACCESS_KEY || 'salete',
     secretAccessKey: process.env.CELLAR_ADDON_KEY_SECRET || process.env.S3_SECRET_KEY || 'salete123',

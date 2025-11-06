@@ -8,8 +8,7 @@ import pg from 'pg'
 import { 
   searchSpotifyEpisode, 
   searchAppleEpisode, 
-  searchDeezerEpisode,
-  buildPodcastAddictLink
+  searchDeezerEpisode
 } from '../services/platformAPIs.js'
 import { generateOGImage } from '../services/ogImageGenerator.js'
 import { uploadToS3, deleteFromS3 } from '../services/s3Service.js'
@@ -138,15 +137,14 @@ export async function startWorker(fastify) {
       searchDeezerEpisode(episodeDate)
     ])
     
-    // Podcast Addict: Pas d'API, juste un deeplink avec audioUrl
-    let podcastAddictLink = null;
-    if (audioUrl) {
-      try {
-        podcastAddictLink = buildPodcastAddictLink(audioUrl);
-      } catch (error) {
-        console.error(`[Worker ${job.id}] ⚠️ Podcast Addict link failed:`, error.message);
-      }
-    }
+    // Podcast Addict: Pas d'API publique connue
+    // Fallback vers le show au lieu de l'épisode spécifique
+    // Format épisode serait : http://podcastaddict.com/{slug}/episode/{episodeId}
+    // Mais on n'a pas d'API pour résoudre episodeId
+    const podcastAddictId = process.env.PODCASTADDICT_PODCAST_ID;
+    const podcastAddictLink = podcastAddictId 
+      ? `https://podcastaddict.com/podcast/${podcastAddictId}`
+      : null;
     
     const links = {
       spotify: spotifyResult.status === 'fulfilled' ? spotifyResult.value : null,

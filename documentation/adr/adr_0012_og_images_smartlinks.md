@@ -293,17 +293,42 @@ npm install jimp
 
 ---
 
-## Statut : 🚧 EN RÉDACTION
+## Limitations & Décisions de compromis
 
-**Prochaine étape** : **Phase 0 TDD** - Valider `node-canvas` + fonts custom sur CleverCloud
+### Podcast Addict : Fallback vers show (pas épisode)
 
-**Bloqueurs potentiels** :
-- ❌ Cairo build fail CleverCloud → Investiguer buildpack/alternatives
-- ❌ Fonts pas chargées → Revoir Sharp+SVG (Option B)
-- ❌ RAM OOM worker → Réduire cover size ou générer hors worker
+**Problème** : Format épisode Podcast Addict = `http://podcastaddict.com/{slug}/episode/{episodeId}`
 
-**Timeline estimée** :
-- Phase 0 (investigation) : 1h
-- Phase 1-3 (implémentation) : 3h
-- Phase 4 (production) : 1h
-- **Total** : ~5h
+**Tentatives** :
+- ❌ Deeplink avec `audioUrl` encodée → URL invalide
+- ❌ API publique Podcast Addict introuvable
+
+**Solution retenue** : Fallback vers show `https://podcastaddict.com/podcast/{podcastId}`
+
+**Impact** : Utilisateurs redirigés vers le show, pas l'épisode spécifique
+
+**TODO futur** : Investiguer scraping ou API non-documentée
+
+---
+
+## Statut : ✅ IMPLÉMENTÉ (Phase 6 - Production)
+
+**Phases complétées** :
+- ✅ Phase 0 : Validation Jimp (9 risques validés)
+- ✅ Phase 1 : Service ogImageGenerator
+- ✅ Phase 2.1 : RSS feedLastBuildDate
+- ✅ Phase 2.2 : Fastify BDD check
+- ✅ Phase 3 : Worker intégration + S3
+- ✅ Phase 4 : Migration SQL
+- ✅ Phase 5 : Template OG meta tags
+- ✅ Phase 6 : Déploiement production
+
+**Issues production** :
+- ✅ OOM Killed → RAM upgrade CleverCloud
+- 🔍 Jimp "Invalid URL" → Investigation en cours
+
+**Timeline réalisée** :
+- Investigation + Implémentation : ~6h
+- Déploiement + debug : ~1h
+- **Total** : ~7h
+
