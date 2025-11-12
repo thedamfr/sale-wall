@@ -104,24 +104,7 @@ export async function startWorker(fastify) {
       // 2. S3 Key: og-images/s{season}e{episode}.png
       ogImageS3Key = `og-images/s${season}e${episode}.png`;
       
-      // 3. Cleanup: DELETE ancienne OG Image si existe
-      const client = await fastify.pg.connect();
-      try {
-        const existingResult = await client.query(
-          'SELECT og_image_s3_key FROM episode_links WHERE season = $1 AND episode = $2',
-          [season, episode]
-        );
-        
-        if (existingResult.rows.length > 0 && existingResult.rows[0].og_image_s3_key) {
-          const oldKey = existingResult.rows[0].og_image_s3_key;
-          console.log(`[Worker ${job.id}] Deleting old OG Image: ${oldKey}`);
-          await deleteFromS3(oldKey);
-        }
-      } finally {
-        client.release();
-      }
-      
-      // 4. Upload nouveau PNG vers S3
+      // 3. Upload PNG vers S3 (cleanup de l'ancienne sera fait dans le bloc DB)
       ogImageUrl = await uploadToS3(ogImageBuffer, ogImageS3Key, 'image/png');
       console.log(`[Worker ${job.id}] ✅ OG Image uploaded: ${ogImageUrl}`);
       
@@ -161,7 +144,24 @@ export async function startWorker(fastify) {
       const client = await fastify.pg.connect()
       
       try {
-        // Phase 3: Sauvegarder aussi OG Image (colonnes ajoutées en Phase 4 migration)
+        // Phase 3.1: Cleanup - SELECT ancienne OG Image si existe, puis DELETE de S3
+        if (ogImageUrl) { // Si on a généré une nouvelle OG Image
+          const existingResult = await client.query(
+            'SELECT og_image_s3_key FROM episode_links WHERE season = $1 AND episode = $2',
+            [season, episode]
+          );
+          
+          if (existingResult.rows.length > 0 && existingResult.rows[0].og_image_s3_key) {
+            const oldKey = existingResult.rows[0].og_image_s3_key;
+            // Ne pas delete si c'est la même clé (idempotence)
+            if (oldKey !== ogImageS3Key) {
+              console.log(`[Worker ${job.id}] Deleting old OG Image: ${oldKey}`);
+              await deleteFromS3(oldKey);
+            }
+          }
+        }
+        
+        // Phase 3.2: Sauvegarder platform links + OG Image
         await client.query(`
           INSERT INTO episode_links (
             season, episode, 
@@ -205,6 +205,9 @@ export async function startWorker(fastify) {
       // Ne pas throw : le job est marqué completed même si save échoue
       // Les liens seront re-résolus au prochain appel
     }
+    
+    // IMPORTANT: pg-boss attend un return pour marquer le job comme completed
+    return { links, ogImageUrl }
   })
 }
 

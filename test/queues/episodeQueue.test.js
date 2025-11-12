@@ -154,16 +154,29 @@ describe('episodeQueue', () => {
       assert.ok(jobId, 'Job should be created')
       
       // Attendre que le worker traite le job (pg-boss poll interval + API calls)
-      await new Promise(resolve => setTimeout(resolve, 5000))
+      // Boucle pour vérifier l'état du job jusqu'à ce qu'il soit completed (max 10s)
+      let jobState = null;
+      let jobOutput = null;
+      let attempts = 0;
+      const maxAttempts = 20; // 20 x 500ms = 10s max
       
-      // Vérifier que le job a été traité
-      const result = await pgClient.query(
-        `SELECT state, output FROM pgboss.job WHERE id = $1`,
-        [jobId]
-      )
-      
-      const jobState = result.rows[0].state
-      const jobOutput = result.rows[0].output
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        const result = await pgClient.query(
+          `SELECT state, output FROM pgboss.job WHERE id = $1`,
+          [jobId]
+        )
+        
+        jobState = result.rows[0].state
+        jobOutput = result.rows[0].output
+        
+        if (jobState === 'completed' || jobState === 'failed') {
+          break
+        }
+        
+        attempts++
+      }
       
       // Si retry ou failed, afficher l'erreur pour debug
       if (jobState !== 'completed') {
