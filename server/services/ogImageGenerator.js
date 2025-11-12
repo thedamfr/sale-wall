@@ -21,29 +21,42 @@ const BG_COLOR = 0x333333ff; // Gris foncé
  * @throws {Error} Si chargement vignette échoue
  */
 export async function generateOGImage(episodeImageUrl) {
-  // 1. Charger vignette épisode
-  const thumbnail = await Jimp.read(episodeImageUrl);
+  let thumbnail, canvas, background, centerImage;
   
-  // 2. Créer canvas OG avec fond gris
-  const canvas = new Jimp({ width: OG_WIDTH, height: OG_HEIGHT, color: BG_COLOR });
-  
-  // 3. Fond blurré (cover + blur)
-  const background = thumbnail.clone();
-  background.cover({ w: OG_WIDTH, h: OG_HEIGHT }); // Remplir tout le canvas
-  background.blur(BLUR_RADIUS); // Effet blur
-  
-  // 4. Composite fond blurré sur canvas
-  canvas.composite(background, 0, 0);
-  
-  // 5. Image nette centrée (carrée MVP)
-  const centerImage = thumbnail.clone();
-  centerImage.cover({ w: CENTER_IMAGE_SIZE, h: CENTER_IMAGE_SIZE });
-  
-  // 6. Composite au centre du canvas
-  const x = Math.floor((OG_WIDTH - CENTER_IMAGE_SIZE) / 2);
-  const y = Math.floor((OG_HEIGHT - CENTER_IMAGE_SIZE) / 2);
-  canvas.composite(centerImage, x, y);
-  
-  // 7. Export PNG buffer
-  return await canvas.getBuffer('image/png');
+  try {
+    // 1. Charger vignette épisode
+    thumbnail = await Jimp.read(episodeImageUrl);
+    
+    // 2. Créer canvas OG avec fond gris
+    canvas = new Jimp({ width: OG_WIDTH, height: OG_HEIGHT, color: BG_COLOR });
+    
+    // 3. Fond blurré (cover + blur)
+    background = thumbnail.clone();
+    background.cover({ w: OG_WIDTH, h: OG_HEIGHT }); // Remplir tout le canvas
+    background.blur(BLUR_RADIUS); // Effet blur
+    
+    // 4. Composite fond blurré sur canvas
+    canvas.composite(background, 0, 0);
+    
+    // 5. Image nette centrée (carrée MVP)
+    centerImage = thumbnail.clone();
+    centerImage.cover({ w: CENTER_IMAGE_SIZE, h: CENTER_IMAGE_SIZE });
+    
+    // 6. Composite au centre du canvas
+    const x = Math.floor((OG_WIDTH - CENTER_IMAGE_SIZE) / 2);
+    const y = Math.floor((OG_HEIGHT - CENTER_IMAGE_SIZE) / 2);
+    canvas.composite(centerImage, x, y);
+    
+    // 7. Export PNG buffer
+    const buffer = await canvas.getBuffer('image/png');
+    
+    return buffer;
+  } finally {
+    // 8. Libérer mémoire Jimp explicitement (éviter memory leaks)
+    // Note: Jimp v1 devrait auto-gérer avec GC, mais on force le cleanup
+    if (thumbnail) thumbnail = null;
+    if (background) background = null;
+    if (centerImage) centerImage = null;
+    if (canvas) canvas = null;
+  }
 }
