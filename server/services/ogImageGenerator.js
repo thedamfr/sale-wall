@@ -6,6 +6,11 @@
  */
 
 import { Jimp } from 'jimp';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Constantes OG Image
 const OG_WIDTH = 1200;
@@ -13,6 +18,7 @@ const OG_HEIGHT = 630;
 const CENTER_IMAGE_SIZE = 400;
 const BLUR_RADIUS = 40;
 const BG_COLOR = 0x333333ff; // Gris foncé
+const BACKGROUND_IMAGE = path.join(__dirname, '../../public/images/charbon-wafer-kintsugi.jpg');
 
 /**
  * Génère une OG Image 1200×630 avec effet blur
@@ -30,8 +36,8 @@ export async function generateOGImage(episodeImageUrl) {
     // 2. Créer canvas OG avec fond gris
     canvas = new Jimp({ width: OG_WIDTH, height: OG_HEIGHT, color: BG_COLOR });
     
-    // 3. Fond blurré (cover + blur)
-    background = thumbnail.clone();
+    // 3. Fond blurré (charbon-wafer-kintsugi.jpg)
+    background = await Jimp.read(BACKGROUND_IMAGE);
     background.cover({ w: OG_WIDTH, h: OG_HEIGHT }); // Remplir tout le canvas
     background.blur(BLUR_RADIUS); // Effet blur
     
