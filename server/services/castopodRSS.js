@@ -45,6 +45,12 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
     const matchedItem = itemsArray.find(item => {
       const itemSeason = parseInt(item['itunes:season']);
       const itemEpisode = parseInt(item['itunes:episode']);
+      
+      // Convention: episode=0 matches episodes without itunes:episode tag (trailers, bonus)
+      if (episode === 0) {
+        return itemSeason === season && !item['itunes:episode'];
+      }
+      
       return itemSeason === season && itemEpisode === episode;
     });
 
@@ -85,9 +91,13 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
 
+    // Extract episode type (full, trailer, bonus)
+    const episodeType = matchedItem['itunes:episodeType'] || 'full';
+
     return {
       season: parseInt(matchedItem['itunes:season']),
-      episode: parseInt(matchedItem['itunes:episode']),
+      episode: matchedItem['itunes:episode'] ? parseInt(matchedItem['itunes:episode']) : 0,
+      episodeType, // 'full' | 'trailer' | 'bonus'
       title: titleClean,
       description: descriptionText,
       isTruncated, // Flag pour afficher "Lire la suite"
@@ -136,9 +146,10 @@ function formatDateFrench(date) {
 /**
  * @typedef {Object} EpisodeData
  * @property {number} season - Season number
- * @property {number} episode - Episode number
+ * @property {number} episode - Episode number (0 if no itunes:episode tag)
+ * @property {string} episodeType - Episode type: 'full', 'trailer', 'bonus'
  * @property {string} title - Episode title
- * @property {string} description - Episode summary (plain text, max 300 chars)
+ * @property {string} description - Episode summary (plain text, max 400 chars)
  * @property {boolean} isTruncated - Whether description was truncated
  * @property {string} pubDate - Formatted date "27 octobre 2025"
  * @property {string} rawPubDate - ISO date "2025-10-27" for APIs
@@ -148,3 +159,4 @@ function formatDateFrench(date) {
  * @property {string} episodeLink - Castopod episode page URL
  * @property {string|null} feedLastBuildDate - RSS channel lastBuildDate (for OG image cache invalidation)
  */
+

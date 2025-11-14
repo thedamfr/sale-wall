@@ -298,6 +298,14 @@
 - Custom domains/subdomains
 - Templates/thèmes personnalisables
 
+**Slug management & routes alternatives** :
+- Route `/podcast/trailer/:season?` pour trailers sans numéro
+- Route `/podcast/:slug` avec gestion slugs personnalisés
+- ADR : Stratégie slug (auto-génération vs manuel)
+- Migration colonne `slug` nullable table `episode_links`
+- Backoffice éditeur slug par épisode
+- Redirects 301 si slug change
+
 **Analytics avancés** :
 - Funnel conversion (vue → pré-écoute → clic)
 - Heatmaps clics providers

@@ -9,9 +9,12 @@
     <meta name="description" content="{{episodeData.description}}">
     <meta name="author" content="Damien Cavaillès">
     
+    {{!-- US4.1: Canonical URL (nouveau format) --}}
+    <link rel="canonical" href="https://saletesincere.fr/podcast/{{episodeData.season}}/{{episodeData.episode}}">
+    
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://saletesincere.fr/podcast?season={{episodeData.season}}&episode={{episodeData.episode}}">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://saletesincere.fr/podcast/{{episodeData.season}}/{{episodeData.episode}}">
     <meta property="og:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
     <meta property="og:description" content="{{episodeData.description}}">
     {{!-- Phase 5: OG Image custom (ADR-0012) avec fallback RSS thumbnail --}}
@@ -27,7 +30,7 @@
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://saletesincere.fr/podcast?season={{episodeData.season}}&episode={{episodeData.episode}}">
+    <meta property="twitter:url" content="https://saletesincere.fr/podcast/{{episodeData.season}}/{{episodeData.episode}}">
     <meta property="twitter:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
     <meta property="twitter:description" content="{{episodeData.description}}">
     {{!-- Phase 5: Twitter Card custom OG Image avec fallback --}}

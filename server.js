@@ -15,7 +15,7 @@ import { validateAudio, audioValidationMiddleware } from "./server/validators/au
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
 import { fetchEpisodeFromRSS } from "./server/services/castopodRSS.js";
-import { initQueue, startWorker, queueEpisodeResolution } from "./server/queues/episodeQueue.js";
+import { initQueue, startWorker, queueEpisodeResolution, getBoss } from "./server/queues/episodeQueue.js";
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -732,8 +732,8 @@ app.get("/podcast/:season/:episode", {
   const season = parseInt(req.params.season, 10);
   const episode = parseInt(req.params.episode, 10);
   
-  // Validation
-  if (isNaN(season) || isNaN(episode) || season < 1 || episode < 1) {
+  // Validation (episode=0 autorisé pour trailers sans numéro)
+  if (isNaN(season) || isNaN(episode) || season < 1 || episode < 0) {
     return reply.redirect('/podcast');
   }
   
@@ -862,6 +862,7 @@ const gracefulShutdown = async (signal) => {
     console.log('✅ HTTP server closed');
     
     // 2. Arrêter le worker pg-boss (si actif)
+    const boss = getBoss();
     if (boss) {
       await boss.stop();
       console.log('✅ Worker stopped');
