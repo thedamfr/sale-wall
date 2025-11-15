@@ -202,8 +202,31 @@ describe('episodeQueue', () => {
       const jobId2 = await queueEpisodeResolution(2, 2, '2025-11-04', 'S2E2 Episode Title', 'https://example.com/s2e2.jpg')
       assert.ok(jobId2, 'S2E2 job should be created')
       
-      // 3. Attendre que les deux workers traitent les jobs
-      await new Promise(resolve => setTimeout(resolve, 10000))
+      // 3. Attendre que les deux workers traitent les jobs (polling jusqu'à 15s max)
+      const maxWaitMs = 15000
+      const pollIntervalMs = 500
+      let elapsed = 0
+      let allCompleted = false
+      
+      while (elapsed < maxWaitMs && !allCompleted) {
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
+        elapsed += pollIntervalMs
+        
+        const jobs = await pgClient.query(
+          `SELECT id, state FROM pgboss.job WHERE id = ANY($1::uuid[])`,
+          [[jobId1, jobId2]]
+        )
+        
+        allCompleted = jobs.rows.every(job => job.state === 'completed')
+        
+        if (!allCompleted && elapsed % 2000 === 0) {
+          console.log(`[Polling ${elapsed}ms] Jobs:`, jobs.rows.map(j => `${j.id.slice(0,8)}=${j.state}`).join(', '))
+        }
+      }
+      
+      if (!allCompleted) {
+        console.warn(`⚠️  Timeout after ${maxWaitMs}ms - some jobs not completed`)
+      }
       
       // 4. Vérifier que les deux jobs sont completed
       const jobs = await pgClient.query(
