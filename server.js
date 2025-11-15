@@ -793,6 +793,7 @@ app.get("/podcast/:season/:episode", {
   
   // 4. Render page avec données épisode + liens plateformes (ou null si pas encore résolus)
   reply.header('Cache-Control', 'public, max-age=3600');
+  reply.header('Vary', 'User-Agent'); // CDN cache per User-Agent (bots vs users)
   return reply.view("podcast.hbs", { 
     episodeData: {
       ...episodeData,

@@ -29,19 +29,18 @@
     {{/if}}
     
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://saletesincere.fr/podcast/{{episodeData.season}}/{{episodeData.episode}}">
-    <meta property="og:site" content="saletesincere.fr">
-    <meta property="og:creator" content="@thedamfr">
-    <meta property="twitter:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
-    <meta property="twitter:description" content="{{episodeData.description}}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@SaleteSincere">
+    <meta name="twitter:creator" content="@thedamfr">
+    <meta name="twitter:title" content="S{{episodeData.season}}E{{episodeData.episode}} - {{episodeData.title}} | Charbon & Wafer">
+    <meta name="twitter:description" content="{{episodeData.description}}">
     {{!-- Phase 5: Twitter Card custom OG Image avec fallback --}}
     {{#if platformLinks.og_image_url}}
-    <meta property="twitter:image" content="{{platformLinks.og_image_url}}">
+    <meta name="twitter:image" content="{{platformLinks.og_image_url}}">
     {{else if episodeData.image}}
-    <meta property="twitter:image" content="{{episodeData.image}}">
+    <meta name="twitter:image" content="{{episodeData.image}}">
     {{else}}
-    <meta property="twitter:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
+    <meta name="twitter:image" content="https://saletesincere.fr/images/preview-podcast-smartlink.jpg">
     {{/if}}
     {{else}}
     <title>Charbon & Wafer - Podcast</title>

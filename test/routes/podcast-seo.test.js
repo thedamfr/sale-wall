@@ -41,18 +41,7 @@ describe('US4.1 - OG tags & SEO canonical', () => {
     )
   })
 
-  it('should have twitter:url matching canonical URL', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`)
-    const body = await response.text()
 
-    assert.strictEqual(response.status, 200)
-    
-    assert.match(
-      body,
-      /<meta property="twitter:url" content="https:\/\/saletesincere\.fr\/podcast\/2\/1">/,
-      'twitter:url should match canonical URL'
-    )
-  })
 
   it('should have og:type as article for episode pages', async () => {
     const response = await fetch(`${BASE_URL}/podcast/2/1`)
@@ -100,6 +89,53 @@ describe('US4.1 - OG tags & SEO canonical', () => {
       body,
       /<meta property="og:description" content="Pas de Charbon, Pas de Wafer - Confidences brutes/,
       'og:description should not use generic podcast description'
+    )
+  })
+
+  it('should NEVER redirect bots (facebookexternalhit User-Agent)', async () => {
+    const response = await fetch(`${BASE_URL}/podcast/2/1`, {
+      headers: {
+        'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+      },
+      redirect: 'manual' // Ne pas suivre les redirects automatiquement
+    })
+
+    // Bots doivent recevoir 200, JAMAIS 301/302
+    assert.strictEqual(
+      response.status, 
+      200, 
+      'Bot should receive 200 OK, not 301/302 redirect'
+    )
+
+    const body = await response.text()
+    
+    // Vérifier que le bot reçoit bien le HTML complet avec OG tags
+    assert.match(body, /<meta property="og:title"/, 'Bot should receive OG tags')
+    assert.match(body, /<meta property="og:image"/, 'Bot should receive OG image')
+  })
+
+  it('should NEVER redirect bots (Twitterbot User-Agent)', async () => {
+    const response = await fetch(`${BASE_URL}/podcast/2/1`, {
+      headers: {
+        'User-Agent': 'Twitterbot/1.0'
+      },
+      redirect: 'manual'
+    })
+
+    assert.strictEqual(response.status, 200, 'Twitterbot should receive 200 OK')
+    
+    const body = await response.text()
+    assert.match(body, /<meta name="twitter:card"/, 'Bot should receive Twitter Card tags')
+  })
+
+  it('should set Vary: User-Agent header for CDN cache', async () => {
+    const response = await fetch(`${BASE_URL}/podcast/2/1`)
+
+    const varyHeader = response.headers.get('vary')
+    
+    assert.ok(
+      varyHeader && varyHeader.toLowerCase().includes('user-agent'),
+      'Vary header should include User-Agent for proper CDN caching'
     )
   })
 })
