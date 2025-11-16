@@ -98,7 +98,8 @@ describe('US4.1 - Open Graph tags dynamiques par épisode', () => {
     })
 
     assert.equal(res.statusCode, 200)
-    assert.match(res.body, /<meta property="twitter:card" content="summary_large_image">/)
+    // Twitter Cards use name="" not property=""
+    assert.match(res.body, /<meta name="twitter:card" content="summary_large_image">/)
   })
 })
 
@@ -106,7 +107,7 @@ describe('US4.1 - Cache headers et bots (Vary: User-Agent)', () => {
   let app
 
   before(async () => {
-    app = await buildApp()
+    app = await build()
   })
 
   after(async () => {
