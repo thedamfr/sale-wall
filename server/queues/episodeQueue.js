@@ -57,9 +57,15 @@ export function getBoss() {
  * @param {string} episodeDate - Date publication ISO (YYYY-MM-DD)
  * @param {string} title - Titre épisode  
  * @param {string} imageUrl - URL image cover
- * @returns {Promise<string>} Job ID
+ * @returns {Promise<string|null>} Job ID ou null si worker désactivé
  */
 export async function queueEpisodeResolution(season, episode, episodeDate, title, imageUrl, feedLastBuildDate = null, audioUrl = null) {
+  // Safe guard: Si worker pas initialisé (tests avec DISABLE_WORKER=true), retourner null
+  if (!boss) {
+    console.warn('[queueEpisodeResolution] Worker not initialized, skipping job queue');
+    return null;
+  }
+  
   return boss.send('resolve-episode', 
     { season, episode, episodeDate, title, imageUrl, feedLastBuildDate, audioUrl },
     {

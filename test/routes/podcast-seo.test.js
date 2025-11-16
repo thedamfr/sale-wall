@@ -1,23 +1,31 @@
 /**
  * Tests SEO podcast route - US4.1 OG tags & canonical
  * TDD RED → GREEN → REFACTOR
- * 
- * Note: Ces tests utilisent le serveur local démarré
- * Lancer avec: npm run dev (dans un autre terminal)
  */
 
-import { describe, it } from 'node:test'
+import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert'
-
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000'
+import { build } from '../helpers/app.js'
 
 describe('US4.1 - OG tags & SEO canonical', () => {
+  let app
+
+  before(async () => {
+    app = await build()
+  })
+
+  after(async () => {
+    await app.close()
+  })
 
   it('should have canonical URL in new format /podcast/:season/:episode', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`)
-    const body = await response.text()
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1'
+    })
+    const body = response.body
 
-    assert.strictEqual(response.status, 200, 'Route should exist')
+    assert.strictEqual(response.statusCode, 200, 'Route should exist')
     
     // US4.1: Canonical doit pointer vers nouvelle route
     assert.match(
@@ -28,10 +36,13 @@ describe('US4.1 - OG tags & SEO canonical', () => {
   })
 
   it('should have og:url matching canonical URL (new format)', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`)
-    const body = await response.text()
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1'
+    })
+    const body = response.body
 
-    assert.strictEqual(response.status, 200)
+    assert.strictEqual(response.statusCode, 200)
     
     // og:url doit matcher le canonical (nouveau format)
     assert.match(
@@ -44,10 +55,13 @@ describe('US4.1 - OG tags & SEO canonical', () => {
 
 
   it('should have og:type as article for episode pages', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`)
-    const body = await response.text()
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1'
+    })
+    const body = response.body
 
-    assert.strictEqual(response.status, 200)
+    assert.strictEqual(response.statusCode, 200)
     
     // og:type devrait être "article" pour un épisode (pas "website")
     assert.match(
@@ -58,10 +72,13 @@ describe('US4.1 - OG tags & SEO canonical', () => {
   })
 
   it('should have episode-specific og:title with S2E1 format', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`)
-    const body = await response.text()
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1'
+    })
+    const body = response.body
 
-    assert.strictEqual(response.status, 200)
+    assert.strictEqual(response.statusCode, 200)
     
     // Ce test devrait passer (déjà implémenté)
     assert.match(
@@ -72,10 +89,13 @@ describe('US4.1 - OG tags & SEO canonical', () => {
   })
 
   it('should have dynamic og:description from RSS', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`)
-    const body = await response.text()
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1'
+    })
+    const body = response.body
 
-    assert.strictEqual(response.status, 200)
+    assert.strictEqual(response.statusCode, 200)
     
     // og:description doit être présente et non vide
     assert.match(
@@ -93,21 +113,22 @@ describe('US4.1 - OG tags & SEO canonical', () => {
   })
 
   it('should NEVER redirect bots (facebookexternalhit User-Agent)', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`, {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1',
       headers: {
         'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
-      },
-      redirect: 'manual' // Ne pas suivre les redirects automatiquement
+      }
     })
 
     // Bots doivent recevoir 200, JAMAIS 301/302
     assert.strictEqual(
-      response.status, 
+      response.statusCode, 
       200, 
       'Bot should receive 200 OK, not 301/302 redirect'
     )
 
-    const body = await response.text()
+    const body = response.body
     
     // Vérifier que le bot reçoit bien le HTML complet avec OG tags
     assert.match(body, /<meta property="og:title"/, 'Bot should receive OG tags')
@@ -115,23 +136,27 @@ describe('US4.1 - OG tags & SEO canonical', () => {
   })
 
   it('should NEVER redirect bots (Twitterbot User-Agent)', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`, {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1',
       headers: {
         'User-Agent': 'Twitterbot/1.0'
-      },
-      redirect: 'manual'
+      }
     })
 
-    assert.strictEqual(response.status, 200, 'Twitterbot should receive 200 OK')
+    assert.strictEqual(response.statusCode, 200, 'Twitterbot should receive 200 OK')
     
-    const body = await response.text()
+    const body = response.body
     assert.match(body, /<meta name="twitter:card"/, 'Bot should receive Twitter Card tags')
   })
 
   it('should set Vary: User-Agent header for CDN cache', async () => {
-    const response = await fetch(`${BASE_URL}/podcast/2/1`)
+    const response = await app.inject({
+      method: 'GET',
+      url: '/podcast/2/1'
+    })
 
-    const varyHeader = response.headers.get('vary')
+    const varyHeader = response.headers['vary']
     
     assert.ok(
       varyHeader && varyHeader.toLowerCase().includes('user-agent'),
