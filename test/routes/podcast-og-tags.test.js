@@ -5,13 +5,13 @@
 
 import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildApp } from '../helpers/app.js'
+import { build } from '../helpers/app.js'
 
 describe('US4.1 - Open Graph tags dynamiques par épisode', () => {
   let app
 
   before(async () => {
-    app = await buildApp()
+    app = await build()
   })
 
   after(async () => {
