@@ -9,36 +9,36 @@ import assert from 'node:assert'
 import pg from 'pg'
 import { initQueue, getBoss, queueEpisodeResolution, startWorker } from '../../server/queues/episodeQueue.js'
 
-const { Client } = pg
+const { Client, Pool } = pg
 
 describe('episodeQueue', () => {
   let pgClient
+  let pgPool // Pool pour le worker (connexions multiples)
 
   before(async () => {
     // Init pg-boss une seule fois avant tous les tests
     await initQueue()
     
-    // Init client PostgreSQL pour queries directes BDD
+    // Init client PostgreSQL pour queries directes BDD (admin queries)
     pgClient = new Client({
       connectionString: process.env.DATABASE_URL
     })
     await pgClient.connect()
     
-    // Mock fastify avec pool pg pour le worker
+    // ⚠️ Créer un POOL pour le worker (pas un client unique)
+    // Permet plusieurs workers en parallèle sans "Cannot use a pool after calling end"
+    pgPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 5 // 5 connexions max en parallèle pour les tests
+    })
+    
+    // Mock fastify avec vrai pool pg pour le worker
     const mockFastify = {
-      pg: {
-        connect: async () => {
-          const client = await pgClient
-          return {
-            query: (...args) => client.query(...args),
-            release: () => {} // No-op pour les tests
-          }
-        }
-      }
+      pg: pgPool // Le pool gère les connexions automatiquement
     }
     
-    // Démarrer le worker avec mock fastify
-    await startWorker(mockFastify)
+    // Démarrer le worker avec teamSize=2 pour traiter 2 jobs en parallèle (tests plus rapides)
+    await startWorker(mockFastify, { teamSize: 2 })
   })
 
   afterEach(async () => {
@@ -48,15 +48,23 @@ describe('episodeQueue', () => {
   })
 
   after(async () => {
-    // Cleanup: close PostgreSQL client
-    if (pgClient) {
-      await pgClient.end()
-    }
-
-    // Cleanup: stop pg-boss après tous les tests
+    // ⚠️ ORDRE CRITIQUE : Arrêter worker AVANT de fermer le pool/client PostgreSQL
+    // Sinon le worker tente d'utiliser un pool fermé → "Cannot use a pool after calling end"
+    
+    // 1. Stop pg-boss worker (arrête les jobs en cours)
     const boss = getBoss()
     if (boss) {
       await boss.stop()
+    }
+
+    // 2. Close Pool (connexions worker)
+    if (pgPool) {
+      await pgPool.end()
+    }
+
+    // 3. Close Client (admin queries)
+    if (pgClient) {
+      await pgClient.end()
     }
   })
 
@@ -202,8 +210,9 @@ describe('episodeQueue', () => {
       const jobId2 = await queueEpisodeResolution(2, 2, '2025-11-04', 'S2E2 Episode Title', 'https://example.com/s2e2.jpg')
       assert.ok(jobId2, 'S2E2 job should be created')
       
-      // 3. Attendre que les deux workers traitent les jobs (polling jusqu'à 15s max)
-      const maxWaitMs = 15000
+      // 3. Attendre que les deux workers traitent les jobs (polling jusqu'à 30s max)
+      // teamSize=2 permet traitement parallèle, mais APIs externes peuvent être lentes
+      const maxWaitMs = 30000
       const pollIntervalMs = 500
       let elapsed = 0
       let allCompleted = false

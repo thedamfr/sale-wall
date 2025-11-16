@@ -74,9 +74,15 @@ export async function queueEpisodeResolution(season, episode, episodeDate, title
  * Démarre le worker pour traiter les jobs resolve-episode
  * Worker DOIT être idempotent (vérifier si travail déjà fait avant d'appeler APIs)
  * @param {object} fastify - Instance Fastify avec pool pg
+ * @param {object} options - Worker options (teamSize pour tests parallèles)
  */
-export async function startWorker(fastify) {
-  await boss.work('resolve-episode', async (jobs) => {
+export async function startWorker(fastify, options = {}) {
+  const workerOptions = {
+    teamSize: options.teamSize || 1, // Nombre de jobs en parallèle (2+ pour tests)
+    ...options
+  }
+  
+  await boss.work('resolve-episode', workerOptions, async (jobs) => {
     // pg-boss v9 passe un array de jobs (batch mode par défaut)
     const job = jobs[0]
     

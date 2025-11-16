@@ -19,6 +19,16 @@ import { initQueue, startWorker, queueEpisodeResolution, getBoss } from "./serve
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Builds and configures the Fastify application instance.
+ * 
+ * This function is exported for testing purposes - it allows tests to import
+ * and run the real server code without starting the HTTP listener.
+ * 
+ * @returns {Promise<FastifyInstance>} Configured Fastify app ready to listen
+ */
+export async function buildApp() {
 const app = Fastify({ logger: true });
 
 // S3/Cellar configuration with performance optimizations
@@ -850,34 +860,46 @@ if (WORKER_ENABLED) {
   console.log('   Episode resolution will be synchronous (slower)');
 }
 
-await app.listen({ host: "0.0.0.0", port: process.env.PORT || 3000 });
+  return app;
+}
 
-// Graceful shutdown pour déploiements CleverCloud
-// Libère les connexions DB rapidement quand SIGTERM reçu
-const gracefulShutdown = async (signal) => {
-  console.log(`\n📡 ${signal} received, closing gracefully...`);
-  
-  try {
-    // 1. Arrêter d'accepter nouvelles requêtes
-    await app.close();
-    console.log('✅ HTTP server closed');
+// ============================================================================
+// SERVER STARTUP - Only runs when executed directly (not imported by tests)
+// ============================================================================
+
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+
+if (isMainModule) {
+  const app = await buildApp();
+  await app.listen({ host: "0.0.0.0", port: process.env.PORT || 3000 });
+
+  // Graceful shutdown pour déploiements CleverCloud
+  // Libère les connexions DB rapidement quand SIGTERM reçu
+  const gracefulShutdown = async (signal) => {
+    console.log(`\n📡 ${signal} received, closing gracefully...`);
     
-    // 2. Arrêter le worker pg-boss (si actif)
-    const boss = getBoss();
-    if (boss) {
-      await boss.stop();
-      console.log('✅ Worker stopped');
+    try {
+      // 1. Arrêter d'accepter nouvelles requêtes
+      await app.close();
+      console.log('✅ HTTP server closed');
+      
+      // 2. Arrêter le worker pg-boss (si actif)
+      const boss = getBoss();
+      if (boss) {
+        await boss.stop();
+        console.log('✅ Worker stopped');
+      }
+      
+      // 3. Fermer pool PostgreSQL (fastify-postgres le fait automatiquement)
+      console.log('✅ Database connections released');
+      
+      process.exit(0);
+    } catch (error) {
+      console.error('❌ Error during shutdown:', error);
+      process.exit(1);
     }
-    
-    // 3. Fermer pool PostgreSQL (fastify-postgres le fait automatiquement)
-    console.log('✅ Database connections released');
-    
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Error during shutdown:', error);
-    process.exit(1);
-  }
-};
+  };
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+}
