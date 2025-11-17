@@ -19,19 +19,25 @@ let boss = null
 
 /**
  * Initialise pg-boss avec PostgreSQL
+ * @param {object} options - Options pg-boss (pollIntervalSeconds pour tests)
  * @returns {Promise<PgBoss>} Instance pg-boss active
  */
-export async function initQueue() {
+export async function initQueue(options = {}) {
   // Utiliser la même logique de fallback que fastify-postgres
   // CleverCloud expose POSTGRESQL_ADDON_URI, pas forcément DATABASE_URL
   const connectionString = process.env.DATABASE_URL 
     || process.env.POSTGRESQL_ADDON_URI 
     || 'postgresql://salete:salete@localhost:5432/salete';
   
+  const isTest = process.env.NODE_ENV === 'test' || process.env.DISABLE_WORKER === 'true'
+  
   boss = new PgBoss({
     connectionString,
     schema: 'pgboss',
-    max: 1 // Une seule connexion suffit (trafic très faible ~10 req/h)
+    max: isTest ? 3 : 1, // Tests: 3 connexions pour workers parallèles
+    // Polling rapide en tests pour éviter les timeouts
+    newJobCheckInterval: isTest ? 200 : 2000, // Check nouveaux jobs toutes les 200ms en test
+    ...options
   })
   
   await boss.start()

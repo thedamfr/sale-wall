@@ -16,6 +16,9 @@ describe('episodeQueue', () => {
   let pgPool // Pool pour le worker (connexions multiples)
 
   before(async () => {
+    // Set NODE_ENV pour activer les optimisations test de pg-boss
+    process.env.NODE_ENV = 'test'
+    
     // Init pg-boss une seule fois avant tous les tests
     await initQueue()
     
@@ -37,13 +40,36 @@ describe('episodeQueue', () => {
       pg: pgPool // Le pool gère les connexions automatiquement
     }
     
-    // Démarrer le worker avec teamSize=2 pour traiter 2 jobs en parallèle (tests plus rapides)
-    await startWorker(mockFastify, { teamSize: 2 })
+    // Démarrer le worker avec teamSize=3 pour traiter 3 jobs en parallèle (tests plus rapides)
+    await startWorker(mockFastify, { teamSize: 3 })
+    
+    // Attendre 500ms pour que pg-boss démarre complètement
+    // pg-boss fait plusieurs checks au démarrage (schema, maintenance, polling)
+    await new Promise(resolve => setTimeout(resolve, 500))
   })
 
   afterEach(async () => {
-    // Cleanup: supprimer tous les jobs de test après chaque test
-    // pour éviter accumulation et garantir répétabilité
+    // ⚠️ CRITICAL: Attendre que tous les jobs actifs soient terminés avant cleanup
+    // Sinon les workers essaient d'écrire en DB pendant qu'on supprime les jobs
+    let activeJobs = 1
+    let attempts = 0
+    const maxAttempts = 20 // 10s max
+    
+    while (activeJobs > 0 && attempts < maxAttempts) {
+      const result = await pgClient.query(
+        `SELECT COUNT(*) as count FROM pgboss.job 
+         WHERE name = 'resolve-episode' AND state IN ('created', 'active')`
+      )
+      activeJobs = parseInt(result.rows[0].count)
+      
+      if (activeJobs > 0) {
+        await new Promise(resolve => setImmediate(resolve))
+        await new Promise(resolve => setTimeout(resolve, 500))
+        attempts++
+      }
+    }
+    
+    // Cleanup: supprimer tous les jobs de test après qu'ils soient terminés
     await pgClient.query(`DELETE FROM pgboss.job WHERE name = 'resolve-episode'`)
   })
 
@@ -161,14 +187,17 @@ describe('episodeQueue', () => {
       const jobId = await queueEpisodeResolution(6, 1, '2025-10-27', 'Worker Test Episode', 'https://example.com/cover.jpg')
       assert.ok(jobId, 'Job should be created')
       
-      // Attendre que le worker traite le job (pg-boss poll interval + API calls)
-      // Boucle pour vérifier l'état du job jusqu'à ce qu'il soit completed (max 10s)
+      // Attendre que le worker traite le job (pg-boss poll + API calls prend 15-20s)
+      // Job traite: Spotify API + Apple API + Deezer API + OG Image (qui fail)
+      // ⚠️ CRITICAL: Yield event loop avec setImmediate pour que pg-boss puisse traiter les jobs
       let jobState = null;
       let jobOutput = null;
       let attempts = 0;
-      const maxAttempts = 20; // 20 x 500ms = 10s max
+      const maxAttempts = 40; // 40 x 500ms = 20s max
       
       while (attempts < maxAttempts) {
+        // ⚠️ CRITICAL: Yield event loop pour que pg-boss puisse traiter les jobs
+        await new Promise(resolve => setImmediate(resolve))
         await new Promise(resolve => setTimeout(resolve, 500))
         
         const result = await pgClient.query(
@@ -218,6 +247,8 @@ describe('episodeQueue', () => {
       let allCompleted = false
       
       while (elapsed < maxWaitMs && !allCompleted) {
+        // ⚠️ CRITICAL: Yield event loop pour que pg-boss puisse traiter les jobs
+        await new Promise(resolve => setImmediate(resolve))
         await new Promise(resolve => setTimeout(resolve, pollIntervalMs))
         elapsed += pollIntervalMs
         
