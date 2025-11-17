@@ -88,7 +88,19 @@
                 <div class="text-purple-400 text-sm uppercase mb-2">
                     Saison {{episodeData.season}} • Épisode {{episodeData.episode}}
                 </div>
-                <h2 class="text-2xl font-bold text-white mb-3">{{episodeData.title}}</h2>
+                <h2 class="text-2xl font-bold text-white mb-4">{{episodeData.title}}</h2>
+                
+                {{#if episodeData.audioUrl}}
+                <!-- Player audio -->
+                <div class="mb-4 bg-black/30 rounded-xl p-4 backdrop-blur-sm">
+                    <div class="text-purple-300 text-xs font-medium mb-3">🎧 Pré-écoute de l'épisode</div>
+                    <audio controls controlsList="nodownload" class="w-full">
+                        <source src="{{episodeData.audioUrl}}" type="audio/mpeg">
+                        Votre navigateur ne supporte pas la lecture audio.
+                    </audio>
+                </div>
+                {{/if}}
+                
                 {{#if episodeData.isTruncated}}
                 <a href="{{episodeData.episodeLink}}" target="_blank" rel="noopener noreferrer" class="block text-gray-300 hover:text-white transition-colors mb-4">
                     {{episodeData.description}}

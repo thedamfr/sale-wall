@@ -24,26 +24,11 @@ docker run --rm -it --network host minio/mc:latest config host add local $MINIO_
 echo "📂 Création du bucket $BUCKET_NAME..."
 docker run --rm -it --network host minio/mc:latest mb local/$BUCKET_NAME --ignore-existing
 
-echo "🌐 Configuration des permissions publiques pour le dossier /audio/..."
-# Politique pour autoriser les lectures publiques sur /audio/*
-cat > /tmp/minio-policy.json << EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": ["*"]
-      },
-      "Action": ["s3:GetObject"],
-      "Resource": ["arn:aws:s3:::$BUCKET_NAME/audio/*"]
-    }
-  ]
-}
-EOF
-
-# Appliquer la politique
-docker run --rm -it --network host -v /tmp/minio-policy.json:/tmp/policy.json minio/mc:latest policy set-json /tmp/policy.json local/$BUCKET_NAME
+echo "🌐 Configuration des permissions publiques pour /audio/ et /og-images/..."
+# Rendre publics les dossiers audio et og-images
+docker exec salete_s3 mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY || echo "⚠️ Alias déjà configuré"
+docker exec salete_s3 mc anonymous set download minio/$BUCKET_NAME/audio
+docker exec salete_s3 mc anonymous set download minio/$BUCKET_NAME/og-images
 
 echo "✅ Configuration MinIO terminée !"
 echo "🔗 URLs de test:"

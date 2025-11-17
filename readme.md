@@ -483,6 +483,9 @@ docker-compose ps
 
 # Redémarrer les services si nécessaire  
 docker-compose up db s3 -d
+
+# Configurer les permissions MinIO (première fois)
+./scripts/setup-local-minio.sh
 ```
 
 ### ❌ Permissions micro non accordées

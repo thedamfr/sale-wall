@@ -80,7 +80,7 @@ async function ensureBucketExists() {
 // Initialize bucket and public policy for audio folder
 await ensureBucketExists();
 
-// Configure public read policy for /audio/ folder in development
+// Configure public read policy for /audio/ and /og-images/ folders in development
 async function ensurePublicAudioPolicy() {
   if (isProduction) return; // Don't modify production policies
   
@@ -93,7 +93,10 @@ async function ensurePublicAudioPolicy() {
         Effect: 'Allow',
         Principal: '*',
         Action: 's3:GetObject',
-        Resource: `arn:aws:s3:::${bucketName}/audio/*`
+        Resource: [
+          `arn:aws:s3:::${bucketName}/audio/*`,
+          `arn:aws:s3:::${bucketName}/og-images/*`
+        ]
       }]
     };
 
@@ -102,7 +105,7 @@ async function ensurePublicAudioPolicy() {
       Policy: JSON.stringify(policy)
     }));
 
-    console.log(`✅ Public read policy set for ${bucketName}/audio/`);
+    console.log(`✅ Public read policy set for ${bucketName}/audio/ and ${bucketName}/og-images/`);
   } catch (error) {
     console.warn(`⚠️ Could not set public policy (normal in dev):`, error.message);
   }
@@ -810,7 +813,8 @@ app.get("/podcast/:season/:episode", {
       season,
       episode
     },
-    platformLinks 
+    platformLinks,
+    ogImageUrl: platformLinks?.og_image_url || null // Pass OG image for player cover
   });
 });
 

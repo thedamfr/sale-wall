@@ -24,12 +24,18 @@ tags: [adr, index, architecture, decisions]
 | [ADR-0006](./adr_0005_newsletter_doi_automation_approach.md) | Newsletter DOI Automation | ✅ **Accepté** | 2025-09 | Newsletter, DOI | Feature |
 | [ADR-0007](./adr_0007_castopod_subdomain_routing.md) | Castopod Subdomain Routing | ⏳ **Attente DNS** | 2025-10 | Podcasting, Routing | Feature |
 | [ADR-0008](./adr_0008_migration_pug_vers_html.md) | Migration Pug → HTML | ✅ **Accepté** | 2025-10 | Frontend, Templates | Architecture |
+| [ADR-0009](./adr_0009_migration_handlebars.md) | Migration Handlebars | ✅ **Implémenté** | 2025-10 | Frontend, Templates | Architecture |
+| [ADR-0010](./adr_0010_podcast_episode_highlight.md) | Podcast Episode Highlight | ✅ **Implémenté** | 2025-10 | Podcasting, UI | Feature |
+| [ADR-0011](./adr_0011_podcast_smartlink_multiplateforme.md) | Podcast Smartlink Multiplateforme | ✅ **Implémenté** | 2025-10 | Podcasting, SEO | Feature |
+| [ADR-0012](./adr_0012_og_images_smartlinks.md) | OG Images for Smartlinks | ✅ **Implémenté** | 2025-11 | Podcasting, SEO | Feature |
+| [ADR-0013](./adr_0013_audio_player_smartlink.md) | Audio Player on Smartlink | ✅ **Implémenté** | 2025-11 | Audio, UX | Feature |
 
 ## 📊 Statistiques
 
-- **Total ADRs** : 8
+- **Total ADRs** : 13
 - **Actifs** : 2 (infrastructure/sécurité)
-- **Implémentés/Acceptés** : 5 (features audio + newsletter + templates)
+- **Implémentés** : 9 (audio + newsletter + podcasting + templates)
+- **Acceptés** : 1 (newsletter DOI)
 - **En cours** : 1 (newsletter intégration)
 - **Attente** : 1 (podcasting DNS)
 - **Draft** : 0
@@ -40,6 +46,7 @@ tags: [adr, index, architecture, decisions]
 ### 🎙️ Audio & Frontend
 - [ADR-0001](./adr_0001_voice_posting_mvp.md) - Voice Posting MVP
 - [ADR-0002](./adr_0002_voice_posting_mvp_implemented.md) - Implementation Details
+- [ADR-0013](./adr_0013_audio_player_smartlink.md) - Audio Player on Smartlink (MVP)
 
 ### 🏗️ Infrastructure & Déploiement  
 - [ADR-0003](./adr_0003_deployment_production_clevercloud.md) - Production CleverCloud
@@ -47,18 +54,19 @@ tags: [adr, index, architecture, decisions]
 ### 🔒 Sécurité
 - [ADR-0004](./adr_0004_rate_limiting_security.md) - Rate Limiting & Security
 
-### 📧 Newsletter & API Integration  
-- [ADR-0005](./adr_0005_newsletter_brevo_integration.md) - Newsletter Brevo Integration (en cours)
-
 ### 🎨 Frontend & Templates
 - [ADR-0008](./adr_0008_migration_pug_vers_html.md) - Migration Pug vers HTML (accepté)
+- [ADR-0009](./adr_0009_migration_handlebars.md) - Migration Handlebars (implémenté)
 
-### 🎙️ Podcasting
-- [ADR-0007](./adr_0007_castopod_subdomain_routing.md) - Castopod Subdomain Routing (attente DNS)
+### 📧 Newsletter & API Integration  
+- [ADR-0005](./adr_0005_newsletter_brevo_integration.md) - Newsletter Brevo Integration (en cours)
 - [ADR-0006](./adr_0005_newsletter_doi_automation_approach.md) - Newsletter DOI Automation (accepté)
 
 ### 🎙️ Podcasting
 - [ADR-0007](./adr_0007_castopod_subdomain_routing.md) - Castopod Subdomain Routing (attente DNS)
+- [ADR-0010](./adr_0010_podcast_episode_highlight.md) - Episode Highlight UI
+- [ADR-0011](./adr_0011_podcast_smartlink_multiplateforme.md) - Smartlink Multiplateforme
+- [ADR-0012](./adr_0012_og_images_smartlinks.md) - OG Images Generation
 
 ## ✍️ Créer un nouvel ADR
 
