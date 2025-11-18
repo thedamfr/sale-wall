@@ -1,7 +1,7 @@
 # ADR-0015: Intégration Stats OP3 pour Preuve Sociale
 
 **Date**: 18 novembre 2025  
-**Statut**: 🔍 Phase exploratoire  
+**Statut**: ✅ Décision prise (API validée)  
 **Décideurs**: @thedamfr  
 **Tags**: `op3`, `analytics`, `stats`, `social-proof`, `api`
 
@@ -157,7 +157,62 @@ curl https://podcasts.saletesincere.fr/feed.xml | grep -i "op3"
 
 ---
 
-## Décision (à prendre après phase exploratoire)
+## Décision
+
+### ✅ Option 1 retenue : OP3 Public API
+
+**Résultats exploration (Sprint 0)** :
+- ✅ API publique existe : https://op3.dev/api/docs
+- ✅ Auth : Bearer token (OP3_API_TOKEN dans .env)
+- ✅ Endpoint validé : `/api/1/queries/episode-download-counts?showUuid={uuid}`
+- ✅ Granularité : Par épisode (itemGuid)
+- ✅ Données : `downloads1`, `downloads3`, `downloads7`, `downloads30`, `downloadsAll`
+- ✅ Latence : ~340ms (acceptable pour cache 24h)
+- ✅ Rate limits : Non restrictifs (testé 3 req/s OK)
+
+**Architecture finale** :
+
+```javascript
+// 1. Lookup show UUID depuis GUID au boot
+const showInfo = await fetch(`https://op3.dev/api/1/shows/${OP3_GUID}`, {
+  headers: { 'Authorization': `Bearer ${OP3_API_TOKEN}` }
+});
+const { showUuid } = await showInfo.json();
+// Cache en mémoire (1× au démarrage)
+
+// 2. Fetch episode stats (quotidien via cron ou lazy loading)
+const res = await fetch(
+  `https://op3.dev/api/1/queries/episode-download-counts?showUuid=${showUuid}`,
+  { headers: { 'Authorization': `Bearer ${OP3_API_TOKEN}` } }
+);
+const { episodes } = await res.json();
+
+// 3. Stocker en BDD (cache 24h)
+for (const ep of episodes) {
+  await db.query(`
+    INSERT INTO op3_stats (item_guid, downloads_all, downloads_30, fetched_at)
+    VALUES ($1, $2, $3, NOW())
+    ON CONFLICT (item_guid) DO UPDATE
+    SET downloads_all = $2, downloads_30 = $3, fetched_at = NOW()
+  `, [ep.itemGuid, ep.downloadsAll, ep.downloads30]);
+}
+```
+
+**Affichage UI** :
+- Badge : "🎧 **{downloadsAll} écoutes**" (all-time)
+- Condition : Affiché si `downloadsAll >= 10`
+- Stocké aussi : `downloads30` (future feature trending)
+- Infobulle : "Comptage OP3 (méthode IAB certifiée)"
+
+**Variables .env** :
+```bash
+OP3_API_TOKEN=8P8Q59LPDLqUYLUxmybmetkSwmfHzUAK1ZKsRrBnwHbx
+OP3_GUID=bb74e9c5-20e5-5226-8491-d512ad8ebe04
+```
+
+---
+
+## Phase exploratoire (complétée)
 
 ### Critères de décision
 
@@ -224,15 +279,14 @@ export function formatStatsForDisplay(downloads) {
 }
 ```
 
-**Table SQL** :
+**Table SQL** (schema final) :
 ```sql
 -- Migration 007_op3_stats.sql
 CREATE TABLE IF NOT EXISTS op3_stats (
-  audio_url TEXT NOT NULL,
-  period TEXT NOT NULL DEFAULT '7d', -- '7d', '30d', 'all'
-  downloads INTEGER NOT NULL,
-  fetched_at TIMESTAMP DEFAULT NOW(),
-  PRIMARY KEY (audio_url, period)
+  item_guid TEXT PRIMARY KEY,  -- itemGuid from RSS (clé unique)
+  downloads_all INTEGER NOT NULL,  -- Affichage UI
+  downloads_30 INTEGER,  -- Future feature trending
+  fetched_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_op3_stats_fetched ON op3_stats(fetched_at);
@@ -292,7 +346,16 @@ app.get('/api/episodes/:season/:episode/stats', async (request, reply) => {
 
 ## Tâches phase exploratoire
 
-### 🔍 Sprint 0 : Investigation (1-2h)
+### 🔍 Sprint 0 : Investigation (1-2h) ✅ TERMINÉ
+
+- [x] Tester OP3 API docs : https://op3.dev/api/docs
+- [x] Valider auth bearer token
+- [x] Lookup show UUID depuis GUID : `206968ed9aeb4449beef992c4f84e8d0`
+- [x] Test endpoint `/queries/episode-download-counts`
+- [x] Analyser structure données : `downloads1/3/7/30/All`
+- [x] Mesurer latence API : ~340ms (acceptable)
+- [x] Vérifier rate limits : Non restrictifs
+- [x] **Résultat** : 8 épisodes, 128 max downloads, API stable ✅
 
 - [ ] **Task 1** : Tester API OP3 publique
   - Curl endpoints potentiels
