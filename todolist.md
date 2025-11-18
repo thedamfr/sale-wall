@@ -1,6 +1,49 @@
 ---
 title: Todolist MVP Saleté Sincère
-description: Liste des tâches et roadmap---
+description: Liste des tâches et roadmap
+---
+
+## 🎵 Audio Player Enhancement (US1.1)
+
+### Phase 1: MVP Native Player ✅ TERMINÉ (17/11/2025)
+- [x] ⏱ 120′ **Player HTML5 basique** : Lecture complète épisode dans Episode Highlight
+- [x] ⏱ 30′ **Permissions MinIO** : `/og-images/*` public + fix bucket policy
+- [x] ⏱ 45′ **Cleanup UI** : Supprimer player dupliqué, design épuré
+- [x] ⏱ 30′ **Documentation** : ADR-0013 + update README troubleshooting
+- **Commit** : `69d1404` - feat: add audio player to podcast smartlink
+
+### Phase 2: Waveform Player (EN COURS)
+- [ ] 🎨 60′ **Integration wavesurfer.js** : Player avec visualisation waveform
+  - Installation: `npm install wavesurfer.js`
+  - CDN alternatif si problème build
+  - Style custom purple/indigo pour match design
+  - Play/pause + progress bar cliquable
+  - Durée affichée (current / total)
+
+- [ ] 🎨 30′ **Design responsive** : Mobile-friendly avec waveform adaptatif
+  - Hauteur waveform: 80px desktop, 60px mobile
+  - Couleurs: gradient purple (#9333EA) → indigo (#4F46E5)
+  - Bouton play circulaire avec icon
+  - Timeline en dessous du waveform
+
+- [ ] 📝 15′ **Update ADR-0013** : Documenter upgrade vers wavesurfer.js
+  - Raison: UX moderne type SoundCloud
+  - Taille bundle: ~50KB (acceptable pour feature premium)
+
+### Phase 3: Optimisation Audio (POST-MVP)
+- [ ] 🔧 **Audio Clip Service** : Générer previews 60-90s avec ffmpeg
+  - Service: `server/services/audioClipService.js`
+  - Queue job pour génération asynchrone
+  - Stockage S3: `/previews/s1e5.mp3`
+  - Fade out automatique sur dernières 5s
+
+- [ ] 📊 **Analytics** : Tracking écoute avec OP3 ou Podsights
+  - Events: play, pause, complete (>80% écouté)
+  - Metrics: taux d'écoute, drop-off points
+
+**🎯 Objectif Phase 2** : Player visuellement attractif qui incite à l'écoute
+
+---
 
 ## 🎙️ Castopod Integration (Podcasting Platform)
 

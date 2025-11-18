@@ -144,16 +144,67 @@ Les smartlinks `/podcast/:season/:episode` affichent les boutons vers les platef
 
 **Fichiers modifiés** :
 - `server/views/podcast.hbs` : Player ajouté dans Episode Highlight
-- `server.js` : Route `/podcast/:season/:episode` passe `ogImageUrl`
+- `server.js` : Route `/podcast/:season/:episode` passe `ogImageUrl` + fix bucket policy
 - `scripts/setup-local-minio.sh` : Permissions publiques pour `/og-images/`
 - `readme.md` : Ajout étape `./scripts/setup-local-minio.sh` dans troubleshooting
 
 **Tests manuels** :
 - ✅ Player visible sur http://localhost:3000/podcast/1/5
 - ✅ Audio joue depuis Castopod
-- ✅ OG image s'affiche (16:9)
-- ✅ Fallback sur cover RSS si OG image 404
+- ✅ Bouton download masqué (`controlsList="nodownload"`)
+- ✅ Permissions MinIO corrigées (200 OK sur og-images)
 
 **Déploiement production** :
 - Cellar S3 : Appliquer même bucket policy sur `/og-images/`
 - Script : `./scripts/setup-cellar-cors.sh` (à mettre à jour si besoin)
+
+## Évolution : Waveform Player (Phase 2)
+
+**Objectif** : Remplacer `<audio>` natif par player avec visualisation waveform type SoundCloud.
+
+**Choix technique** : wavesurfer.js v7
+- Lib moderne, active community
+- ~50KB gzipped (acceptable pour feature premium)
+- Support WebAudio API pour visualisation temps réel
+- Responsive et customizable
+
+**Design cible** :
+```
+┌─────────────────────────────────────┐
+│  ⏯  ████▓▓▓▓▓▓▓▓▓░░░░░░░░  1:23/3:45│
+└─────────────────────────────────────┘
+```
+
+**Implémentation** :
+```html
+<div id="waveform"></div>
+<script type="module">
+import WaveSurfer from 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/wavesurfer.esm.js'
+
+const wavesurfer = WaveSurfer.create({
+  container: '#waveform',
+  waveColor: '#9333EA',
+  progressColor: '#4F46E5',
+  height: 80,
+  barWidth: 2,
+  barGap: 1,
+  barRadius: 2
+})
+wavesurfer.load('{{episodeData.audioUrl}}')
+</script>
+```
+
+**Avantages** :
+- 🎨 Visuellement attractif (incite à l'écoute)
+- 🖱️ Scrubbing précis (clic sur waveform)
+- 📱 Responsive mobile/desktop
+- ⚡ Performance correcte (WebAudio API optimisé)
+
+**Todo Phase 2** :
+- [ ] Intégrer wavesurfer.js via CDN ou npm
+- [ ] Custom controls (play/pause button circulaire)
+- [ ] Affichage durée current/total
+- [ ] Style purple/indigo match design
+- [ ] Tests mobile responsive
+
+**Référence** : Voir `todolist.md` section "Audio Player Enhancement Phase 2"
