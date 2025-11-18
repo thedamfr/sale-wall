@@ -821,6 +821,119 @@ app.get("/podcast/:season/:episode", {
 // Health
 app.get("/health", () => ({ ok: true }));
 
+// Audio Proxy for CORS (ADR-0014)
+const ALLOWED_AUDIO_DOMAINS = [
+  'op3.dev',
+  'podcasts.saletesincere.fr',
+  'media.saletesincere.fr'
+];
+
+function isAllowedAudioUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_AUDIO_DOMAINS.some(domain => 
+      parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isPrivateIP(hostname) {
+  const privateRanges = [
+    /^127\./,           // localhost
+    /^10\./,            // private class A
+    /^192\.168\./,      // private class C
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./ // private class B
+  ];
+  return privateRanges.some(range => range.test(hostname));
+}
+
+// OPTIONS preflight pour CORS
+app.options('/api/audio/proxy', async (request, reply) => {
+  reply.header('Access-Control-Allow-Origin', '*');
+  reply.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  reply.header('Access-Control-Allow-Headers', 'Range, Content-Type');
+  reply.code(204).send();
+});
+
+// Proxy audio avec streaming
+app.get('/api/audio/proxy', {
+  config: { rateLimit: apiLimiter }
+}, async (request, reply) => {
+  const { url } = request.query;
+  
+  if (!url) {
+    return reply.code(400).send({ error: 'Missing url parameter' });
+  }
+
+  try {
+    const decodedUrl = decodeURIComponent(url);
+    
+    // Validation domaine
+    if (!isAllowedAudioUrl(decodedUrl)) {
+      app.log.warn('❌ Audio proxy: Domain not allowed', { url: decodedUrl });
+      return reply.code(403).send({ error: 'Domain not allowed' });
+    }
+
+    // Protection SSRF
+    const parsed = new URL(decodedUrl);
+    if (isPrivateIP(parsed.hostname)) {
+      app.log.warn('❌ Audio proxy: Private IP blocked', { hostname: parsed.hostname });
+      return reply.code(403).send({ error: 'Private IP not allowed' });
+    }
+    
+    app.log.info('🔊 Audio proxy request', { url: decodedUrl });
+    
+    // Fetch audio depuis OP3 (suit redirects)
+    const response = await fetch(decodedUrl, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'SaleteSincere/1.0 (Audio Proxy)',
+        'Range': request.headers.range || ''
+      }
+    });
+
+    if (!response.ok) {
+      app.log.error('❌ Audio proxy: Fetch failed', { 
+        status: response.status, 
+        statusText: response.statusText,
+        url: decodedUrl 
+      });
+      return reply.code(response.status).send({ error: 'Failed to fetch audio' });
+    }
+
+    // Headers CORS pour Web Audio API
+    reply.header('Access-Control-Allow-Origin', '*');
+    reply.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    reply.header('Access-Control-Allow-Headers', 'Range, Content-Type');
+    reply.header('Content-Type', response.headers.get('Content-Type') || 'audio/mpeg');
+    reply.header('Accept-Ranges', 'bytes');
+
+    // Support Range requests (seek audio)
+    const contentLength = response.headers.get('Content-Length');
+    const contentRange = response.headers.get('Content-Range');
+    
+    if (contentLength) {
+      reply.header('Content-Length', contentLength);
+    }
+    
+    if (contentRange) {
+      reply.header('Content-Range', contentRange);
+      reply.code(206); // Partial Content
+    } else {
+      reply.code(200);
+    }
+
+    // Stream audio (pas de buffer en mémoire)
+    return reply.send(response.body);
+    
+  } catch (error) {
+    app.log.error('❌ Audio proxy error:', error);
+    return reply.code(500).send({ error: 'Proxy failed' });
+  }
+});
+
 // Initialize pg-boss queue and worker before starting server
 // Fail-hard par défaut : Si worker échoue, déploiement bloqué (sécurité)
 // Bypass explicite : ALLOW_DEGRADED_MODE=true pour autoriser mode dégradé

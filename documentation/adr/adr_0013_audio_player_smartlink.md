@@ -75,6 +75,104 @@ Les smartlinks `/podcast/:season/:episode` affichent les boutons vers les platef
 - Stocker dans S3 `/previews/sXeY.mp3`
 - Remplacer `audioUrl` par `clipUrl` dans template
 
+---
+
+## Phase 2 : Custom Audio Player (Implémenté 18/11/2025)
+
+### Contexte Phase 2
+
+Après validation du MVP, amélioration de l'expérience utilisateur avec :
+- **Waveform visuelle** style SoundCloud (objectif initial)
+- **Design cohérent** avec l'identité visuelle (purple gradient)
+- **Interactions riches** (hover, animations, scrubbing fluide)
+
+### Tentative : wavesurfer.js (abandonné)
+
+**Bibliothèque testée** : `wavesurfer.js` v7
+- CDN : `https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/wavesurfer.esm.js`
+- Configuration : WebAudio API avec purple gradient
+
+**Problème bloquant** : CORS avec redirections OP3
+- Les URLs audio passent par `https://op3.dev/e,pg=...` (analytics)
+- OP3 redirige (302) vers Castopod sans headers CORS
+- Web Audio API refuse de charger l'audio sans `Access-Control-Allow-Origin`
+- Tentatives échouées : `backend: 'MediaElement'`, `xhr: {mode: 'no-cors'}`
+
+### Solution Implémentée : Custom Player
+
+**Approche** : Player vanilla JS sans waveform
+- HTML5 `<audio>` sans attribut `crossorigin` (permet redirects opaques)
+- Interface custom avec gradient purple/indigo
+- Pas de dépendances externes
+
+**Fonctionnalités** :
+- ✅ Bouton play/pause circulaire avec gradient
+- ✅ Barre de progression interactive (click-to-seek)
+- ✅ Hover preview sur la barre (opacity transition)
+- ✅ Affichage temps (current / total) en format MM:SS
+- ✅ Animations fluides (transitions CSS)
+- ✅ Compatible OP3 redirects (pas de CORS requis)
+
+**Code Structure** :
+```handlebars
+<!-- Bouton Play/Pause -->
+<button id="playBtn-{{episodeData.season}}-{{episodeData.episode}}"
+        class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600">
+  <svg><!-- Icons dynamiques --></svg>
+</button>
+
+<!-- Barre de Progression -->
+<div class="progress-bar relative h-2 bg-gray-700 rounded cursor-pointer">
+  <div class="progress-hover"></div>
+  <div id="progress-{id}" class="bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+</div>
+
+<!-- Audio Element (sans crossorigin) -->
+<audio id="audio-{id}" preload="metadata">
+  <source src="{{episodeData.audioUrl}}" type="audio/mpeg">
+</audio>
+
+<script>
+  // Event listeners : play/pause, timeupdate, click-to-seek
+</script>
+```
+
+**Design** : Purple/Indigo gradient
+- `from-purple-500 to-indigo-600` (bouton)
+- `from-purple-500 to-indigo-500` (progress bar)
+- `text-purple-300` (timer)
+- Transitions : `transition-all duration-300 ease-in-out`
+
+### Trade-offs
+
+**❌ Perdus** :
+- Waveform visuelle (impossible avec OP3 redirect + CORS)
+- Web Audio API (nécessite `crossorigin="anonymous"`)
+
+**✅ Gagnés** :
+- Compatible avec OP3 analytics (redirects opaques)
+- Zéro dépendances externes
+- Performance optimale (vanilla JS)
+- Contrôle total sur le design
+- Interface fluide et responsive
+
+### Options Futures pour Waveform
+
+1. **Proxy audio** : Passer par notre serveur pour ajouter CORS headers
+   - Coût : Bande passante supplémentaire
+   - Complexité : Gestion du cache, redirects
+
+2. **Pré-générer waveform** : Backend génère image PNG de la waveform
+   - Tools : `ffmpeg` + `audiowaveform`
+   - Store : S3 `/waveforms/{episode}.png`
+   - Display : Superposer PNG + progress bar
+
+3. **Castopod CORS** : Si Castopod ajoute headers CORS à l'avenir
+   - Contacter équipe Castopod
+   - Migrer vers OP3 avec support CORS
+
+**Statut Phase 2** : ✅ Terminé le 18/11/2025
+
 ## Critères d'acceptation
 
 **Given** : Page `/podcast/1/5` chargée avec RSS valide  

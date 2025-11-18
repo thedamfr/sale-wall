@@ -91,17 +91,34 @@
                 <h2 class="text-2xl font-bold text-white mb-4">{{episodeData.title}}</h2>
                 
                 {{#if episodeData.audioUrl}}
-                <!-- Custom Audio Player -->
+                <!-- Waveform Audio Player -->
                 <div class="mb-4 bg-black/30 rounded-xl p-4 backdrop-blur-sm">
                     <div class="flex items-center justify-between mb-3">
                         <div class="text-purple-300 text-xs font-medium">🎧 Pré-écoute de l'épisode</div>
                         <div class="text-purple-300 text-xs" id="time-{{episodeData.season}}-{{episodeData.episode}}">0:00 / {{episodeData.duration}}</div>
                     </div>
                     
-                    <!-- Player controls -->
-                    <div class="flex items-center gap-3">
+                    <!-- Waveform container avec placeholder -->
+                    <div class="relative mb-3 h-16">
+                        <div id="waveform-{{episodeData.season}}-{{episodeData.episode}}" class="absolute inset-0 opacity-0 transition-opacity duration-500"></div>
+                        <div id="waveform-loader-{{episodeData.season}}-{{episodeData.episode}}" 
+                             class="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-purple-900/20 to-indigo-900/20 rounded-lg">
+                            <div class="flex gap-1.5 items-end">
+                                <div class="w-1 h-8 bg-purple-500/50 rounded-full animate-pulse" style="animation-delay: 0ms; animation-duration: 1s"></div>
+                                <div class="w-1 h-12 bg-purple-400/50 rounded-full animate-pulse" style="animation-delay: 150ms; animation-duration: 1.2s"></div>
+                                <div class="w-1 h-6 bg-purple-500/50 rounded-full animate-pulse" style="animation-delay: 300ms; animation-duration: 0.9s"></div>
+                                <div class="w-1 h-10 bg-indigo-500/50 rounded-full animate-pulse" style="animation-delay: 450ms; animation-duration: 1.1s"></div>
+                                <div class="w-1 h-7 bg-purple-400/50 rounded-full animate-pulse" style="animation-delay: 600ms; animation-duration: 1s"></div>
+                                <div class="w-1 h-9 bg-indigo-400/50 rounded-full animate-pulse" style="animation-delay: 750ms; animation-duration: 1.3s"></div>
+                                <div class="w-1 h-5 bg-purple-500/50 rounded-full animate-pulse" style="animation-delay: 900ms; animation-duration: 0.8s"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Play/Pause button -->
+                    <div class="flex items-center justify-center">
                         <button id="playBtn-{{episodeData.season}}-{{episodeData.episode}}" 
-                                class="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 flex items-center justify-center transition-all shadow-lg hover:shadow-xl hover:scale-105">
+                                class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 flex items-center justify-center transition-all shadow-lg hover:shadow-xl hover:scale-105">
                             <svg id="playIcon-{{episodeData.season}}-{{episodeData.episode}}" class="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z"/>
                             </svg>
@@ -109,84 +126,86 @@
                                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
                             </svg>
                         </button>
-                        
-                        <!-- Progress bar -->
-                        <div class="flex-1">
-                            <div class="relative h-2 bg-purple-900/30 rounded-full cursor-pointer group" id="progressBar-{{episodeData.season}}-{{episodeData.episode}}">
-                                <div id="progress-{{episodeData.season}}-{{episodeData.episode}}" class="absolute h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all" style="width: 0%"></div>
-                                <div id="progressHover-{{episodeData.season}}-{{episodeData.episode}}" class="absolute h-full bg-purple-400/20 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" style="width: 0%"></div>
-                            </div>
-                        </div>
                     </div>
-                    
-                    <!-- Hidden audio element -->
-                    <audio id="audio-{{episodeData.season}}-{{episodeData.episode}}" preload="metadata">
-                        <source src="{{episodeData.audioUrl}}" type="audio/mpeg">
-                    </audio>
                 </div>
                 
-                <script>
+                <script type="module">
+                    import WaveSurfer from 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/wavesurfer.esm.js';
+                    
                     (function() {
                         const episodeId = '{{episodeData.season}}-{{episodeData.episode}}';
-                        const audio = document.getElementById('audio-' + episodeId);
+                        const originalUrl = '{{{episodeData.audioUrl}}}'; // Triple braces pour éviter HTML encoding
+                        const proxyUrl = `/api/audio/proxy?url=${encodeURIComponent(originalUrl)}`;
+                        
+                        console.log('🎵 Loading audio via proxy:', proxyUrl);
+                        
+                        const wavesurfer = WaveSurfer.create({
+                            container: '#waveform-' + episodeId,
+                            url: proxyUrl,
+                            waveColor: '#F1F1F199',                    // Gris foncé (non joué)
+                            progressColor: '#a855f7',                  // Purple solid (partie jouée)
+                            cursorColor: '#c084fc',                    // Purple-400 pour le curseur
+                            barWidth: 3,
+                            barGap: 2,
+                            height: 60,
+                            normalize: true,
+                            backend: 'WebAudio',
+                            barRadius: 3,                              // Barres arrondies
+                            dragToSeek: true                           // Click to seek
+                        });
+                        
                         const playBtn = document.getElementById('playBtn-' + episodeId);
                         const playIcon = document.getElementById('playIcon-' + episodeId);
                         const pauseIcon = document.getElementById('pauseIcon-' + episodeId);
                         const timeDisplay = document.getElementById('time-' + episodeId);
-                        const progressBar = document.getElementById('progressBar-' + episodeId);
-                        const progress = document.getElementById('progress-' + episodeId);
-                        const progressHover = document.getElementById('progressHover-' + episodeId);
                         
                         // Play/Pause
                         playBtn.addEventListener('click', () => {
-                            if (audio.paused) {
-                                audio.play();
-                            } else {
-                                audio.pause();
-                            }
+                            wavesurfer.playPause();
                         });
                         
-                        audio.addEventListener('play', () => {
+                        wavesurfer.on('play', () => {
                             playIcon.classList.add('hidden');
                             pauseIcon.classList.remove('hidden');
                         });
                         
-                        audio.addEventListener('pause', () => {
+                        wavesurfer.on('pause', () => {
                             playIcon.classList.remove('hidden');
                             pauseIcon.classList.add('hidden');
                         });
                         
-                        // Time update
-                        audio.addEventListener('timeupdate', () => {
-                            const percent = (audio.currentTime / audio.duration) * 100 || 0;
-                            progress.style.width = percent + '%';
-                            timeDisplay.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration);
+                        wavesurfer.on('audioprocess', () => {
+                            const currentTime = wavesurfer.getCurrentTime();
+                            const duration = wavesurfer.getDuration();
+                            timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
                         });
                         
-                        audio.addEventListener('loadedmetadata', () => {
-                            timeDisplay.textContent = '0:00 / ' + formatTime(audio.duration);
+                        wavesurfer.on('ready', () => {
+                            console.log('✅ Waveform ready');
+                            const duration = wavesurfer.getDuration();
+                            timeDisplay.textContent = '0:00 / ' + formatTime(duration);
+                            
+                            // Fade out loader et fade in waveform
+                            const loader = document.getElementById('waveform-loader-' + episodeId);
+                            const waveformEl = document.getElementById('waveform-' + episodeId);
+                            
+                            if (loader) {
+                                loader.style.opacity = '0';
+                                loader.style.transition = 'opacity 0.3s';
+                                setTimeout(() => loader.style.display = 'none', 300);
+                            }
+                            
+                            if (waveformEl) {
+                                waveformEl.style.opacity = '1';
+                            }
                         });
                         
-                        // Seek
-                        progressBar.addEventListener('click', (e) => {
-                            const rect = progressBar.getBoundingClientRect();
-                            const percent = (e.clientX - rect.left) / rect.width;
-                            audio.currentTime = percent * audio.duration;
-                        });
-                        
-                        // Hover preview
-                        progressBar.addEventListener('mousemove', (e) => {
-                            const rect = progressBar.getBoundingClientRect();
-                            const percent = (e.clientX - rect.left) / rect.width * 100;
-                            progressHover.style.width = Math.max(0, Math.min(100, percent)) + '%';
-                        });
-                        
-                        progressBar.addEventListener('mouseleave', () => {
-                            progressHover.style.width = '0%';
+                        wavesurfer.on('error', (error) => {
+                            console.error('❌ Waveform error:', error);
                         });
                         
                         function formatTime(seconds) {
-                            if (isNaN(seconds)) return '0:00';
+                            if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
                             const mins = Math.floor(seconds / 60);
                             const secs = Math.floor(seconds % 60);
                             return mins + ':' + (secs < 10 ? '0' : '') + secs;

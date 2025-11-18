@@ -3,43 +3,36 @@ title: Todolist MVP Saleté Sincère
 description: Liste des tâches et roadmap
 ---
 
-## 🎵 Audio Player Enhancement (US1.1)
+## Audio Player Enhancement
 
-### Phase 1: MVP Native Player ✅ TERMINÉ (17/11/2025)
-- [x] ⏱ 120′ **Player HTML5 basique** : Lecture complète épisode dans Episode Highlight
-- [x] ⏱ 30′ **Permissions MinIO** : `/og-images/*` public + fix bucket policy
-- [x] ⏱ 45′ **Cleanup UI** : Supprimer player dupliqué, design épuré
-- [x] ⏱ 30′ **Documentation** : ADR-0013 + update README troubleshooting
-- **Commit** : `69d1404` - feat: add audio player to podcast smartlink
+### Phase 1: MVP HTML5 Player ✅
+- [x] Lecture audio complète (durée réelle)
+- [x] Player HTML5 natif avec contrôles basiques
+- [x] Permissions MinIO configurées (/audio/* et /og-images/*)
+- [x] Testé et validé en localhost
+- **Statut**: ✅ Terminé le 17/11/2025 - commit 69d1404
+- **Documentation**: ADR-0013
 
-### Phase 2: Waveform Player ✅ TERMINÉ (18/11/2025)
-- [x] 🎨 60′ **Integration wavesurfer.js** : Player avec visualisation waveform
-  - CDN ESM module (v7) : zéro config build
-  - Style custom purple/indigo (#6b21a8 → #a855f7)
-  - Play/pause + progress bar cliquable
-  - Durée affichée (current / total)
+### Phase 2.1: Waveform Player avec Proxy Audio ✅
+- [x] Endpoint proxy `/api/audio/proxy` avec streaming
+- [x] CORS headers pour Web Audio API
+- [x] Validation domaines autorisés (whitelist)
+- [x] Protection SSRF (IPs privées bloquées)
+- [x] Intégration wavesurfer.js v7 avec proxy URL
+- [x] Waveform visuelle avec gradient purple/indigo
+- [x] Bouton play/pause circulaire
+- [x] Affichage durée (current / total)
+- [x] Support Range requests (seek audio)
+- **Statut**: ✅ Terminé le 18/11/2025
+- **Documentation**: ADR-0014
+- **Solution**: Proxy streaming résout CORS avec OP3 redirects
 
-- [x] 🎨 30′ **Design responsive** : Mobile-friendly avec waveform adaptatif
-  - Hauteur waveform: 60px optimisée
-  - Bouton play circulaire avec gradient purple
-  - Timeline dynamique en temps réel
-  - Icons play/pause qui switchent
-
-- [x] 📝 5′ **Update ADR-0013** : Player wavesurfer.js implémenté
-  - Commit: TBD (en cours)
-
-**🎯 Résultat** : Player moderne style SoundCloud intégré ✨
-- [ ] 🔧 **Audio Clip Service** : Générer previews 60-90s avec ffmpeg
-  - Service: `server/services/audioClipService.js`
-  - Queue job pour génération asynchrone
-  - Stockage S3: `/previews/s1e5.mp3`
-  - Fade out automatique sur dernières 5s
-
-- [ ] 📊 **Analytics** : Tracking écoute avec OP3 ou Podsights
-  - Events: play, pause, complete (>80% écouté)
-  - Metrics: taux d'écoute, drop-off points
-
-**🎯 Objectif Phase 2** : Player visuellement attractif qui incite à l'écoute
+### Phase 3: Audio Clips & Analytics ⏳
+- [ ] Service audioClipService.js avec ffmpeg
+- [ ] Générer previews 60-90s avec fade out
+- [ ] Stockage S3 `/previews/sXeY.mp3`
+- [ ] Tracking écoute avec OP3 ou Podsights
+- **Statut**: ⏳ Post-MVP
 
 ---
 
