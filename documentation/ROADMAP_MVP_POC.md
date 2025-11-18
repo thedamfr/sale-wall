@@ -47,11 +47,14 @@
 - Manque : Cibles tactiles ≥ 44px
 - Manque : Contrastes AA WCAG
 
-**US1.3 - Compteur OP3 public** : ❌ Pas d'intégration OP3
+**US1.3 - Compteur OP3 public** : ✅ Intégration basique faite
+- ✅ Proxy audio `/api/audio/proxy` tracking OP3 (ADR-0014)
+- ⚠️ Stats OP3 : play counts OK, geo stats = serveur IP
 - Besoin : Service `op3Service.js` (fetch stats via OP3 API)
-- Affichage "X écoutes" près du titre
-- Infobulle explicative
-- Cache 24h (MAJ 1×/jour)
+- Besoin : Affichage "X écoutes" près du titre (UI template)
+- Besoin : Infobulle explicative
+- Besoin : Cache 24h (MAJ 1×/jour)
+- Note : X-Forwarded-For envoyé mais pas whitelisté OP3
 
 **US2.1 - Choix appli sans redirect auto** : 🟡 Liens existent mais UX à améliorer
 - Template affiche boutons providers
@@ -111,14 +114,27 @@
 - [ ] **Effort** : 1 session
 
 **US1.3 - OP3 preuve sociale** ⭐⭐⭐
-- [ ] ADR : OP3 API publique vs scraping
-- [ ] Service `op3Service.js` (fetch downloads/jour par épisode)
-- [ ] Cache 24h (table `op3_stats` ou Redis si besoin)
-- [ ] Affichage "X écoutes" conditionnel (≥ 10)
-- [ ] Infobulle explicative "Basé sur OP3..."
-- [ ] CTA "Rejoindre les auditeurs" → choix appli
-- [ ] Tests : Masquage si < 10, fallback si API KO
-- [ ] **Effort** : 1-2 sessions
+- [x] ADR-0014 : Proxy audio pour tracking OP3 ✅
+- [x] Proxy `/api/audio/proxy` avec headers X-Forwarded-For ✅
+- [x] Documentation trade-offs OP3 (play counts OK, geo = serveur) ✅
+- [x] ADR-0015 : OP3 Stats Integration (phase exploratoire) ✅
+- [ ] **Sprint 0 (exploration 1-2h)** :
+  - [ ] Test API OP3 publique (`scripts/test-op3-api.js`)
+  - [ ] Test scraping dashboard OP3 (fallback)
+  - [ ] Analyse RSS Castopod (tags `<podcast:*>`)
+  - [ ] Décision architecture + update ADR-0015
+- [ ] **Sprint 1 (implémentation 2-3h)** :
+  - [ ] Migration `007_op3_stats.sql` (table cache)
+  - [ ] Service `op3Service.js` (fetch + cache 24h)
+  - [ ] Route `/api/episodes/:s/:e/stats`
+  - [ ] Template `podcast.hbs` : Badge "X écoutes" + infobulle
+  - [ ] Tests unitaires + E2E
+- [ ] **Sprint 2 (tests 1h)** :
+  - [ ] Tests edge cases (< 10, API down, cache stale)
+  - [ ] Monitoring logs OP3 errors
+  - [ ] Performance : latence < 100ms ajoutée
+- [ ] (Optionnel) Contact OP3 pour whitelisting X-Forwarded-For
+- **Effort total** : 4-6h (architecture déjà pensée ADR-0015)
 
 **Durée totale Épopée 1** : ~4-6 sessions (8-12h)
 

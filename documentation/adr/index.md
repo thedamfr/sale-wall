@@ -29,14 +29,17 @@ tags: [adr, index, architecture, decisions]
 | [ADR-0011](./adr_0011_podcast_smartlink_multiplateforme.md) | Podcast Smartlink Multiplateforme | ✅ **Implémenté** | 2025-10 | Podcasting, SEO | Feature |
 | [ADR-0012](./adr_0012_og_images_smartlinks.md) | OG Images for Smartlinks | ✅ **Implémenté** | 2025-11 | Podcasting, SEO | Feature |
 | [ADR-0013](./adr_0013_audio_player_smartlink.md) | Audio Player on Smartlink | ✅ **Implémenté** | 2025-11 | Audio, UX | Feature |
+| [ADR-0014](./adr_0014_audio_proxy_waveform.md) | Audio Proxy for Waveform | ✅ **Implémenté** | 2025-11 | Audio, CORS | Feature |
+| [ADR-0015](./adr_0015_op3_stats_integration.md) | OP3 Stats Integration | 🔍 **Exploration** | 2025-11 | Analytics, API | Feature |
 
 ## 📊 Statistiques
 
-- **Total ADRs** : 13
+- **Total ADRs** : 15
 - **Actifs** : 2 (infrastructure/sécurité)
-- **Implémentés** : 9 (audio + newsletter + podcasting + templates)
+- **Implémentés** : 11 (audio + newsletter + podcasting + templates)
 - **Acceptés** : 1 (newsletter DOI)
 - **En cours** : 1 (newsletter intégration)
+- **Exploration** : 1 (OP3 stats)
 - **Attente** : 1 (podcasting DNS)
 - **Draft** : 0
 - **Obsolètes** : 0
@@ -47,6 +50,7 @@ tags: [adr, index, architecture, decisions]
 - [ADR-0001](./adr_0001_voice_posting_mvp.md) - Voice Posting MVP
 - [ADR-0002](./adr_0002_voice_posting_mvp_implemented.md) - Implementation Details
 - [ADR-0013](./adr_0013_audio_player_smartlink.md) - Audio Player on Smartlink (MVP)
+- [ADR-0014](./adr_0014_audio_proxy_waveform.md) - Audio Proxy for Waveform (Phase 2.1)
 
 ### 🏗️ Infrastructure & Déploiement  
 - [ADR-0003](./adr_0003_deployment_production_clevercloud.md) - Production CleverCloud
@@ -67,6 +71,9 @@ tags: [adr, index, architecture, decisions]
 - [ADR-0010](./adr_0010_podcast_episode_highlight.md) - Episode Highlight UI
 - [ADR-0011](./adr_0011_podcast_smartlink_multiplateforme.md) - Smartlink Multiplateforme
 - [ADR-0012](./adr_0012_og_images_smartlinks.md) - OG Images Generation
+
+### 📊 Analytics & Stats
+- [ADR-0015](./adr_0015_op3_stats_integration.md) - OP3 Stats Integration (phase exploratoire)
 
 ## ✍️ Créer un nouvel ADR
 
