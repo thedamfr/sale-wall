@@ -804,7 +804,25 @@ app.get("/podcast/:season/:episode", {
     );
   }
   
-  // 4. Render page avec données épisode + liens plateformes (ou null si pas encore résolus)
+  // 4. Fetch OP3 stats from cache (ADR-0015)
+  let episodeStats = null;
+  if (episodeData.itemGuid) {
+    try {
+      const { getEpisodeStats, formatStatsForDisplay } = await import('./server/services/op3Service.js');
+      const stats = await getEpisodeStats(app.pg.pool, episodeData.itemGuid);
+      if (stats && stats.downloadsAll >= 10) {
+        episodeStats = {
+          downloadsAll: stats.downloadsAll,
+          downloads30: stats.downloads30,
+          displayText: formatStatsForDisplay(stats.downloadsAll)
+        };
+      }
+    } catch (err) {
+      app.log.warn('OP3 stats fetch failed (non-blocking):', err.message);
+    }
+  }
+  
+  // 5. Render page avec données épisode + liens plateformes (ou null si pas encore résolus)
   reply.header('Cache-Control', 'public, max-age=3600');
   reply.header('Vary', 'User-Agent'); // CDN cache per User-Agent (bots vs users)
   return reply.view("podcast.hbs", { 
@@ -814,7 +832,8 @@ app.get("/podcast/:season/:episode", {
       episode
     },
     platformLinks,
-    ogImageUrl: platformLinks?.og_image_url || null // Pass OG image for player cover
+    ogImageUrl: platformLinks?.og_image_url || null, // Pass OG image for player cover
+    episodeStats // OP3 badge data (ADR-0015)
   });
 });
 
@@ -977,6 +996,16 @@ if (WORKER_ENABLED) {
     : 'No database connection (DATABASE_URL or POSTGRESQL_ADDON_URI missing)';
   console.log(`⚠️  Worker disabled (${reason})`);
   console.log('   Episode resolution will be synchronous (slower)');
+}
+
+// ============================================================================
+// OP3 SERVICE INITIALIZATION (ADR-0015)
+// ============================================================================
+try {
+  const { initOP3Service } = await import('./server/services/op3Service.js');
+  await initOP3Service(); // Preload show UUID in memory
+} catch (err) {
+  console.warn('⚠️  OP3 service init failed (stats will be unavailable):', err.message);
 }
 
   return app;

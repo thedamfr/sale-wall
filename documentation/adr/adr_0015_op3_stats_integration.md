@@ -344,6 +344,21 @@ app.get('/api/episodes/:season/:episode/stats', async (request, reply) => {
 
 ---
 
+## Détail API OP3 (Sprint 1)
+
+- L'endpoint `/api/1/queries/episode-download-counts?showUuid=...` renvoie **tous les épisodes** du podcast en une seule requête.
+- Le tableau `episodes` contient pour chaque épisode :
+  - `itemGuid` (identifiant RSS)
+  - `title`
+  - `downloadsAll` (all-time)
+  - `downloads30` (30 jours)
+  - etc.
+- Le service OP3 met à jour le cache BDD pour tous les épisodes d'un coup (optimisé pour PGBoss).
+- Le refresh est déclenché à la première requête si le cache est trop vieux (> 24h), via un job PGBoss non bloquant.
+- La page affiche la dernière valeur connue, même si le job est en cours.
+
+---
+
 ## Tâches phase exploratoire
 
 ### 🔍 Sprint 0 : Investigation (1-2h) ✅ TERMINÉ
