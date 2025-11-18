@@ -91,14 +91,108 @@
                 <h2 class="text-2xl font-bold text-white mb-4">{{episodeData.title}}</h2>
                 
                 {{#if episodeData.audioUrl}}
-                <!-- Player audio -->
+                <!-- Custom Audio Player -->
                 <div class="mb-4 bg-black/30 rounded-xl p-4 backdrop-blur-sm">
-                    <div class="text-purple-300 text-xs font-medium mb-3">🎧 Pré-écoute de l'épisode</div>
-                    <audio controls controlsList="nodownload" class="w-full">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-purple-300 text-xs font-medium">🎧 Pré-écoute de l'épisode</div>
+                        <div class="text-purple-300 text-xs" id="time-{{episodeData.season}}-{{episodeData.episode}}">0:00 / {{episodeData.duration}}</div>
+                    </div>
+                    
+                    <!-- Player controls -->
+                    <div class="flex items-center gap-3">
+                        <button id="playBtn-{{episodeData.season}}-{{episodeData.episode}}" 
+                                class="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 flex items-center justify-center transition-all shadow-lg hover:shadow-xl hover:scale-105">
+                            <svg id="playIcon-{{episodeData.season}}-{{episodeData.episode}}" class="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            <svg id="pauseIcon-{{episodeData.season}}-{{episodeData.episode}}" class="w-5 h-5 text-white hidden" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                            </svg>
+                        </button>
+                        
+                        <!-- Progress bar -->
+                        <div class="flex-1">
+                            <div class="relative h-2 bg-purple-900/30 rounded-full cursor-pointer group" id="progressBar-{{episodeData.season}}-{{episodeData.episode}}">
+                                <div id="progress-{{episodeData.season}}-{{episodeData.episode}}" class="absolute h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all" style="width: 0%"></div>
+                                <div id="progressHover-{{episodeData.season}}-{{episodeData.episode}}" class="absolute h-full bg-purple-400/20 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden audio element -->
+                    <audio id="audio-{{episodeData.season}}-{{episodeData.episode}}" preload="metadata">
                         <source src="{{episodeData.audioUrl}}" type="audio/mpeg">
-                        Votre navigateur ne supporte pas la lecture audio.
                     </audio>
                 </div>
+                
+                <script>
+                    (function() {
+                        const episodeId = '{{episodeData.season}}-{{episodeData.episode}}';
+                        const audio = document.getElementById('audio-' + episodeId);
+                        const playBtn = document.getElementById('playBtn-' + episodeId);
+                        const playIcon = document.getElementById('playIcon-' + episodeId);
+                        const pauseIcon = document.getElementById('pauseIcon-' + episodeId);
+                        const timeDisplay = document.getElementById('time-' + episodeId);
+                        const progressBar = document.getElementById('progressBar-' + episodeId);
+                        const progress = document.getElementById('progress-' + episodeId);
+                        const progressHover = document.getElementById('progressHover-' + episodeId);
+                        
+                        // Play/Pause
+                        playBtn.addEventListener('click', () => {
+                            if (audio.paused) {
+                                audio.play();
+                            } else {
+                                audio.pause();
+                            }
+                        });
+                        
+                        audio.addEventListener('play', () => {
+                            playIcon.classList.add('hidden');
+                            pauseIcon.classList.remove('hidden');
+                        });
+                        
+                        audio.addEventListener('pause', () => {
+                            playIcon.classList.remove('hidden');
+                            pauseIcon.classList.add('hidden');
+                        });
+                        
+                        // Time update
+                        audio.addEventListener('timeupdate', () => {
+                            const percent = (audio.currentTime / audio.duration) * 100 || 0;
+                            progress.style.width = percent + '%';
+                            timeDisplay.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration);
+                        });
+                        
+                        audio.addEventListener('loadedmetadata', () => {
+                            timeDisplay.textContent = '0:00 / ' + formatTime(audio.duration);
+                        });
+                        
+                        // Seek
+                        progressBar.addEventListener('click', (e) => {
+                            const rect = progressBar.getBoundingClientRect();
+                            const percent = (e.clientX - rect.left) / rect.width;
+                            audio.currentTime = percent * audio.duration;
+                        });
+                        
+                        // Hover preview
+                        progressBar.addEventListener('mousemove', (e) => {
+                            const rect = progressBar.getBoundingClientRect();
+                            const percent = (e.clientX - rect.left) / rect.width * 100;
+                            progressHover.style.width = Math.max(0, Math.min(100, percent)) + '%';
+                        });
+                        
+                        progressBar.addEventListener('mouseleave', () => {
+                            progressHover.style.width = '0%';
+                        });
+                        
+                        function formatTime(seconds) {
+                            if (isNaN(seconds)) return '0:00';
+                            const mins = Math.floor(seconds / 60);
+                            const secs = Math.floor(seconds % 60);
+                            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+                        }
+                    })();
+                </script>
                 {{/if}}
                 
                 {{#if episodeData.isTruncated}}

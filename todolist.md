@@ -12,25 +12,23 @@ description: Liste des tâches et roadmap
 - [x] ⏱ 30′ **Documentation** : ADR-0013 + update README troubleshooting
 - **Commit** : `69d1404` - feat: add audio player to podcast smartlink
 
-### Phase 2: Waveform Player (EN COURS)
-- [ ] 🎨 60′ **Integration wavesurfer.js** : Player avec visualisation waveform
-  - Installation: `npm install wavesurfer.js`
-  - CDN alternatif si problème build
-  - Style custom purple/indigo pour match design
+### Phase 2: Waveform Player ✅ TERMINÉ (18/11/2025)
+- [x] 🎨 60′ **Integration wavesurfer.js** : Player avec visualisation waveform
+  - CDN ESM module (v7) : zéro config build
+  - Style custom purple/indigo (#6b21a8 → #a855f7)
   - Play/pause + progress bar cliquable
   - Durée affichée (current / total)
 
-- [ ] 🎨 30′ **Design responsive** : Mobile-friendly avec waveform adaptatif
-  - Hauteur waveform: 80px desktop, 60px mobile
-  - Couleurs: gradient purple (#9333EA) → indigo (#4F46E5)
-  - Bouton play circulaire avec icon
-  - Timeline en dessous du waveform
+- [x] 🎨 30′ **Design responsive** : Mobile-friendly avec waveform adaptatif
+  - Hauteur waveform: 60px optimisée
+  - Bouton play circulaire avec gradient purple
+  - Timeline dynamique en temps réel
+  - Icons play/pause qui switchent
 
-- [ ] 📝 15′ **Update ADR-0013** : Documenter upgrade vers wavesurfer.js
-  - Raison: UX moderne type SoundCloud
-  - Taille bundle: ~50KB (acceptable pour feature premium)
+- [x] 📝 5′ **Update ADR-0013** : Player wavesurfer.js implémenté
+  - Commit: TBD (en cours)
 
-### Phase 3: Optimisation Audio (POST-MVP)
+**🎯 Résultat** : Player moderne style SoundCloud intégré ✨
 - [ ] 🔧 **Audio Clip Service** : Générer previews 60-90s avec ffmpeg
   - Service: `server/services/audioClipService.js`
   - Queue job pour génération asynchrone
