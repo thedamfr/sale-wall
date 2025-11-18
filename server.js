@@ -890,6 +890,8 @@ app.get('/api/audio/proxy', {
       redirect: 'follow',
       headers: {
         'User-Agent': 'SaleteSincere/1.0 (Audio Proxy)',
+        'X-Forwarded-For': request.ip,
+        'X-Real-IP': request.ip,
         'Range': request.headers.range || ''
       }
     });
