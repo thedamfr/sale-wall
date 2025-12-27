@@ -65,10 +65,14 @@
       color: inherit;
       text-decoration: none;
     }
-    .container {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 0 24px;
+    .page-wrapper {
+      width: 100%;
+      padding: 0 32px;
+    }
+    @media (min-width: 1200px) {
+      .page-wrapper {
+        padding: 0 80px;
+      }
     }
     nav {
       padding: 32px 0;
@@ -111,6 +115,8 @@
     .hero {
       padding: 120px 0;
       text-align: center;
+      max-width: 900px;
+      margin: 0 auto;
     }
     .hero h2 {
       font-size: 42px;
@@ -133,6 +139,58 @@
       gap: 16px;
       justify-content: center;
       flex-wrap: wrap;
+    }
+    .about {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 48px;
+      align-items: start;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (min-width: 768px) {
+      .about {
+        grid-template-columns: 320px 1fr;
+        gap: 64px;
+      }
+    }
+    .about-image-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(232, 232, 230, 0.08);
+      border-radius: 8px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    @media (min-width: 768px) {
+      .about-image-card {
+        margin: 0;
+        max-width: none;
+      }
+    }
+    .about-image-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      display: block;
+    }
+    .about-image-credit {
+      font-size: 12px;
+      color: #666;
+      margin-top: 16px;
+      text-align: center;
+    }
+    @media (min-width: 768px) {
+      .about-image-credit {
+        text-align: left;
+      }
+    }
+    .about-content p {
+      color: #AAA;
+      line-height: 1.8;
+      font-size: 17px;
+      margin: 0;
     }
     .btn {
       display: inline-block;
@@ -161,6 +219,8 @@
     }
     .section {
       padding: 80px 0;
+      max-width: 1400px;
+      margin: 0 auto;
     }
     .section-label {
       font-size: 13px;
@@ -307,8 +367,7 @@
 </head>
 <body>
   <div class="content-wrapper">
-  <div class="content-wrapper">
-    <div class="container">
+    <div class="page-wrapper">
       <nav>
         <div class="logo">
           <div class="logo-icon">✺</div>
@@ -326,6 +385,18 @@
         <div class="hero-ctas">
           <a href="/wall" class="btn btn-primary">Travailler ensemble</a>
           <a href="/podcast" class="btn btn-secondary">Voir la preuve</a>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="about">
+          <div class="about-image-card">
+            <img src="/images/damien-podcast.jpg" alt="Damien Cavaillès en enregistrement podcast">
+            <div class="about-image-credit">Photo : Nicolas Detrez (<a href="https://ncls.tv" target="_blank" rel="noopener">ncls.tv</a>) et Charlotte Coppens</div>
+          </div>
+          <div class="about-content">
+            <p>Je m'appelle Damien. Je suis journaliste dans la tech. Pendant 10 ans, j'ai été patron d'un média WeLoveDevs.com. J'y ai interviewé des centaines de professionnels. J'ai écouté, creusé, cherché cette saleté sincère. Aujourd'hui je suis indépendant et j'explore d'autres territoires, avec la même vibration.</p>
+          </div>
         </div>
       </section>
 
