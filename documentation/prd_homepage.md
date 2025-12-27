@@ -100,4 +100,142 @@ et sans confier notre parole à quelqu’un qui ne comprend pas la tech.
 ## 3. Proposition de valeur
 
 Saleté Sincère aide à se rapprocher du feu de la prise de parole,  
-à retrouver une parole ancrée, excitante et tenable,
+à retrouver une parole ancrée, excitante et tenable,  
+en travaillant dans les contraintes existantes,  
+avec un cadre qui permet d’oser sans se perdre.
+
+---
+
+## 4. Promesse produit
+
+Saleté Sincère garantit :
+- un cadre pour oser
+- une parole vivante
+- une excitation maîtrisée
+- une cohérence dans la durée
+
+Saleté Sincère ne garantit pas :
+- la performance
+- la viralité
+- l’approbation de tous
+
+---
+
+## 5. Fonctionnalités clés
+
+### F1 — Diagnostic narratif
+Identifier précisément :
+- où le récit s’est lissé
+- pourquoi il est devenu faux ou tiède
+- ce qui est évité par peur plutôt que par contrainte réelle
+
+### F2 — Cadre psychologique
+- Travailler avec la peur sans la supprimer
+- Transformer la peur en énergie d’action
+- Maintenir une parole tenable dans le temps
+
+### F3 — Cadre éditorial compatible
+- Intégration des contraintes juridiques, marque et institutionnelles
+- Prise de risque uniquement narrative
+- Jamais de sortie de cadre par provocation
+
+### F4 — Preuve par la pratique
+- Le podcast *Charbon & Wafer* comme artefact vivant
+- Montrer le cadre en action, pas un résultat à imiter
+
+---
+
+## 6. Narratif personnel
+
+Le narratif personnel est :
+- autorisé
+- nécessaire
+- sobre
+- non héroïque
+
+Il sert :
+- d’ancrage
+- de preuve vécue
+- de signal de cohérence
+
+Damien n’est pas le héros.  
+Il est le guide expérimenté qui connaît la chaleur du feu.
+
+---
+
+## 7. Sale-wall — rôle produit
+
+Le Sale-wall est un **passage à l’action**.
+
+Ce n’est pas :
+- une galerie
+- une vitrine
+- un concours
+
+C’est :
+- une invitation à prendre la parole
+- un espace pour raconter sa saleté sincère
+- un lieu d’engagement, pas de validation
+
+---
+
+## 8. UX / UI requirements
+
+### Mobile-first
+- lecture confortable sur téléphone
+- phrases courtes
+- sections aérées
+- scroll fluide
+- hiérarchie claire
+
+### Design principles
+- sobriété
+- contraste
+- typographie lisible
+- pas d’illustration décorative
+- pas de photo humaine
+
+---
+
+## 9. Hard NO (les vrais)
+
+Saleté Sincère ne doit jamais :
+- utiliser le FUD (peur, rejet, sanction)
+- utiliser le FOMO (urgence, opportunité manquée)
+- faire croire que parler est dangereux
+- instrumentaliser la vulnérabilité
+- créer une posture élitiste ou dissuasive
+
+---
+
+## 10. Ce qui est explicitement recherché
+
+- excitation
+- désir
+- tension
+- curiosité
+- attraction vers le feu
+- narratif personnel sobre
+- appel clair à prendre la parole
+
+---
+
+## 11. Critères de succès
+
+### Explicabilité
+Une personne externe doit pouvoir expliquer simplement ce que fait Saleté Sincère.
+
+### Tri naturel
+Les mauvais prospects doivent se sentir non concernés, sans être rejetés.
+
+### Désir
+Les bons prospects doivent ressentir :
+“J’ai envie d’y aller. Pas pour performer. Pour me sentir plus vivant.”
+
+---
+
+## 12. Critère ultime de réussite
+
+Le produit est réussi si Saleté Sincère devient top of mind  
+au moment exact où quelqu’un ressent l’envie de se rapprocher du feu  
+pour parler vrai, ici et maintenant.
