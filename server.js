@@ -575,8 +575,19 @@ app.post("/api/posts/:id/vote", {
   }
 });
 
-// Route home (avec rate limiting)
+// Route landing homepage (PRD v3.1)
 app.get("/", {
+  config: {
+    rateLimit: pageLimiter
+  }
+}, async (req, reply) => {
+  return reply.view("landing.hbs", { 
+    title: "Saleté Sincère"
+  });
+});
+
+// Route Sale-wall (ancien home)
+app.get("/wall", {
   config: {
     rateLimit: pageLimiter
   }
@@ -633,7 +644,7 @@ app.get("/", {
       const stats = statsResult.rows[0];
       
       return reply.view("index.hbs", { 
-        title: "Saleté Sincère",
+        title: "Sale-wall",
         isPodcastBanner: true,
         posts,
         stats: {
@@ -648,7 +659,7 @@ app.get("/", {
   } catch (error) {
     app.log.error(error);
     return reply.view("index.hbs", { 
-      title: "Saleté Sincère",
+      title: "Sale-wall",
       isPodcastBanner: true,
       posts: [],
       stats: { total_posts: 0, total_listens: 0 }
@@ -675,15 +686,6 @@ function formatDuration(seconds) {
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
-
-// Route manifeste (avec rate limiting)
-app.get("/manifeste", {
-  config: {
-    rateLimit: pageLimiter
-  }
-}, (req, reply) =>
-  reply.view("manifeste.hbs", { title: "Manifeste" })
-);
 
 // Route podcast générale (liens show)
 app.get("/podcast", {

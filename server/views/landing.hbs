@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Saleté Sincère</title>
+  <meta name="description" content="Se rapprocher du feu de la prise de parole. Une parole vivante, ancrée, excitante.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #0B0B0B;
+      color: #E8E8E6;
+      font-family: 'Inter', sans-serif;
+      font-size: 17px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url('/images/bg-kintsugi.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(11, 11, 11, 0.3) 0%, rgba(11, 11, 11, 0.1) 50%, rgba(11, 11, 11, 0.3) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .content-wrapper {
+      position: relative;
+      z-index: 1;
+    }
+    h1, h2, h3 {
+      font-family: 'Playfair Display', serif;
+      font-weight: 600;
+      line-height: 1.3;
+      color: #F2F2EF;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    nav {
+      padding: 32px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(232, 232, 230, 0.1);
+    }
+    nav .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    nav .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #D6B977 0%, #B99E5A 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    nav h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    nav .links {
+      display: flex;
+      gap: 24px;
+      font-size: 14px;
+    }
+    nav a {
+      color: #999;
+      transition: color 0.2s;
+    }
+    nav a:hover {
+      color: #D6B977;
+    }
+    .hero {
+      padding: 120px 0;
+      text-align: center;
+    }
+    .hero h2 {
+      font-size: 42px;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .hero p {
+      font-size: 19px;
+      color: #999;
+      max-width: 540px;
+      margin: 0 auto 48px;
+    }
+    .hero-ctas {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #D6B977 0%, #B99E5A 100%);
+      color: #0B0B0B;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(214, 185, 119, 0.3);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #E8E8E6;
+      border: 1px solid rgba(232, 232, 230, 0.2);
+    }
+    .btn-secondary:hover {
+      border-color: rgba(232, 232, 230, 0.4);
+    }
+    .section {
+      padding: 80px 0;
+    }
+    .section-label {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #D6B977;
+      margin-bottom: 48px;
+      text-align: center;
+    }
+    .situations {
+      display: grid;
+      gap: 48px;
+    }
+    .situation {
+      padding: 32px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(232, 232, 230, 0.08);
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .situation:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(214, 185, 119, 0.2);
+    }
+    .situation h3 {
+      font-size: 24px;
+      margin-bottom: 16px;
+      color: #F2F2EF;
+    }
+    .situation p {
+      color: #AAA;
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+    .situation .meta {
+      font-size: 14px;
+      color: #666;
+    }
+    .dual-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 48px;
+      margin-top: 48px;
+    }
+    @media (min-width: 640px) {
+      .dual-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .dual-grid h3 {
+      font-size: 20px;
+      margin-bottom: 24px;
+      color: #D6B977;
+    }
+    .dual-grid ul {
+      list-style: none;
+    }
+    .dual-grid li {
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(232, 232, 230, 0.05);
+      color: #AAA;
+      font-size: 16px;
+    }
+    .dual-grid li:last-child {
+      border-bottom: none;
+    }
+    .artifact {
+      text-align: center;
+      padding: 64px 32px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(232, 232, 230, 0.08);
+      border-radius: 8px;
+    }
+    .artifact h3 {
+      font-size: 28px;
+      margin-bottom: 16px;
+    }
+    .artifact p {
+      color: #999;
+      margin-bottom: 32px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .cta-section {
+      padding: 80px 0 120px;
+    }
+    .cta-box {
+      background: linear-gradient(135deg, rgba(214, 185, 119, 0.08) 0%, rgba(214, 185, 119, 0.03) 100%);
+      border: 1px solid rgba(214, 185, 119, 0.2);
+      padding: 64px 32px;
+      text-align: center;
+      border-radius: 12px;
+    }
+    .cta-box h3 {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    .cta-box p {
+      color: #AAA;
+      margin-bottom: 32px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: 18px;
+    }
+    footer {
+      padding: 64px 0 48px;
+      text-align: center;
+      border-top: 1px solid rgba(232, 232, 230, 0.1);
+    }
+    footer p {
+      font-size: 15px;
+      color: #666;
+      line-height: 1.8;
+    }
+    footer p:first-child {
+      color: #999;
+      margin-bottom: 8px;
+    }
+    @media (min-width: 640px) {
+      .hero h2 {
+        font-size: 56px;
+      }
+      nav .links {
+        display: flex;
+      }
+    }
+    @media (max-width: 639px) {
+      nav .links {
+        display: none;
+      }
+      .hero h2 {
+        font-size: 36px;
+      }
+      .hero-ctas {
+        flex-direction: column;
+      }
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="content-wrapper">
+  <div class="content-wrapper">
+    <div class="container">
+      <nav>
+        <div class="logo">
+          <div class="logo-icon">✺</div>
+          <h1>Saleté Sincère</h1>
+        </div>
+        <div class="links">
+          <a href="/podcast">Podcast</a>
+          <a href="/wall">Sale-wall</a>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <h2>Retrouver une manière<br>de parler qui tient.</h2>
+        <p>Trouver un ton juste quand tout commence à sonner lissé ou impersonnel, sans se transformer en influenceur LinkedIn ni devenir quelqu'un d'autre.</p>
+        <div class="hero-ctas">
+          <a href="/wall" class="btn btn-primary">Travailler ensemble</a>
+          <a href="/podcast" class="btn btn-secondary">Voir la preuve</a>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-label">Pourquoi les gens arrivent ici</div>
+        <div class="situations">
+          <div class="situation">
+            <h3>Trouver son ton</h3>
+            <p>Tu dois prendre la parole publiquement alors que ce n'est pas ton métier. Tu refuses de devenir un influenceur ou de jouer un rôle. Tu cherches ton ton, ta saleté sincère, pour parler avec excitation et justesse.</p>
+            <p class="meta">Dirigeants · Fondateurs · Managers · Développeurs · Experts métiers</p>
+          </div>
+
+          <div class="situation">
+            <h3>Retrouver de l'incarnation</h3>
+            <p>Vous produisez beaucoup de contenus mais l'engagement stagne, par manque d'incarnation et de prise de risque narrative. Vous voulez recréer du lien parasocial crédible, sans putaclic ni influence artificielle.</p>
+            <p class="meta">Médias · Communautés tech · Plateformes éditoriales</p>
+          </div>
+
+          <div class="situation">
+            <h3>Un espace sécurisé</h3>
+            <p>Vous avez une vraie culture technique mais peu de moyens pour la raconter. Vous voulez montrer votre réalité telle qu'elle est, sans folklore marketing, et sans confier votre parole à quelqu'un qui ne comprend pas la tech.</p>
+            <p class="meta">Marques tech · Scale-ups · Plateformes B2B · Équipes d'ingénierie</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-label">Ce que fait Saleté Sincère</div>
+        <div class="dual-grid">
+          <div>
+            <h3>C'est</h3>
+            <ul>
+              <li>Travail sur le ton</li>
+              <li>Cadre dans les contraintes existantes</li>
+              <li>Espace sécurisé pour oser</li>
+              <li>Excitation maîtrisée</li>
+              <li>Parole tenable dans le temps</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Ce n'est pas</h3>
+            <ul>
+              <li>Personal branding</li>
+              <li>Influence LinkedIn</li>
+              <li>Performance ou viralité</li>
+              <li>Coaching motivationnel</li>
+              <li>Manipulation émotionnelle</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="artifact">
+          <h3>Charbon & Wafer</h3>
+          <p>Le podcast comme artefact vivant de cette approche. Pas un résultat à imiter, mais une preuve que le cadre fonctionne.</p>
+          <a href="/podcast" class="btn btn-secondary">Écouter le podcast</a>
+        </div>
+      </section>
+
+      <section class="cta-section">
+        <div class="cta-box">
+          <h3>Le Sale-wall</h3>
+          <p>Un espace pour raconter ta saleté sincère. Un passage à l'action, pas une galerie ni un concours.</p>
+          <a href="/wall" class="btn btn-primary">Rejoindre le Sale-wall</a>
+        </div>
+      </section>
+
+      <footer>
+        <p>Damien Cavaillès</p>
+        <p>Ancien fondateur de WeLoveDevs. Aujourd'hui guide sur la prise de parole vivante.</p>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
