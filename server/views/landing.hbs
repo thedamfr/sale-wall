@@ -402,7 +402,7 @@
       margin-right: auto;
     }
     .cta-section {
-      padding: 80px 0 120px;
+      padding: 80px 0 80px;
     }
     .cta-box {
       background: linear-gradient(135deg, rgba(214, 185, 119, 0.08) 0%, rgba(214, 185, 119, 0.03) 100%);
@@ -425,10 +425,44 @@
       margin-right: auto;
       font-size: 18px;
     }
+    .contact-section {
+      padding: 60px 0 40px;
+    }
+    .contact-box {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .contact-photo {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid rgba(214, 185, 119, 0.3);
+      margin: 0 auto 24px;
+      display: block;
+    }
+    .contact-info h3 {
+      font-size: 24px;
+      margin-bottom: 16px;
+      color: #F2F2EF;
+    }
+    .contact-info a {
+      display: block;
+      color: #D6B977;
+      margin: 8px 0;
+      font-size: 16px;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .contact-info a:hover {
+      color: #E8D098;
+    }
     footer {
-      padding: 64px 0 48px;
+      padding: 80px 0 48px;
       text-align: center;
       border-top: 1px solid rgba(232, 232, 230, 0.1);
+      margin-top: 40px;
     }
     footer p {
       font-size: 15px;
@@ -582,6 +616,17 @@
           <h3>Prend la parole sur le sale-wall</h3>
           <p>Un espace anonyme pour raconter ton histoire. Vient déposer ta saleté sincère.</p>
           <a href="/wall" class="btn btn-primary">Rejoindre le Sale-wall</a>
+        </div>
+      </section>
+
+      <section class="contact-section">
+        <div class="contact-box">
+          <img src="/images/damien-welcome.jpg" alt="Damien Cavaillès" class="contact-photo">
+          <div class="contact-info">
+            <h3>Comment me contacter</h3>
+            <a href="https://www.linkedin.com/in/damiencavailles/" target="_blank" rel="noopener">Suivez-moi sur LinkedIn</a>
+            <a href="mailto:damien@saletesincere.fr">damien@saletesincere.fr</a>
+          </div>
         </div>
       </section>
 
