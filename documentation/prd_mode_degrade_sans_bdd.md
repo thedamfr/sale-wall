@@ -2,9 +2,9 @@
 
 ## Statut
 
-- **Version** : 0.2
+- **Version** : 0.3
 - **Date** : 19 août 2026
-- **Statut** : proposition prête à implémenter
+- **Statut** : Lot 1 déployé en production ; Lots 2 à 4 à planifier
 - **Périmètre** : application `sale-wall`, routes Sale-wall, pages podcast et worker `pg-boss`
 - **Incident déclencheur** : PostgreSQL temporairement en recovery, échec de `pg-boss`, arrêt du processus Node.js et réponses HTTP 503 globales
 
@@ -131,6 +131,62 @@ Après le retour de PostgreSQL, l'erreur de la page épisode n'est plus une erre
 3. créer une nouvelle instance `PgBoss` à chaque tentative après échec, avec une seule boucle de retry ;
 4. ajouter un test d'acceptation du boot sans DB et un test DB absente → DB revenue sans redémarrage ;
 5. conserver la baseline nominale verte avant de modifier `/wall` et les pages épisode dans les lots suivants.
+
+### 1.3 Bilan de livraison du Lot 1
+
+Le Lot 1 a été livré sur `main` puis déployé sur Clever Cloud le 19 août 2026 avec
+le commit `269e18423505a422c266580e091555e11637e787`.
+
+#### Vérifications avant production
+
+| Vérification | Résultat |
+|---|---:|
+| Suite complète | 96 tests réussis, 0 échec |
+| Build | réussi |
+| Boot local avec PostgreSQL arrêté | `/`, `/podcast` et `/health` en 200 |
+| Retour de PostgreSQL sans restart Node.js | worker passé à `READY` |
+| `/health` après reprise locale | mode `normal`, DB `read_write`, worker `ready` |
+
+#### Vérifications en production
+
+| Vérification | Résultat |
+|---|---:|
+| Déploiement Clever Cloud `deployment_846598c5-8464-4955-a211-99bb1b4fd20e` | `OK` |
+| Commit actif | `269e18423505a422c266580e091555e11637e787` |
+| État PostgreSQL observé au démarrage du worker | `read_write` |
+| État `pg-boss` | `ready` |
+| `GET /health` | 200, mode `normal` |
+| `GET /` | 200 |
+| `GET /podcast` | 200 |
+| `GET /wall` | 200 |
+| `GET /podcast/2/1` | 200 |
+
+Payload de santé observé après déploiement :
+
+```json
+{
+  "ok": true,
+  "mode": "normal",
+  "database": { "state": "read_write" },
+  "episodeWorker": { "state": "ready" }
+}
+```
+
+Aucune phase `recovery` n'a été observée sur ce déploiement : le premier état de
+base exploitable journalisé par le nouveau processus était `read_write`. Le
+déploiement est passé à `OK` sans nouvelle boucle `Monitoring/Unreachable`.
+
+#### Suivis non bloquants
+
+- Les fallbacks produit de `/wall` et des pages épisode restent le périmètre du Lot 2.
+- Le buffer d'intentions et son drainage restent le périmètre du Lot 3.
+- `ALLOW_DEGRADED_MODE` n'est plus lu par le code du Lot 1. La variable Clever peut
+  rester temporairement pendant la fenêtre de rollback, puis être supprimée pour
+  éviter une configuration trompeuse.
+- Le démarrage a signalé une configuration OP3 incomplète (`OP3_API_TOKEN` ou
+  `OP3_GUID` absent) sans bloquer l'application.
+- L'installation de production signale une vulnérabilité npm de sévérité haute à
+  qualifier dans un suivi sécurité séparé.
 
 ---
 
@@ -793,8 +849,8 @@ Scénario recommandé avec un PostgreSQL contrôlable :
 ## 16. Migration de configuration
 
 - `DISABLE_WORKER=true` reste disponible pour les tests et les opérations explicitement sans worker.
-- `ALLOW_DEGRADED_MODE=true` reste le filet de sécurité de production jusqu'à la validation du Lot 1.
-- une fois le mode dégradé automatique livré et validé, `ALLOW_DEGRADED_MODE` devient inutile ; il doit être supprimé ou déprécié afin d'éviter deux stratégies concurrentes.
+- le Lot 1 déployé ne lit plus `ALLOW_DEGRADED_MODE` ; conserver temporairement la variable Clever ne sert qu'à une éventuelle restauration de l'ancienne version ;
+- après la fenêtre de rollback, supprimer cette variable afin d'éviter une configuration trompeuse.
 - aucune nouvelle dépendance d'infrastructure n'est requise.
 - aucune migration SQL n'est nécessaire pour le périmètre minimal.
 

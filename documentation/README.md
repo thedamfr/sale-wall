@@ -40,9 +40,9 @@ Documentation technique et décisions architecturales du projet Saleté Sincère
 - **Setup S3/CORS** : [`../scripts/setup-cellar-cors.sh`](../scripts/setup-cellar-cors.sh) - Configuration stockage
 
 ### 🧪 Méthodologie TDD
-- **Framework générique** : [`../CLAUDE.md`](../CLAUDE.md) - Playbook TDD-first 
-- **Instructions Copilot** : [`../.github/copilot-instructions.md`](../.github/copilot-instructions.md) - Spécifique projet
-- **Template ADR** : [`../CLAUDE.md`](../CLAUDE.md#template-adr-minimal) - Structure standardisée
+- **Instructions canoniques** : [`../AGENTS.md`](../AGENTS.md) - Architecture, TDD, sécurité et livraison
+- **Instructions Copilot** : [`../.github/copilot-instructions.md`](../.github/copilot-instructions.md) - Renvoi vers la source canonique
+- **Exemples ADR** : [`./adr/`](./adr/) - Structure et décisions existantes
 
 ### 🏗️ Architecture & Code  
 - **Structure projet** : [`../readme.md`](../readme.md) - Vue d'ensemble technique
@@ -53,7 +53,7 @@ Documentation technique et décisions architecturales du projet Saleté Sincère
 
 **Pour les nouveaux contributeurs** :
 1. Lire [`../readme.md`](../readme.md) - Overview du projet
-2. Consulter [`../CLAUDE.md`](../CLAUDE.md) - Méthodologie TDD
+2. Consulter [`../AGENTS.md`](../AGENTS.md) - Instructions de travail du projet
 3. Parcourir [`./adr/index.md`](./adr/index.md) - Décisions architecturales
 4. Vérifier [`../todolist.md`](../todolist.md) - Tâches en cours
 
