@@ -78,7 +78,7 @@ tags: [adr, index, architecture, decisions]
 ## ✍️ Créer un nouvel ADR
 
 1. **Numéroter** : Prendre le prochain numéro (0005, 0006...)
-2. **Template** : Utiliser [`../../CLAUDE.md`](../../CLAUDE.md) section ADR minimal
+2. **Template** : S'appuyer sur un ADR existant et sur [`../../AGENTS.md`](../../AGENTS.md)
 3. **Front matter** : Ajouter métadonnées (statut, date, domaine)
 4. **Mettre à jour** : Cet index après création
 

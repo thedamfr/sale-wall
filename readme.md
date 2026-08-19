@@ -196,7 +196,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 ```
 salete-sincere/
 ├── server.js            # Serveur Fastify principal
-├── CLAUDE.md            # Framework TDD générique (base contributeurs)
+├── AGENTS.md            # Instructions canoniques pour les agents et contributeurs
 ├── server/
 │   ├── views/           # ✅ Templates Handlebars
 │   │   ├── *.hbs        # Templates Handlebars
@@ -713,12 +713,12 @@ psql <connection-string> -c "SELECT COUNT(*) FROM posts;"
 
 ### Méthodologie TDD-first
 Ce projet suit une approche **Test-Driven Development** stricte :
-- **Documentation requis** : [`CLAUDE.md`](CLAUDE.md) - Framework TDD générique à personnaliser
-- **Instructions spécifiques** : [`.github/copilot-instructions.md`](.github/copilot-instructions.md) - Guide pour ce projet
-- **Cycle obligatoire** : ADR + sécurité → tests → code minimal → refactor → pause state
+- **Instructions canoniques** : [`AGENTS.md`](AGENTS.md) - Architecture, sécurité, TDD et livraison
+- **Instructions Copilot** : [`.github/copilot-instructions.md`](.github/copilot-instructions.md) - Renvoi vers la source canonique
+- **Cycle recommandé pour le code** : critères → test ciblé → code minimal → refactor
 
 ### Processus de contribution
-1. **Consulter la documentation** : Lire `CLAUDE.md` et `.github/copilot-instructions.md`
+1. **Consulter la documentation** : Lire `AGENTS.md` et les ADR liés à la tâche
 2. Fork le projet
 3. Créez une branche feature (`git checkout -b feature/nouvelle-fonctionnalite`)
 4. **Suivre TDD** : ADR minimal + tests d'abord + implémentation minimale
