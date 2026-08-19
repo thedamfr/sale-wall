@@ -24,6 +24,10 @@ Documentation technique et décisions architecturales du projet Saleté Sincère
 
 ## 📚 Documentation Technique
 
+### 📌 Product Requirements
+- **Homepage** : [`./prd_homepage.md`](./prd_homepage.md)
+- **Mode dégradé sans base de données** : [`./prd_mode_degrade_sans_bdd.md`](./prd_mode_degrade_sans_bdd.md) - Résilience HTTP, fallback podcast et reconnexion singleton de `pg-boss`
+
 ### � Sécurité & Audits
 - **Guide d'audit** : [`./audit_guide.md`](./audit_guide.md) - Comment lancer les audits OWASP
 - **Plan d'audit OWASP** : [`./owasp_top10_audit_plan.md`](./owasp_top10_audit_plan.md) - Méthodologie complète
