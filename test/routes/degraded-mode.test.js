@@ -5,6 +5,21 @@ import { buildApp } from '../../server.js'
 import { EpisodeWorkerState } from '../../server/queues/episodeWorkerManager.js'
 
 const UNAVAILABLE_DATABASE_URL = 'postgresql://salete:salete@127.0.0.1:1/salete_test'
+const RSS_EPISODE = {
+  season: 2,
+  episode: 1,
+  title: 'Un épisode à reprendre',
+  description: 'Disponible depuis le RSS.',
+  pubDate: '27 octobre 2025',
+  rawPubDate: '2025-10-27',
+  duration: '42:00',
+  image: 'https://media.example/cover.jpg',
+  audioUrl: 'https://media.example/episode.mp3',
+  episodeLink: 'https://podcasts.example/episode',
+  feedLastBuildDate: '2026-08-19T12:00:00.000Z',
+  itemGuid: null,
+  isTruncated: false
+}
 
 function createCandidate() {
   const candidate = new EventEmitter()
@@ -56,7 +71,8 @@ describe('degraded startup', () => {
       ok: true,
       mode: 'degraded',
       database: { state: 'unknown' },
-      episodeWorker: { state: 'starting' }
+      episodeWorker: { state: 'starting' },
+      episodeIntents: { pending: 0 }
     })
 
     await app.close()
@@ -68,6 +84,7 @@ describe('degraded startup', () => {
   test('reports degradation then returns to normal after the singleton retry', async () => {
     const candidate = createCandidate()
     const scheduled = []
+    const queuedIntents = []
     let startCalls = 0
     const app = await buildApp({
       initializeStorage: false,
@@ -82,6 +99,11 @@ describe('degraded startup', () => {
         return candidate
       },
       episodeWorkerStopper: (instance) => instance.stop(),
+      episodeFetcher: async () => RSS_EPISODE,
+      episodeQueuer: async (...args) => {
+        queuedIntents.push(args)
+        return { queued: true, reason: 'QUEUED', jobId: 'job-1' }
+      },
       workerManagerOptions: {
         retryDelays: [5000],
         jitterRatio: 0,
@@ -98,13 +120,20 @@ describe('degraded startup', () => {
 
     await waitForState(app.episodeWorkerManager, EpisodeWorkerState.RETRY_SCHEDULED)
 
+    const episodeResponses = await Promise.all(Array.from({ length: 20 }, () =>
+      app.inject({ method: 'GET', url: '/podcast/2/1' })
+    ))
+    assert.equal(episodeResponses.every((response) => response.statusCode === 200), true)
+    assert.equal(app.episodeIntentBuffer.size(), 1)
+
     const degradedHealth = await app.inject({ method: 'GET', url: '/health' })
     assert.equal(degradedHealth.statusCode, 200)
     assert.deepEqual(degradedHealth.json(), {
       ok: true,
       mode: 'degraded',
       database: { state: 'unavailable' },
-      episodeWorker: { state: 'retry_scheduled' }
+      episodeWorker: { state: 'retry_scheduled' },
+      episodeIntents: { pending: 1 }
     })
     assert.equal(scheduled.length, 1)
     assert.equal(scheduled[0].delay, 5000)
@@ -117,9 +146,11 @@ describe('degraded startup', () => {
       ok: true,
       mode: 'normal',
       database: { state: 'read_write' },
-      episodeWorker: { state: 'ready' }
+      episodeWorker: { state: 'ready' },
+      episodeIntents: { pending: 0 }
     })
     assert.equal(startCalls, 2)
+    assert.equal(queuedIntents.length, 1)
 
     await app.close()
     assert.equal(candidate.stopCalls, 1)

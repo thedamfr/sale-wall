@@ -51,6 +51,19 @@ Une plateforme « mur vocal » pour partager vos petites victoires "Wafer" et "C
 - **Déploiement** : CleverCloud avec Docker
 - **Dev** : Nodemon + Docker Compose
 
+### Mode dégradé PostgreSQL
+
+Le serveur HTTP démarre sans attendre PostgreSQL ni `pg-boss`. En cas de base
+indisponible ou en lecture seule, la landing et le podcast restent accessibles,
+les pages épisode utilisent leur contenu RSS et le Sale-wall affiche un état
+d'indisponibilité explicite. Le worker se reconnecte automatiquement sans restart.
+
+`GET /health` reste une liveness HTTP en 200 et expose séparément `mode`,
+`database.state`, `episodeWorker.state` et `episodeIntents.pending`. Les écritures
+du Sale-wall refusées temporairement répondent 503 avec `Retry-After: 60`.
+
+Voir le [PRD du mode dégradé](documentation/prd_mode_degrade_sans_bdd.md).
+
 ---
 
 ## 🎨 Système de Templates : Handlebars

@@ -7,6 +7,7 @@ import {
   DatabaseState,
   EpisodeWorkerState
 } from '../../server/queues/episodeWorkerManager.js'
+import { createDatabaseAvailability } from '../../server/resilience/databaseAvailability.js'
 
 function createFakeTimers() {
   const scheduled = []
@@ -137,7 +138,7 @@ describe('episodeWorkerManager', () => {
 
     assert.equal(manager.getInstance(), null)
     assert.equal(manager.getStatus().state, EpisodeWorkerState.RETRY_SCHEDULED)
-    assert.equal(manager.getDatabaseState(), DatabaseState.READ_ONLY)
+    assert.equal(manager.getDatabaseState(), DatabaseState.UNAVAILABLE)
     assert.equal(timers.scheduled.length, 1)
 
     await manager.stop()
@@ -177,5 +178,34 @@ describe('episodeWorkerManager', () => {
       classifyDatabaseError(Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' })),
       DatabaseState.UNAVAILABLE
     )
+  })
+
+  test('invalidates a ready worker when a route reports a database failure', async () => {
+    const timers = createFakeTimers()
+    const candidate = createCandidate()
+    const availability = createDatabaseAvailability({
+      probe: async () => DatabaseState.UNKNOWN
+    })
+    const manager = createEpisodeWorkerManager({
+      start: async () => candidate,
+      stop: (instance) => instance.stop(),
+      databaseAvailability: availability,
+      retryDelays: [5000],
+      jitterRatio: 0,
+      setTimeoutFn: timers.setTimeoutFn,
+      clearTimeoutFn: timers.clearTimeoutFn
+    })
+
+    await manager.ensureStarted()
+    manager.reportDatabaseError(Object.assign(new Error('connection refused'), {
+      code: 'ECONNREFUSED'
+    }))
+
+    assert.equal(availability.getState(), DatabaseState.UNAVAILABLE)
+    assert.equal(manager.getStatus().state, EpisodeWorkerState.RETRY_SCHEDULED)
+    assert.equal(manager.getInstance(), null)
+    assert.equal(timers.scheduled.length, 1)
+
+    await manager.stop()
   })
 })

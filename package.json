@@ -10,8 +10,8 @@
     "build:views": "echo 'No-op for Pug views'",
     "start": "node server.js",
     "migrate": "node scripts/migrate.js",
-    "test": "node --test test/**/*.test.js",
-    "test:watch": "node --test --watch test/**/*.test.js"
+    "test": "node --test --test-concurrency=1 test/**/*.test.js",
+    "test:watch": "node --test --test-concurrency=1 --watch test/**/*.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.844.0",

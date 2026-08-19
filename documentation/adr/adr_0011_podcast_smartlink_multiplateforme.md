@@ -8,6 +8,16 @@
 
 **⚠️ Note 2025-10-31** : La génération d'images Open Graph (OG Images) initialement prévue dans cet ADR est **reportée à un ADR ultérieur**. Cette approche lean permet de livrer la feature de smartlink sans dépendance à la génération d'images. Les métadonnées Open Graph pourront être ajoutées progressivement (ADR futur avec canvas/Jimp). Cette décision réduit la complexité initiale et permet une mise en production plus rapide.
 
+**Amendement 2026-08-19 — la stratégie fail-hard est remplacée.** Fastify ouvre
+désormais son port sans attendre `pg-boss`. Le worker utilise une initialisation
+atomique et une boucle de reconnexion singleton ; une panne PostgreSQL place
+l'application en mode dégradé sans arrêter les routes publiques autonomes. La
+page épisode reste disponible depuis le RSS et mémorise une intention bornée
+jusqu'au retour du worker. `ALLOW_DEGRADED_MODE` n'est plus lu. Les paragraphes
+fail-hard plus bas sont conservés uniquement comme historique de la décision de
+2025. La spécification et les preuves de validation sont dans
+[`../prd_mode_degrade_sans_bdd.md`](../prd_mode_degrade_sans_bdd.md).
+
 ---
 
 ## Contexte
@@ -1161,7 +1171,7 @@ export async function initQueue() {
 }
 ```
 
-**2. Fail-hard par défaut + Bypass explicite** :
+**2. Historique 2025 — Fail-hard par défaut + Bypass explicite (remplacé en 2026)** :
 ```javascript
 // server.js
 const hasDatabase = !!(process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI);

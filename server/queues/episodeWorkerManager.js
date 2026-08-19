@@ -1,3 +1,10 @@
+import {
+  classifyDatabaseError,
+  DatabaseState
+} from '../resilience/databaseAvailability.js'
+
+export { classifyDatabaseError, DatabaseState }
+
 export const EpisodeWorkerState = Object.freeze({
   STOPPED: 'stopped',
   STARTING: 'starting',
@@ -6,32 +13,7 @@ export const EpisodeWorkerState = Object.freeze({
   STOPPING: 'stopping'
 })
 
-export const DatabaseState = Object.freeze({
-  UNKNOWN: 'unknown',
-  UNAVAILABLE: 'unavailable',
-  READ_ONLY: 'read_only',
-  READ_WRITE: 'read_write'
-})
-
 const DEFAULT_RETRY_DELAYS = [5000, 15000, 30000, 60000]
-const READ_ONLY_CODES = new Set(['25006', '25007', '25008'])
-
-export function classifyDatabaseError(error) {
-  const code = error?.code
-  const message = String(error?.message || '').toLowerCase()
-
-  if (
-    READ_ONLY_CODES.has(code) ||
-    message.includes('read-only') ||
-    message.includes('read only') ||
-    message.includes('recovery mode') ||
-    message.includes('hot standby')
-  ) {
-    return DatabaseState.READ_ONLY
-  }
-
-  return DatabaseState.UNAVAILABLE
-}
 
 function logEvent(logger, level, event, details = {}) {
   const log = logger?.[level]
@@ -44,6 +26,8 @@ export function createEpisodeWorkerManager({
   start,
   stop,
   logger,
+  databaseAvailability,
+  onReady,
   retryDelays = DEFAULT_RETRY_DELAYS,
   jitterRatio = 0.2,
   random = Math.random,
@@ -64,8 +48,25 @@ export function createEpisodeWorkerManager({
   let nextRetryAt = null
   let shuttingDown = false
   let runtimeErrorHandler = null
+  const statusListeners = new Set()
 
   const normalizedDelays = retryDelays.length > 0 ? retryDelays : DEFAULT_RETRY_DELAYS
+
+  function setWorkerState(nextState, reason = 'unknown') {
+    if (state === nextState) return
+    const previousState = state
+    state = nextState
+    for (const listener of statusListeners) {
+      listener({ previousState, state, reason })
+    }
+  }
+
+  function setDatabaseState(nextState, reason) {
+    databaseState = nextState
+    if (typeof databaseAvailability?.setState === 'function') {
+      databaseAvailability.setState(nextState, reason)
+    }
+  }
 
   function getStatus() {
     return {
@@ -76,7 +77,9 @@ export function createEpisodeWorkerManager({
   }
 
   function getDatabaseState() {
-    return databaseState
+    return typeof databaseAvailability?.getState === 'function'
+      ? databaseAvailability.getState()
+      : databaseState
   }
 
   function getInstance() {
@@ -124,7 +127,7 @@ export function createEpisodeWorkerManager({
 
     retryAttempt += 1
     nextRetryAt = new Date(now() + delay).toISOString()
-    state = EpisodeWorkerState.RETRY_SCHEDULED
+    setWorkerState(EpisodeWorkerState.RETRY_SCHEDULED, 'retry_scheduled')
 
     retryTimer = setTimeoutFn(() => {
       retryTimer = null
@@ -135,7 +138,7 @@ export function createEpisodeWorkerManager({
     logEvent(logger, 'warn', 'episode_worker_retry_scheduled', {
       attempt: retryAttempt,
       delayMs: delay,
-      databaseState,
+      databaseState: getDatabaseState(),
       errorCode: error?.code || error?.name || 'UNKNOWN'
     })
   }
@@ -144,11 +147,14 @@ export function createEpisodeWorkerManager({
     if (shuttingDown || target !== instance) return
 
     instance = null
-    databaseState = classifyDatabaseError(error)
-    state = EpisodeWorkerState.STOPPED
+    const classifiedState = classifyDatabaseError(error)
+    if (classifiedState !== DatabaseState.UNKNOWN) {
+      setDatabaseState(classifiedState, 'worker_runtime_error')
+    }
+    setWorkerState(EpisodeWorkerState.STOPPED, 'runtime_error')
 
     logEvent(logger, 'error', 'episode_worker_runtime_error', {
-      databaseState,
+      databaseState: getDatabaseState(),
       errorCode: error?.code || error?.name || 'UNKNOWN'
     })
 
@@ -169,7 +175,7 @@ export function createEpisodeWorkerManager({
     if (startPromise) return startPromise
     if (retryTimer) return Promise.resolve(null)
 
-    state = EpisodeWorkerState.STARTING
+    setWorkerState(EpisodeWorkerState.STARTING, 'startup')
     logEvent(logger, 'info', 'episode_worker_starting', {
       attempt: retryAttempt + 1
     })
@@ -189,21 +195,34 @@ export function createEpisodeWorkerManager({
 
         instance = candidate
         attachRuntimeError(candidate)
-        databaseState = DatabaseState.READ_WRITE
-        state = EpisodeWorkerState.READY
+        setDatabaseState(DatabaseState.READ_WRITE, 'worker_ready')
+        setWorkerState(EpisodeWorkerState.READY, 'startup_succeeded')
         retryAttempt = 0
         nextRetryAt = null
 
         logEvent(logger, 'info', 'episode_worker_ready', {
-          databaseState
+          databaseState: getDatabaseState()
         })
+
+        if (typeof onReady === 'function') {
+          try {
+            await onReady(candidate)
+          } catch (error) {
+            logEvent(logger, 'warn', 'episode_worker_ready_hook_failed', {
+              errorCode: error?.code || error?.name || 'UNKNOWN'
+            })
+          }
+        }
 
         return candidate
       } catch (error) {
         if (!shuttingDown) {
-          databaseState = classifyDatabaseError(error)
+          const classifiedState = classifyDatabaseError(error)
+          if (classifiedState !== DatabaseState.UNKNOWN) {
+            setDatabaseState(classifiedState, 'worker_start_failed')
+          }
           logEvent(logger, 'error', 'episode_worker_start_failed', {
-            databaseState,
+            databaseState: getDatabaseState(),
             errorCode: error?.code || error?.name || 'UNKNOWN'
           })
           scheduleRetry(error)
@@ -225,7 +244,7 @@ export function createEpisodeWorkerManager({
     if (shuttingDown && state === EpisodeWorkerState.STOPPED) return
 
     shuttingDown = true
-    state = EpisodeWorkerState.STOPPING
+    setWorkerState(EpisodeWorkerState.STOPPING, 'shutdown')
 
     if (retryTimer) {
       clearTimeoutFn(retryTimer)
@@ -237,7 +256,7 @@ export function createEpisodeWorkerManager({
     instance = null
     await stopInstance(activeInstance)
 
-    state = EpisodeWorkerState.STOPPED
+    setWorkerState(EpisodeWorkerState.STOPPED, 'shutdown_complete')
     logEvent(logger, 'info', 'episode_worker_stopped')
   }
 
@@ -246,6 +265,20 @@ export function createEpisodeWorkerManager({
     stop: shutdown,
     getStatus,
     getDatabaseState,
-    getInstance
+    getInstance,
+    reportDatabaseError(error) {
+      if (classifyDatabaseError(error) === DatabaseState.UNKNOWN) return false
+      if (instance) {
+        handleRuntimeError(error, instance)
+      } else {
+        setDatabaseState(classifyDatabaseError(error), 'route_error')
+        scheduleRetry(error)
+      }
+      return true
+    },
+    subscribe(listener) {
+      statusListeners.add(listener)
+      return () => statusListeners.delete(listener)
+    }
   }
 }

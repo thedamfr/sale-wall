@@ -9,27 +9,45 @@ import fastifyFormbody from "@fastify/formbody";
 import fastifyPostgres from "@fastify/postgres";
 import fastifyRateLimit from "@fastify/rate-limit";
 import handlebars from "handlebars";
-import { S3Client, PutObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter, newsletterLimiter, newsletterActionLimiter } from "./server/middleware/rateLimiter.js";
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
 import { fetchEpisodeFromRSS } from "./server/services/castopodRSS.js";
-import { initializeEpisodeWorker, queueEpisodeResolution, stopQueue } from "./server/queues/episodeQueue.js";
+import {
+  EpisodeQueueReason,
+  initializeEpisodeWorker,
+  queueEpisodeResolution,
+  setEpisodeQueueShuttingDown,
+  stopQueue
+} from "./server/queues/episodeQueue.js";
+import { createEpisodeIntentBuffer } from "./server/queues/episodeIntentBuffer.js";
 import {
   createEpisodeWorkerManager,
-  DatabaseState,
   EpisodeWorkerState
 } from "./server/queues/episodeWorkerManager.js";
+import {
+  createDatabaseAvailability,
+  DatabaseState,
+  isDatabaseAvailabilityError,
+  probeDatabaseState
+} from "./server/resilience/databaseAvailability.js";
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export function getHealthPayload(workerManager, databaseConfigured) {
+export function getHealthPayload(
+  workerManager,
+  databaseConfigured,
+  databaseAvailability,
+  episodeIntentBuffer
+) {
   const episodeWorker = workerManager?.getStatus() || {
     state: EpisodeWorkerState.STOPPED
   };
-  const databaseState = workerManager?.getDatabaseState()
+  const databaseState = databaseAvailability?.getState()
+    || workerManager?.getDatabaseState()
     || (databaseConfigured ? DatabaseState.UNKNOWN : DatabaseState.UNAVAILABLE);
   const mode = databaseState === DatabaseState.READ_WRITE
     && episodeWorker.state === EpisodeWorkerState.READY
@@ -44,6 +62,9 @@ export function getHealthPayload(workerManager, databaseConfigured) {
     },
     episodeWorker: {
       state: episodeWorker.state
+    },
+    episodeIntents: {
+      pending: episodeIntentBuffer?.size() || 0
     }
   };
 }
@@ -62,11 +83,19 @@ export async function buildApp({
   initializeOp3 = true,
   databaseUrl: databaseUrlOverride,
   databaseConfigured: databaseConfiguredOverride,
+  databaseAdapter: databaseAdapterOverride,
+  databaseAvailability: databaseAvailabilityOverride,
+  episodeFetcher = fetchEpisodeFromRSS,
+  episodeQueuer = queueEpisodeResolution,
+  episodeIntentBuffer: episodeIntentBufferOverride,
   episodeWorkerStarter,
   episodeWorkerStopper,
-  workerManagerOptions = {}
+  workerManagerOptions = {},
+  storageClient: storageClientOverride,
+  audioValidator = validateAudio
 } = {}) {
 const app = Fastify({ logger: true });
+let episodeWorkerManager = null;
 
 // S3/Cellar configuration with performance optimizations
 const s3Config = {
@@ -87,7 +116,7 @@ const s3Config = {
   signatureVersion: 'v4'
 };
 
-const s3Client = new S3Client(s3Config);
+const s3Client = storageClientOverride || new S3Client(s3Config);
 const bucketName = process.env.S3_BUCKET || 'salete-media';
 const isProduction = process.env.NODE_ENV === 'production' || !!process.env.CELLAR_ADDON_HOST;
 
@@ -160,7 +189,6 @@ if (!isProduction) {
   console.log('  Endpoint:', s3Config.endpoint);
   console.log('  Bucket:', bucketName);
   console.log('  Production mode:', isProduction);
-  console.log('  Access Key:', s3Config.credentials.accessKeyId ? `${s3Config.credentials.accessKeyId.substring(0, 8)}...` : 'NOT SET');
 }
 
 // Database
@@ -168,19 +196,21 @@ const databaseUrl = databaseUrlOverride
   || process.env.DATABASE_URL
   || process.env.POSTGRESQL_ADDON_URI
   || 'postgresql://salete:salete@localhost:5432/salete';
+const hasDatabase = databaseConfiguredOverride
+  ?? !!(process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI);
 
 if (!isProduction) {
-  console.log('🔗 Available DB env vars:');
-  console.log('  DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
-  console.log('  POSTGRESQL_ADDON_URI:', process.env.POSTGRESQL_ADDON_URI ? 'SET' : 'NOT SET');
-  console.log('  POSTGRESQL_ADDON_HOST:', process.env.POSTGRESQL_ADDON_HOST || 'NOT SET');
-  console.log('🔗 Using Database URL:', databaseUrl.replace(/\/\/[^@]+@/, '//***:***@')); // Log sans password
+  console.log('🔗 Database configuration:', hasDatabase
+    ? 'environment connection configured'
+    : 'local fallback configured');
 }
 
 try {
   await app.register(fastifyPostgres, {
     connectionString: databaseUrl,
-    max: 1 // Une seule connexion suffit (pas de requêtes longues)
+    max: 1, // Une seule connexion suffit (pas de requêtes longues)
+    connectionTimeoutMillis: 1500,
+    query_timeout: 2000
   });
   console.log('✅ Database pool registered');
 } catch (error) {
@@ -194,6 +224,23 @@ try {
     throw error;
   }
 }
+
+const database = databaseAdapterOverride || {
+  connect: () => app.pg.connect(),
+  query: (...args) => app.pg.pool.query(...args),
+  pool: app.pg.pool
+};
+const databaseAvailability = databaseAvailabilityOverride || createDatabaseAvailability({
+  probe: () => probeDatabaseState(database),
+  logger: app.log,
+  initialState: hasDatabase ? DatabaseState.UNKNOWN : DatabaseState.UNAVAILABLE
+});
+const episodeIntentBuffer = episodeIntentBufferOverride || createEpisodeIntentBuffer({
+  logger: app.log
+});
+
+app.decorate('databaseAvailability', databaseAvailability);
+app.decorate('episodeIntentBuffer', episodeIntentBuffer);
 
 // Multipart forms
 await app.register(fastifyMultipart, {
@@ -259,6 +306,65 @@ if (!isProduction) {
 // Newsletter Routes
 await app.register(newsletterRoutes, { prefix: '/newsletter' });
 
+function reportDatabaseError(error, route) {
+  if (!isDatabaseAvailabilityError(error)) return false;
+
+  databaseAvailability.recordError(error, route);
+  episodeWorkerManager?.reportDatabaseError(error);
+  return true;
+}
+
+async function getFreshDatabaseState(options) {
+  return databaseAvailability.check(options).catch((error) => {
+    reportDatabaseError(error, 'database_probe');
+    return databaseAvailability.getState();
+  });
+}
+
+function canReadDatabase(state) {
+  return state === DatabaseState.READ_ONLY || state === DatabaseState.READ_WRITE;
+}
+
+function sendDatabaseUnavailable(reply) {
+  reply.header('Retry-After', '60');
+  return reply.code(503).send({
+    success: false,
+    code: 'SERVICE_TEMPORARILY_UNAVAILABLE',
+    retryable: true,
+    message: 'Le Sale-wall est temporairement indisponible. Réessaie dans quelques minutes.'
+  });
+}
+
+async function ensureWritableDatabase(route) {
+  const state = await getFreshDatabaseState();
+  if (state === DatabaseState.READ_WRITE) return true;
+
+  app.log.warn({
+    event: 'wall_write_rejected',
+    route,
+    databaseState: state
+  }, 'wall_write_rejected');
+  return false;
+}
+
+async function enqueueEpisodeIntent(intent) {
+  const result = await episodeQueuer(
+    intent.season,
+    intent.episode,
+    intent.episodeDate,
+    intent.title,
+    intent.imageUrl,
+    intent.feedLastBuildDate,
+    intent.audioUrl
+  );
+
+  if (result.reason === EpisodeQueueReason.QUEUE_ERROR && result.error) {
+    reportDatabaseError(result.error, 'episode_queue_send');
+  }
+
+  return result;
+}
+
 // API Routes
 // Create new post (avec rate limiting)
 app.post("/api/posts", {
@@ -266,6 +372,12 @@ app.post("/api/posts", {
     rateLimit: uploadLimiter
   }
 }, async (req, reply) => {
+  if (!await ensureWritableDatabase('create_post')) {
+    return sendDatabaseUnavailable(reply);
+  }
+
+  let uploadedS3Key = null;
+
   if (!isProduction) {
     console.log('📥 POST /api/posts - Starting request processing');
   }
@@ -417,7 +529,7 @@ app.post("/api/posts", {
       console.log('⏱️ Recording duration from form:', recordingDuration);
     }
     
-    const validation = validateAudio(buffer, audioFile.mimetype, recordingDuration);
+    const validation = audioValidator(buffer, audioFile.mimetype, recordingDuration);
     
     if (!validation.isValid) {
       if (!isProduction) {
@@ -450,7 +562,6 @@ app.post("/api/posts", {
         console.log('  Buffer size:', buffer.length);
         console.log('  Endpoint:', s3Config.endpoint);
         console.log('  Bucket:', bucketName);
-        console.log('  Access Key:', s3Config.credentials.accessKeyId);
         console.log('📦 Creating PutObjectCommand...');
       }
       
@@ -469,15 +580,21 @@ app.post("/api/posts", {
       
       // Performance optimization: upload with timeout
       const uploadPromise = s3Client.send(uploadCommand);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Upload timeout')), 10000) // 10s timeout
-      );
+      let uploadTimeout;
+      const timeoutPromise = new Promise((_, reject) => {
+        uploadTimeout = setTimeout(() => reject(new Error('Upload timeout')), 10000);
+      });
       
       if (!isProduction) {
         console.log('🔄 Waiting for upload or timeout (10s)...');
       }
       
-      await Promise.race([uploadPromise, timeoutPromise]);
+      try {
+        await Promise.race([uploadPromise, timeoutPromise]);
+      } finally {
+        clearTimeout(uploadTimeout);
+      }
+      uploadedS3Key = s3Key;
       
       if (!isProduction) {
         console.log('🎉 Upload completed successfully!');
@@ -518,7 +635,7 @@ app.post("/api/posts", {
     if (!isProduction) {
       console.log('💾 Starting database save...');
     }
-    const client = await app.pg.connect();
+    const client = await database.connect();
     try {
       if (!isProduction) {
         console.log('📝 Inserting post into database...');
@@ -552,13 +669,28 @@ app.post("/api/posts", {
     }
     
   } catch (error) {
-    console.error('💥 Fatal error in POST /api/posts:', error);
-    if (!isProduction) {
-      console.error('  Error message:', error.message);
-      console.error('  Error stack:', error.stack);
+    if (reportDatabaseError(error, 'create_post')) {
+      if (uploadedS3Key) {
+        try {
+          await s3Client.send(new DeleteObjectCommand({
+            Bucket: bucketName,
+            Key: uploadedS3Key
+          }));
+        } catch (cleanupError) {
+          app.log.warn({
+            event: 'wall_upload_compensation_failed',
+            errorCode: cleanupError?.code || cleanupError?.name || 'UNKNOWN'
+          }, 'wall_upload_compensation_failed');
+        }
+      }
+      return sendDatabaseUnavailable(reply);
     }
-    app.log.error(error);
-    reply.code(500).send({
+
+    app.log.error({
+      event: 'wall_post_failed',
+      errorCode: error?.code || error?.name || 'UNKNOWN'
+    }, 'wall_post_failed');
+    return reply.code(500).send({
       success: false,
       message: 'Erreur serveur lors de la création du post'
     });
@@ -571,11 +703,15 @@ app.post("/api/posts/:id/vote", {
     rateLimit: voteLimiter
   }
 }, async (req, reply) => {
+  if (!await ensureWritableDatabase('vote')) {
+    return sendDatabaseUnavailable(reply);
+  }
+
   try {
     const postId = req.params.id;
     const voterHash = req.headers['x-forwarded-for'] || req.ip || 'anonymous';
     
-    const client = await app.pg.connect();
+    const client = await database.connect();
     try {
       // Check if user already voted
       const existingVote = await client.query(
@@ -614,7 +750,9 @@ app.post("/api/posts/:id/vote", {
     }
     
   } catch (error) {
-    // L'error handler global va s'en occuper
+    if (reportDatabaseError(error, 'vote')) {
+      return sendDatabaseUnavailable(reply);
+    }
     throw error;
   }
 });
@@ -636,8 +774,17 @@ app.get("/wall", {
     rateLimit: pageLimiter
   }
 }, async (req, reply) => {
+  const databaseState = await getFreshDatabaseState();
+  if (databaseState !== DatabaseState.READ_WRITE) {
+    return reply.view("index.hbs", {
+      title: "Sale-wall",
+      isPodcastBanner: true,
+      wallUnavailable: true
+    });
+  }
+
   try {
-    const client = await app.pg.connect();
+    const client = await database.connect();
     try {
       // Get posts with vote counts
       const result = await client.query(`
@@ -701,13 +848,14 @@ app.get("/wall", {
       client.release();
     }
   } catch (error) {
-    app.log.error(error);
-    return reply.view("index.hbs", { 
-      title: "Sale-wall",
-      isPodcastBanner: true,
-      posts: [],
-      stats: { total_posts: 0, total_listens: 0 }
-    });
+    if (reportDatabaseError(error, 'wall_read')) {
+      return reply.view("index.hbs", {
+        title: "Sale-wall",
+        isPodcastBanner: true,
+        wallUnavailable: true
+      });
+    }
+    throw error;
   }
 });
 
@@ -797,65 +945,76 @@ app.get("/podcast/:season/:episode", {
   }
   
   // 1. Fetch episode metadata from RSS
-  const episodeData = await fetchEpisodeFromRSS(season, episode, 5000).catch(() => null);
+  const episodeData = await episodeFetcher(season, episode, 5000).catch(() => null);
   
   if (!episodeData) {
     return reply.redirect('/podcast'); // Épisode introuvable
   }
   
-  // 2. Check cache BDD (episode_links) pour liens plateformes + OG Image
-  const client = await app.pg.connect();
+  // 2. Check cache BDD (episode_links) pour liens plateformes + OG Image.
+  // Le probe est borné par la configuration du pool et distingue read-only/read-write.
+  let databaseState = await getFreshDatabaseState();
   let platformLinks = null;
-  let shouldQueueJob = false;
-  
-  try {
-    const cacheResult = await client.query(
-      `SELECT spotify_url, apple_url, deezer_url, podcast_addict_url,
-              og_image_url, feed_last_build, generated_at 
-       FROM episode_links WHERE season = $1 AND episode = $2`,
-      [season, episode]
-    );
-    
-    if (cacheResult.rows.length > 0) {
-      platformLinks = cacheResult.rows[0];
-      
-      // Check si OG Image doit être régénérée (ADR-0012)
-      const needsOGRegeneration = checkOGImageNeeds(
-        platformLinks.og_image_url,
-        platformLinks.feed_last_build,
-        platformLinks.generated_at,
-        episodeData.feedLastBuildDate
+  let shouldQueueJob = true;
+
+  if (canReadDatabase(databaseState)) {
+    let client = null;
+    try {
+      client = await database.connect();
+      const cacheResult = await client.query(
+        `SELECT spotify_url, apple_url, deezer_url, podcast_addict_url,
+                og_image_url, feed_last_build, generated_at
+         FROM episode_links WHERE season = $1 AND episode = $2`,
+        [season, episode]
       );
-      
-      // Queue job si liens manquants OU OG Image manquante/obsolète
-      shouldQueueJob = !platformLinks.spotify_url || needsOGRegeneration;
-    } else {
-      // Pas de cache du tout → queue job
+
+      if (cacheResult.rows.length > 0) {
+        platformLinks = cacheResult.rows[0];
+        const needsOGRegeneration = checkOGImageNeeds(
+          platformLinks.og_image_url,
+          platformLinks.feed_last_build,
+          platformLinks.generated_at,
+          episodeData.feedLastBuildDate
+        );
+        shouldQueueJob = !platformLinks.spotify_url || needsOGRegeneration;
+      }
+    } catch (error) {
+      if (!reportDatabaseError(error, 'podcast_episode_cache')) throw error;
+      databaseState = databaseAvailability.getState();
+      platformLinks = null;
       shouldQueueJob = true;
+    } finally {
+      client?.release();
     }
-  } finally {
-    client.release();
   }
-  
+
   // 3. Si pas en cache OU OG Image obsolète, queue job pour résolution asynchrone
   if (shouldQueueJob) {
-    await queueEpisodeResolution(
-      season, 
-      episode, 
-      episodeData.rawPubDate, 
-      episodeData.title, 
-      episodeData.image,
-      episodeData.feedLastBuildDate, // Cache invalidation OG
-      episodeData.audioUrl // Podcast Addict deeplink
-    );
+    const intent = {
+      season,
+      episode,
+      episodeDate: episodeData.rawPubDate,
+      title: episodeData.title,
+      imageUrl: episodeData.image,
+      feedLastBuildDate: episodeData.feedLastBuildDate,
+      audioUrl: episodeData.audioUrl
+    };
+    const workerReady = episodeWorkerManager?.getStatus().state === EpisodeWorkerState.READY;
+    const queueResult = workerReady
+      ? await enqueueEpisodeIntent(intent)
+      : { queued: false, reason: EpisodeQueueReason.WORKER_UNAVAILABLE };
+
+    if (!queueResult.queued && queueResult.reason !== EpisodeQueueReason.ALREADY_QUEUED) {
+      episodeIntentBuffer.remember(intent);
+    }
   }
-  
+
   // 4. Fetch OP3 stats from cache (ADR-0015)
   let episodeStats = null;
-  if (episodeData.itemGuid) {
+  if (canReadDatabase(databaseState) && episodeData.itemGuid) {
     try {
       const { getEpisodeStats, formatStatsForDisplay } = await import('./server/services/op3Service.js');
-      const stats = await getEpisodeStats(app.pg.pool, episodeData.itemGuid);
+      const stats = await getEpisodeStats(database.pool, episodeData.itemGuid);
       if (stats && stats.downloadsAll >= 10) {
         episodeStats = {
           downloadsAll: stats.downloadsAll,
@@ -863,13 +1022,28 @@ app.get("/podcast/:season/:episode", {
           displayText: formatStatsForDisplay(stats.downloadsAll)
         };
       }
-    } catch (err) {
-      app.log.warn('OP3 stats fetch failed (non-blocking):', err.message);
+    } catch (error) {
+      if (reportDatabaseError(error, 'podcast_episode_stats')) {
+        databaseState = databaseAvailability.getState();
+      } else {
+        app.log.warn({
+          event: 'op3_stats_fetch_failed',
+          errorCode: error?.code || error?.name || 'UNKNOWN'
+        }, 'op3_stats_fetch_failed');
+      }
     }
   }
-  
+
+  const episodeContentPartial = !platformLinks?.spotify_url
+    || !platformLinks?.apple_url
+    || !platformLinks?.deezer_url
+    || databaseState === DatabaseState.UNAVAILABLE
+    || databaseState === DatabaseState.UNKNOWN;
+
   // 5. Render page avec données épisode + liens plateformes (ou null si pas encore résolus)
-  reply.header('Cache-Control', 'public, max-age=3600');
+  reply.header('Cache-Control', episodeContentPartial
+    ? 'public, max-age=60'
+    : 'public, max-age=3600');
   reply.header('Vary', 'User-Agent'); // CDN cache per User-Agent (bots vs users)
   return reply.view("podcast.hbs", { 
     episodeData: {
@@ -879,14 +1053,19 @@ app.get("/podcast/:season/:episode", {
     },
     platformLinks,
     ogImageUrl: platformLinks?.og_image_url || null, // Pass OG image for player cover
-    episodeStats // OP3 badge data (ADR-0015)
+    episodeStats, // OP3 badge data (ADR-0015)
+    episodeContentPartial
   });
 });
 
 // Health: liveness HTTP stays 200 even when PostgreSQL or pg-boss is unavailable.
-let episodeWorkerManager = null;
 app.decorate('episodeWorkerManager', null);
-app.get("/health", () => getHealthPayload(episodeWorkerManager, hasDatabase));
+app.get("/health", () => getHealthPayload(
+  episodeWorkerManager,
+  hasDatabase,
+  databaseAvailability,
+  episodeIntentBuffer
+));
 
 // Audio Proxy for CORS (ADR-0014)
 const ALLOWED_AUDIO_DOMAINS = [
@@ -1005,8 +1184,6 @@ app.get('/api/audio/proxy', {
 
 // Initialize pg-boss independently from HTTP startup.
 // The manager owns the single retry loop and never publishes a partial instance.
-const hasDatabase = databaseConfiguredOverride
-  ?? !!(process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI);
 const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true' && hasDatabase;
 
 if (WORKER_ENABLED) {
@@ -1014,17 +1191,58 @@ if (WORKER_ENABLED) {
     || (() => initializeEpisodeWorker(app));
   const stopEpisodeWorker = episodeWorkerStopper
     || ((instance) => stopQueue(instance));
+  const {
+    onReady: configuredOnReady,
+    ...managerOptions
+  } = workerManagerOptions;
 
   episodeWorkerManager = createEpisodeWorkerManager({
-    ...workerManagerOptions,
+    ...managerOptions,
     start: startEpisodeWorker,
     stop: stopEpisodeWorker,
-    logger: workerManagerOptions.logger || app.log
+    logger: workerManagerOptions.logger || app.log,
+    databaseAvailability,
+    async onReady(instance) {
+      await episodeIntentBuffer.drain(enqueueEpisodeIntent);
+      if (typeof configuredOnReady === 'function') {
+        await configuredOnReady(instance);
+      }
+    }
   });
   app.episodeWorkerManager = episodeWorkerManager;
 
+  let applicationMode = null;
+  const logApplicationMode = (reason) => {
+    const nextMode = databaseAvailability.getState() === DatabaseState.READ_WRITE
+      && episodeWorkerManager.getStatus().state === EpisodeWorkerState.READY
+      ? 'normal'
+      : 'degraded';
+    if (nextMode === applicationMode) return;
+    const previousMode = applicationMode;
+    applicationMode = nextMode;
+    app.log.info({
+      event: 'application_mode_changed',
+      previousMode,
+      mode: nextMode,
+      reason,
+      databaseState: databaseAvailability.getState(),
+      episodeWorkerState: episodeWorkerManager.getStatus().state
+    }, 'application_mode_changed');
+  };
+  const unsubscribeDatabase = databaseAvailability.subscribe(() => {
+    logApplicationMode('database_state_changed');
+  });
+  const unsubscribeWorker = episodeWorkerManager.subscribe(() => {
+    logApplicationMode('episode_worker_state_changed');
+  });
+  logApplicationMode('startup');
+  setEpisodeQueueShuttingDown(false);
+
   app.addHook('onClose', async () => {
+    setEpisodeQueueShuttingDown(true);
     await episodeWorkerManager.stop();
+    unsubscribeDatabase();
+    unsubscribeWorker();
   });
 
   // Intentionally not awaited: Fastify can listen while pg-boss connects/retries.
