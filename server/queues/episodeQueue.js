@@ -4,7 +4,6 @@
  */
 
 import PgBoss from 'pg-boss'
-import pg from 'pg'
 import { 
   searchSpotifyEpisode, 
   searchAppleEpisode, 
@@ -13,39 +12,60 @@ import {
 import { generateOGImage } from '../services/ogImageGenerator.js'
 import { uploadToS3, deleteFromS3 } from '../services/s3Service.js'
 
-const { Client } = pg
-
 let boss = null
+
+function getConnectionString() {
+  return process.env.DATABASE_URL
+    || process.env.POSTGRESQL_ADDON_URI
+    || 'postgresql://salete:salete@localhost:5432/salete'
+}
+
+async function stopCandidate(candidate) {
+  if (!candidate) return
+
+  try {
+    await candidate.stop({ graceful: false })
+  } catch {
+    // Best effort: a failed start can leave pg-boss only partially initialized.
+  }
+}
+
+async function createStartedQueue(options = {}) {
+  const {
+    bossFactory = (config) => new PgBoss(config),
+    ...bossOptions
+  } = options
+
+  const isTest = process.env.NODE_ENV === 'test' || process.env.DISABLE_WORKER === 'true'
+  const candidate = bossFactory({
+    connectionString: getConnectionString(),
+    schema: 'pgboss',
+    max: isTest ? 3 : 1,
+    newJobCheckInterval: isTest ? 200 : 2000,
+    ...bossOptions
+  })
+
+  try {
+    await candidate.start()
+    await candidate.createQueue('resolve-episode')
+    return candidate
+  } catch (error) {
+    await stopCandidate(candidate)
+    throw error
+  }
+}
 
 /**
  * Initialise pg-boss avec PostgreSQL
- * @param {object} options - Options pg-boss (pollIntervalSeconds pour tests)
+ * Utilisé directement par les tests de queue. En production, le démarrage
+ * atomique passe par initializeEpisodeWorker().
+ * @param {object} options - Options pg-boss
  * @returns {Promise<PgBoss>} Instance pg-boss active
  */
 export async function initQueue(options = {}) {
-  // Utiliser la même logique de fallback que fastify-postgres
-  // CleverCloud expose POSTGRESQL_ADDON_URI, pas forcément DATABASE_URL
-  const connectionString = process.env.DATABASE_URL 
-    || process.env.POSTGRESQL_ADDON_URI 
-    || 'postgresql://salete:salete@localhost:5432/salete';
-  
-  const isTest = process.env.NODE_ENV === 'test' || process.env.DISABLE_WORKER === 'true'
-  
-  boss = new PgBoss({
-    connectionString,
-    schema: 'pgboss',
-    max: isTest ? 3 : 1, // Tests: 3 connexions pour workers parallèles
-    // Polling rapide en tests pour éviter les timeouts
-    newJobCheckInterval: isTest ? 200 : 2000, // Check nouveaux jobs toutes les 200ms en test
-    ...options
-  })
-  
-  await boss.start()
-  
-  // Créer la queue (requis avant send)
-  await boss.createQueue('resolve-episode')
-  
-  return boss
+  const candidate = await createStartedQueue(options)
+  boss = candidate
+  return candidate
 }
 
 /**
@@ -54,6 +74,12 @@ export async function initQueue(options = {}) {
  */
 export function getBoss() {
   return boss
+}
+
+export async function stopQueue(instance = boss) {
+  if (!instance) return
+  if (boss === instance) boss = null
+  await stopCandidate(instance)
 }
 
 /**
@@ -87,14 +113,19 @@ export async function queueEpisodeResolution(season, episode, episodeDate, title
  * Worker DOIT être idempotent (vérifier si travail déjà fait avant d'appeler APIs)
  * @param {object} fastify - Instance Fastify avec pool pg
  * @param {object} options - Worker options (teamSize pour tests parallèles)
+ * @param {PgBoss} queue - Instance explicite pendant l'initialisation atomique
  */
-export async function startWorker(fastify, options = {}) {
+export async function startWorker(fastify, options = {}, queue = boss) {
+  if (!queue) {
+    throw new Error('Cannot start episode worker before pg-boss is ready')
+  }
+
   const workerOptions = {
     teamSize: options.teamSize || 1, // Nombre de jobs en parallèle (2+ pour tests)
     ...options
   }
   
-  await boss.work('resolve-episode', workerOptions, async (jobs) => {
+  await queue.work('resolve-episode', workerOptions, async (jobs) => {
     // pg-boss v9 passe un array de jobs (batch mode par défaut)
     const job = jobs[0]
     
@@ -227,6 +258,28 @@ export async function startWorker(fastify, options = {}) {
     // IMPORTANT: pg-boss attend un return pour marquer le job comme completed
     return { links, ogImageUrl }
   })
+}
+
+/**
+ * Démarre la queue et enregistre le worker avant de publier l'instance globale.
+ * Une tentative échouée ne peut donc jamais être utilisée par send().
+ */
+export async function initializeEpisodeWorker(fastify, {
+  queueOptions = {},
+  workerOptions = {}
+} = {}) {
+  let candidate = null
+
+  try {
+    candidate = await createStartedQueue(queueOptions)
+    await startWorker(fastify, workerOptions, candidate)
+    boss = candidate
+    return candidate
+  } catch (error) {
+    if (boss === candidate) boss = null
+    await stopCandidate(candidate)
+    throw error
+  }
 }
 
 // Note : Worker DOIT être idempotent (vérifier si travail déjà fait avant d'appeler APIs)

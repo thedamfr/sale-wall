@@ -15,10 +15,38 @@ import { validateAudio, audioValidationMiddleware } from "./server/validators/au
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
 import { fetchEpisodeFromRSS } from "./server/services/castopodRSS.js";
-import { initQueue, startWorker, queueEpisodeResolution, getBoss } from "./server/queues/episodeQueue.js";
+import { initializeEpisodeWorker, queueEpisodeResolution, stopQueue } from "./server/queues/episodeQueue.js";
+import {
+  createEpisodeWorkerManager,
+  DatabaseState,
+  EpisodeWorkerState
+} from "./server/queues/episodeWorkerManager.js";
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export function getHealthPayload(workerManager, databaseConfigured) {
+  const episodeWorker = workerManager?.getStatus() || {
+    state: EpisodeWorkerState.STOPPED
+  };
+  const databaseState = workerManager?.getDatabaseState()
+    || (databaseConfigured ? DatabaseState.UNKNOWN : DatabaseState.UNAVAILABLE);
+  const mode = databaseState === DatabaseState.READ_WRITE
+    && episodeWorker.state === EpisodeWorkerState.READY
+    ? 'normal'
+    : 'degraded';
+
+  return {
+    ok: true,
+    mode,
+    database: {
+      state: databaseState
+    },
+    episodeWorker: {
+      state: episodeWorker.state
+    }
+  };
+}
 
 /**
  * Builds and configures the Fastify application instance.
@@ -26,9 +54,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * This function is exported for testing purposes - it allows tests to import
  * and run the real server code without starting the HTTP listener.
  * 
+ * @param {object} options - Startup overrides used by isolated tests
  * @returns {Promise<FastifyInstance>} Configured Fastify app ready to listen
  */
-export async function buildApp() {
+export async function buildApp({
+  initializeStorage = true,
+  initializeOp3 = true,
+  databaseUrl: databaseUrlOverride,
+  databaseConfigured: databaseConfiguredOverride,
+  episodeWorkerStarter,
+  episodeWorkerStopper,
+  workerManagerOptions = {}
+} = {}) {
 const app = Fastify({ logger: true });
 
 // S3/Cellar configuration with performance optimizations
@@ -78,7 +115,9 @@ async function ensureBucketExists() {
 }
 
 // Initialize bucket and public policy for audio folder
-await ensureBucketExists();
+if (initializeStorage) {
+  await ensureBucketExists();
+}
 
 // Configure public read policy for /audio/ and /og-images/ folders in development
 async function ensurePublicAudioPolicy() {
@@ -111,7 +150,9 @@ async function ensurePublicAudioPolicy() {
   }
 }
 
-await ensurePublicAudioPolicy();
+if (initializeStorage) {
+  await ensurePublicAudioPolicy();
+}
 
 // Phase 3: Logs détaillés uniquement en dev
 if (!isProduction) {
@@ -123,7 +164,10 @@ if (!isProduction) {
 }
 
 // Database
-const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI || 'postgresql://salete:salete@localhost:5432/salete';
+const databaseUrl = databaseUrlOverride
+  || process.env.DATABASE_URL
+  || process.env.POSTGRESQL_ADDON_URI
+  || 'postgresql://salete:salete@localhost:5432/salete';
 
 if (!isProduction) {
   console.log('🔗 Available DB env vars:');
@@ -138,7 +182,7 @@ try {
     connectionString: databaseUrl,
     max: 1 // Une seule connexion suffit (pas de requêtes longues)
   });
-  console.log('✅ Database connected successfully');
+  console.log('✅ Database pool registered');
 } catch (error) {
   console.error('❌ Database connection failed:', error.message);
   console.error('💡 Make sure PostgreSQL addon is created and env vars are set');
@@ -839,8 +883,10 @@ app.get("/podcast/:season/:episode", {
   });
 });
 
-// Health
-app.get("/health", () => ({ ok: true }));
+// Health: liveness HTTP stays 200 even when PostgreSQL or pg-boss is unavailable.
+let episodeWorkerManager = null;
+app.decorate('episodeWorkerManager', null);
+app.get("/health", () => getHealthPayload(episodeWorkerManager, hasDatabase));
 
 // Audio Proxy for CORS (ADR-0014)
 const ALLOWED_AUDIO_DOMAINS = [
@@ -957,57 +1003,50 @@ app.get('/api/audio/proxy', {
   }
 });
 
-// Initialize pg-boss queue and worker before starting server
-// Fail-hard par défaut : Si worker échoue, déploiement bloqué (sécurité)
-// Bypass explicite : ALLOW_DEGRADED_MODE=true pour autoriser mode dégradé
-// CleverCloud : Utiliser DATABASE_URL OU POSTGRESQL_ADDON_URI (comme fastify-postgres)
-const hasDatabase = !!(process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI);
+// Initialize pg-boss independently from HTTP startup.
+// The manager owns the single retry loop and never publishes a partial instance.
+const hasDatabase = databaseConfiguredOverride
+  ?? !!(process.env.DATABASE_URL || process.env.POSTGRESQL_ADDON_URI);
 const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true' && hasDatabase;
-const ALLOW_DEGRADED = process.env.ALLOW_DEGRADED_MODE === 'true';
 
 if (WORKER_ENABLED) {
-  try {
-    console.log('🚀 Initializing pg-boss queue...');
-    console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '✓ defined' : '✗ missing');
-    console.log('   POSTGRESQL_ADDON_URI:', process.env.POSTGRESQL_ADDON_URI ? '✓ defined' : '✗ missing');
-    
-    await initQueue();
-    console.log('✅ pg-boss queue initialized');
-    
-    console.log('🚀 Starting episode resolution worker...');
-    await startWorker(app);
-    console.log('✅ Worker started and ready to process jobs');
-  } catch (err) {
-    console.error('❌ Worker initialization failed:', err.message);
-    console.error('   Stack:', err.stack);
-    
-    if (ALLOW_DEGRADED) {
-      console.warn('⚠️  ALLOW_DEGRADED_MODE=true: Starting in degraded mode');
-      console.warn('   Server will run WITHOUT background job processing');
-      console.warn('   Episode resolution will be synchronous (slower)');
-    } else {
-      console.error('💥 Deployment BLOCKED: Worker initialization failed');
-      console.error('   To bypass this check (not recommended), set: ALLOW_DEGRADED_MODE=true');
-      console.error('   Or disable worker entirely with: DISABLE_WORKER=true');
-      process.exit(1); // Fail-hard : CleverCloud garde la version précédente
-    }
-  }
+  const startEpisodeWorker = episodeWorkerStarter
+    || (() => initializeEpisodeWorker(app));
+  const stopEpisodeWorker = episodeWorkerStopper
+    || ((instance) => stopQueue(instance));
+
+  episodeWorkerManager = createEpisodeWorkerManager({
+    ...workerManagerOptions,
+    start: startEpisodeWorker,
+    stop: stopEpisodeWorker,
+    logger: workerManagerOptions.logger || app.log
+  });
+  app.episodeWorkerManager = episodeWorkerManager;
+
+  app.addHook('onClose', async () => {
+    await episodeWorkerManager.stop();
+  });
+
+  // Intentionally not awaited: Fastify can listen while pg-boss connects/retries.
+  void episodeWorkerManager.ensureStarted();
 } else {
   const reason = process.env.DISABLE_WORKER === 'true' 
     ? 'DISABLE_WORKER=true' 
     : 'No database connection (DATABASE_URL or POSTGRESQL_ADDON_URI missing)';
   console.log(`⚠️  Worker disabled (${reason})`);
-  console.log('   Episode resolution will be synchronous (slower)');
+  console.log('   Episode resolution jobs will remain unavailable');
 }
 
 // ============================================================================
 // OP3 SERVICE INITIALIZATION (ADR-0015)
 // ============================================================================
-try {
-  const { initOP3Service } = await import('./server/services/op3Service.js');
-  await initOP3Service(); // Preload show UUID in memory
-} catch (err) {
-  console.warn('⚠️  OP3 service init failed (stats will be unavailable):', err.message);
+if (initializeOp3) {
+  try {
+    const { initOP3Service } = await import('./server/services/op3Service.js');
+    await initOP3Service(); // Preload show UUID in memory
+  } catch (err) {
+    console.warn('⚠️  OP3 service init failed (stats will be unavailable):', err.message);
+  }
 }
 
   return app;
@@ -1029,18 +1068,9 @@ if (isMainModule) {
     console.log(`\n📡 ${signal} received, closing gracefully...`);
     
     try {
-      // 1. Arrêter d'accepter nouvelles requêtes
+      // onClose stops the worker manager before Fastify releases its plugins.
       await app.close();
       console.log('✅ HTTP server closed');
-      
-      // 2. Arrêter le worker pg-boss (si actif)
-      const boss = getBoss();
-      if (boss) {
-        await boss.stop();
-        console.log('✅ Worker stopped');
-      }
-      
-      // 3. Fermer pool PostgreSQL (fastify-postgres le fait automatiquement)
       console.log('✅ Database connections released');
       
       process.exit(0);
