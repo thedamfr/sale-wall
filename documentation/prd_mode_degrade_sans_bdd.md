@@ -2,7 +2,7 @@
 
 ## Statut
 
-- **Version** : 0.1
+- **Version** : 0.2
 - **Date** : 19 août 2026
 - **Statut** : proposition prête à implémenter
 - **Périmètre** : application `sale-wall`, routes Sale-wall, pages podcast et worker `pg-boss`
@@ -84,6 +84,53 @@ Ce comportement a été vérifié en production le 19 août 2026 vers 14:05 CEST
 #### Conclusion produit
 
 `ALLOW_DEGRADED_MODE=true` n'est pas à remplacer immédiatement : il reste le filet de sécurité de production pendant l'implémentation. Le PRD transforme ce contournement manuel et incomplet en comportement automatique, explicite et réversible à chaud.
+
+### 1.2 Bilan du preflight d'implémentation
+
+Le preflight local a été exécuté le 19 août 2026 avant toute modification fonctionnelle. Il valide la faisabilité du Lot 1 et précise le seam technique à introduire pour la reconnexion du worker.
+
+#### Protocole
+
+- PostgreSQL 16 isolé du reste de l'environnement local ;
+- application des sept migrations du projet sur une base vide ;
+- exécution de la suite complète dans l'état nominal ;
+- démarrage du serveur avec une URI PostgreSQL inaccessible et `ALLOW_DEGRADED_MODE=true` ;
+- remise à disposition de PostgreSQL sur la même URI, sans redémarrer le serveur ;
+- nouvel essai d'initialisation de `pg-boss` avec une instance neuve.
+
+#### Résultats
+
+| Vérification | Résultat | Conclusion |
+|---|---:|---|
+| Migrations sur PostgreSQL vide | 7/7 appliquées | schéma reproductible pour les tests d'acceptation |
+| Suite nominale | 88 tests réussis, 0 échec | baseline verte avant feature |
+| `GET /` avec DB absente au boot | 200 | la home est déjà indépendante des requêtes DB |
+| `GET /podcast` avec DB absente au boot | 200 | la page générale est déjà indépendante de la DB |
+| `GET /wall` avec DB absente au boot | 200 trompeur | l'erreur est absorbée et présentée comme un wall vide |
+| `GET /podcast/2/1` avec DB absente au boot | 500 | l'accès direct à `app.pg.connect()` reste non protégé |
+| `GET /health` avec DB absente au boot | 200, `{"ok":true}` | aucune observabilité du mode dégradé |
+| Pool Fastify après retour de PostgreSQL | récupération automatique observée | les accès DB HTTP peuvent reprendre sans reconstruire l'application |
+| Page épisode après retour de PostgreSQL | reste en 500 | l'ancienne instance `pg-boss` partiellement initialisée casse la mise en queue |
+| Nouvelle instance `PgBoss` après le retour DB | démarrage et envoi d'un job réussis | la récupération à chaud est faisable en remplaçant l'instance échouée |
+
+Après le retour de PostgreSQL, l'erreur de la page épisode n'est plus une erreur de connexion. Elle devient une erreur interne de `pg-boss` lors de `send()` : l'instance globale existe, mais son manager n'a jamais terminé son initialisation. La simple présence de `boss` ne constitue donc pas un état `READY`.
+
+#### Seams de test manquants
+
+- aucun test de route ne couvre actuellement la home sans DB ;
+- le helper Fastify force `DISABLE_WORKER=true`, donc il ne peut pas exercer le démarrage dégradé ni la reconnexion ;
+- aucun test ne couvre la transition DB absente → DB disponible dans le même processus ;
+- la suite mélange tests locaux et appels réseau réels vers les plateformes, ce qui nécessite de distinguer les tests d'acceptation du mode dégradé des intégrations externes.
+
+#### Décision de preflight
+
+**GO conditionnel pour le Lot 1**, avec les garde-fous suivants :
+
+1. introduire un gestionnaire de cycle de vie testable qui expose explicitement `STOPPED`, `STARTING`, `READY`, `RETRY_SCHEDULED` et `STOPPING` ;
+2. ne publier la référence singleton qu'après un `start()` et un `createQueue()` réussis, ou invalider systématiquement l'instance en échec ;
+3. créer une nouvelle instance `PgBoss` à chaque tentative après échec, avec une seule boucle de retry ;
+4. ajouter un test d'acceptation du boot sans DB et un test DB absente → DB revenue sans redémarrage ;
+5. conserver la baseline nominale verte avant de modifier `/wall` et les pages épisode dans les lots suivants.
 
 ---
 
