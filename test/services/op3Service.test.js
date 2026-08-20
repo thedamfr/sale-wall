@@ -153,7 +153,7 @@ describe('getEpisodeDownloadProof', () => {
   })
 })
 
-function createFetchMock({ invalidAggregate = false, failAggregate = false, paginated = false } = {}) {
+function createFetchMock({ missingAllTimeMetric = false, failAggregate = false, paginated = false } = {}) {
   const showUuid = 'a'.repeat(32)
   const calls = []
   const fetchImpl = async (url, options) => {
@@ -178,7 +178,7 @@ function createFetchMock({ invalidAggregate = false, failAggregate = false, pagi
             pubdate: '2026-08-01T08:00:00.000Z',
             downloads7: 999,
             downloads30: 999,
-            ...(invalidAggregate ? {} : { downloadsAll: 42 })
+            ...(missingAllTimeMetric ? {} : { downloadsAll: 42 })
           },
           {
             itemGuid: 'guid-2',
@@ -301,20 +301,23 @@ describe('refreshOp3StatsCache', () => {
     assert.deepEqual(upserts[0].params.slice(0, 4), ['guid-1', 1, 2, 42])
   })
 
-  test('rejects invalid aggregate data instead of writing zeros', async () => {
-    const { fetchImpl } = createFetchMock({ invalidAggregate: true })
+  test('skips an aggregate episode with missing metrics instead of writing zeros', async () => {
+    const { fetchImpl } = createFetchMock({ missingAllTimeMetric: true })
     const database = createPool()
 
-    await assert.rejects(() => refreshOp3StatsCache({
+    const result = await refreshOp3StatsCache({
       pool: database.pool,
       databaseState: DatabaseState.READ_WRITE,
       fetchImpl,
       token: 'test-token',
       podcastGuid: 'podcast-guid',
       now: NOW
-    }), /invalid/i)
+    })
 
-    assert.equal(database.connectCalls, 0)
+    assert.deepEqual(result, { status: 'updated', updatedCount: 1 })
+    const upserts = database.queries.filter(({ sql }) => sql.includes('INSERT INTO op3_stats'))
+    assert.equal(upserts.length, 1)
+    assert.deepEqual(upserts[0].params.slice(0, 4), ['guid-2', 1, 1, 27])
   })
 
   test('never fetches or writes while PostgreSQL is read-only', async () => {

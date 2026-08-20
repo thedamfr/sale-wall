@@ -145,19 +145,20 @@ function validateAggregate(data, showUuid) {
     throw new Error('OP3 aggregate response is invalid')
   }
   const seenGuids = new Set()
-  return data.episodes.map((item) => {
+  const validEpisodes = []
+  for (const item of data.episodes) {
     if (
       typeof item?.itemGuid !== 'string'
       || !item.itemGuid.trim()
       || !publicationKey(item.title, item.pubdate)
-      || !isNonNegativeInteger(item.downloadsAll)
       || seenGuids.has(item.itemGuid)
     ) {
       throw new Error('OP3 aggregate episode is invalid')
     }
     seenGuids.add(item.itemGuid)
-    return item
-  })
+    if (isNonNegativeInteger(item.downloadsAll)) validEpisodes.push(item)
+  }
+  return validEpisodes
 }
 
 async function fetchRecentDownloads({ fetchImpl, token, showUuid, now }) {

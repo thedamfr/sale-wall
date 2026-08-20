@@ -88,7 +88,6 @@ function databaseAdapter({ episodeStats } = {}) {
 async function createApp(options = {}) {
   const app = await buildApp({
     initializeStorage: false,
-    initializeOp3: false,
     databaseConfigured: false,
     databaseAdapter: databaseAdapter(),
     databaseAvailability: availability(DatabaseState.READ_WRITE, async () => DatabaseState.READ_WRITE),

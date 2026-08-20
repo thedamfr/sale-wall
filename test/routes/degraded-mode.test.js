@@ -47,7 +47,6 @@ describe('degraded startup', () => {
     try {
       app = await buildApp({
         initializeStorage: false,
-        initializeOp3: false,
         databaseAdapterFactory: () => {
           throw Object.assign(new Error('connection refused'), {
             code: 'ECONNREFUSED'
@@ -92,7 +91,6 @@ describe('degraded startup', () => {
 
     const app = await buildApp({
       initializeStorage: false,
-      initializeOp3: false,
       databaseUrl: UNAVAILABLE_DATABASE_URL,
       databaseConfigured: true,
       episodeWorkerStarter: () => startGate,
@@ -135,7 +133,6 @@ describe('degraded startup', () => {
     let startCalls = 0
     const app = await buildApp({
       initializeStorage: false,
-      initializeOp3: false,
       databaseUrl: UNAVAILABLE_DATABASE_URL,
       databaseConfigured: true,
       episodeWorkerStarter: async () => {

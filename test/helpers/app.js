@@ -16,7 +16,6 @@ export async function build() {
   
   const { buildApp } = await import('../../server.js');
   return buildApp({
-    initializeStorage: false,
-    initializeOp3: false
+    initializeStorage: false
   });
 }

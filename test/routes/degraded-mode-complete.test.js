@@ -65,7 +65,6 @@ describe('complete degraded mode routes', () => {
     storageCalls = 0
     app = await buildApp({
       initializeStorage: false,
-      initializeOp3: false,
       databaseUrl: UNAVAILABLE_DATABASE_URL,
       databaseConfigured: false,
       databaseAvailability: unavailableAvailability(),
@@ -149,7 +148,6 @@ describe('complete degraded mode routes', () => {
     }
     const readOnlyApp = await buildApp({
       initializeStorage: false,
-      initializeOp3: false,
       databaseUrl: UNAVAILABLE_DATABASE_URL,
       databaseConfigured: false,
       databaseAvailability: readOnlyAvailability,
@@ -187,7 +185,6 @@ describe('complete degraded mode routes', () => {
     })
     const statsFailureApp = await buildApp({
       initializeStorage: false,
-      initializeOp3: false,
       op3PublicStatsEnabled: true,
       databaseUrl: UNAVAILABLE_DATABASE_URL,
       databaseConfigured: false,
@@ -249,7 +246,6 @@ describe('complete degraded mode routes', () => {
     })
     const compensationApp = await buildApp({
       initializeStorage: false,
-      initializeOp3: false,
       databaseUrl: UNAVAILABLE_DATABASE_URL,
       databaseConfigured: false,
       databaseAvailability: writableAvailability,

@@ -72,8 +72,10 @@ trente jours, valide les identifiants et les entiers non négatifs, puis effectu
 les upserts dans une transaction.
 
 Si la DB n'est pas `read_write`, aucune écriture n'est tentée. Si OP3 échoue ou
-si une réponse est invalide, aucune ligne n'est écrite et `fetched_at` n'avance
-pas. Les champs absents ne sont jamais transformés en zéros.
+si la structure de la réponse est invalide, aucune ligne n'est écrite et
+`fetched_at` n'avance pas. Un épisode dont `downloadsAll` est absent ou invalide
+est ignoré : son cache précédent est conservé tandis que les autres lignes
+valides sont actualisées. Les champs absents ne sont jamais transformés en zéros.
 
 Le bearer token reste dans l'en-tête `Authorization`, jamais dans l'URL ni les
 logs.

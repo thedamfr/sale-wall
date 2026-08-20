@@ -72,8 +72,8 @@ OP3**, jamais d'écoutes garanties.
 - Les métriques `downloads1`, `downloads3`, `downloads7` et `downloads30` sont
   cumulées depuis la publication pendant les 1, 3, 7 ou 30 premiers jours. Elles
   ne sont pas des fenêtres glissantes et peuvent être absentes.
-- `downloadsAll` est le cumul historique. Une métrique absente est une donnée
-  insuffisante, pas un zéro.
+- `downloadsAll` est le cumul historique et est requis par le contrat officiel.
+  Une métrique de fenêtre absente est une donnée insuffisante, pas un zéro.
 - L'endpoint agrégé porte sur les épisodes récents et en renvoie actuellement
   huit par défaut. Un paramètre interne `limit` existe mais n'appartient pas au
   contrat OpenAPI public ; l'implémentation n'en dépend pas.
