@@ -108,33 +108,33 @@ describe('episodeQueue', () => {
   describe('queueEpisodeResolution', () => {
     test('should create job with episode data and return job ID', async () => {
       // Premier appel : doit créer le job
-      const jobId = await queueEpisodeResolution(2, 1, '2025-10-27', 'Test Episode', 'https://example.com/cover.jpg')
+      const result = await queueEpisodeResolution(2, 1, '2025-10-27', 'Test Episode', 'https://example.com/cover.jpg')
       
-      assert.ok(jobId, 'Should return job ID')
-      assert.strictEqual(typeof jobId, 'string', 'Job ID should be a string')
-      assert.match(jobId, /^[a-f0-9-]{36}$/, 'Job ID should be a UUID')
+      assert.equal(result.queued, true)
+      assert.equal(result.reason, 'QUEUED')
+      assert.strictEqual(typeof result.jobId, 'string', 'Job ID should be a string')
+      assert.match(result.jobId, /^[a-f0-9-]{36}$/, 'Job ID should be a UUID')
     })
 
     test('should throttle duplicate jobs within singletonSeconds window (returns null)', async () => {
       // Premier appel : crée le job
-      const jobId1 = await queueEpisodeResolution(3, 5, '2025-09-15', 'Throttle Test', 'https://example.com/cover.jpg')
-      assert.ok(jobId1, 'First call should create job and return job ID')
+      const firstResult = await queueEpisodeResolution(3, 5, '2025-09-15', 'Throttle Test', 'https://example.com/cover.jpg')
+      assert.equal(firstResult.queued, true)
       
       // Deuxième appel immédiat : throttling actif (singletonSeconds: 300)
-      const jobId2 = await queueEpisodeResolution(3, 5, '2025-09-15', 'Throttle Test', 'https://example.com/cover.jpg')
+      const secondResult = await queueEpisodeResolution(3, 5, '2025-09-15', 'Throttle Test', 'https://example.com/cover.jpg')
       
-      // ⚠️ Comportement pg-boss "one per time slot" : retourne null si job existe dans le slot
-      assert.strictEqual(jobId2, null, 'Should return null when throttled (job exists in singletonSeconds window)')
+      assert.deepEqual(secondResult, { queued: false, reason: 'ALREADY_QUEUED' })
     })
 
     test('should accept different episode numbers as separate jobs', async () => {
       // Deux épisodes différents : pas de throttling car singletonKey différent
-      const jobId1 = await queueEpisodeResolution(4, 1, '2025-08-10', 'Episode 1', 'https://example.com/cover.jpg')
-      const jobId2 = await queueEpisodeResolution(4, 2, '2025-08-17', 'Episode 2', 'https://example.com/cover.jpg')
+      const result1 = await queueEpisodeResolution(4, 1, '2025-08-10', 'Episode 1', 'https://example.com/cover.jpg')
+      const result2 = await queueEpisodeResolution(4, 2, '2025-08-17', 'Episode 2', 'https://example.com/cover.jpg')
       
-      assert.ok(jobId1, 'Episode 4-1 should create job')
-      assert.ok(jobId2, 'Episode 4-2 should create job')
-      assert.notStrictEqual(jobId1, jobId2, 'Different episodes should have different job IDs')
+      assert.equal(result1.queued, true)
+      assert.equal(result2.queued, true)
+      assert.notStrictEqual(result1.jobId, result2.jobId, 'Different episodes should have different job IDs')
     })
 
     test('should verify throttling in database (UNIQUE constraint on singleton_key)', async () => {
@@ -143,8 +143,8 @@ describe('episodeQueue', () => {
       const singletonKey = `episode-${season}-${episode}`
       
       // Premier appel : crée le job
-      const jobId1 = await queueEpisodeResolution(season, episode, '2025-07-20', 'DB Test', 'https://example.com/img.jpg')
-      assert.ok(jobId1, 'Should create first job')
+      const firstResult = await queueEpisodeResolution(season, episode, '2025-07-20', 'DB Test', 'https://example.com/img.jpg')
+      assert.equal(firstResult.queued, true)
       
       // Query BDD : vérifier qu'un seul job existe avec ce singletonKey
       const result = await pgClient.query(
@@ -155,7 +155,7 @@ describe('episodeQueue', () => {
       )
       
       assert.strictEqual(result.rows.length, 1, 'Should have exactly 1 job in database')
-      assert.strictEqual(result.rows[0].id, jobId1, 'Job ID should match')
+      assert.strictEqual(result.rows[0].id, firstResult.jobId, 'Job ID should match')
       assert.strictEqual(result.rows[0].singleton_key, singletonKey, 'Singleton key should match')
       assert.ok(result.rows[0].singleton_on, 'singleton_on timestamp should be set')
       
@@ -165,8 +165,8 @@ describe('episodeQueue', () => {
       assert.strictEqual(jobData.episode, episode, 'Episode should be stored in job data')
       
       // Deuxième appel : throttled (retourne null)
-      const jobId2 = await queueEpisodeResolution(season, episode, '2025-07-20', 'DB Test', 'https://example.com/img.jpg')
-      assert.strictEqual(jobId2, null, 'Should return null when throttled')
+      const secondResult = await queueEpisodeResolution(season, episode, '2025-07-20', 'DB Test', 'https://example.com/img.jpg')
+      assert.deepEqual(secondResult, { queued: false, reason: 'ALREADY_QUEUED' })
       
       // Re-query BDD : toujours 1 seul job (pas de doublon)
       const result2 = await pgClient.query(
@@ -184,8 +184,9 @@ describe('episodeQueue', () => {
     test('should process job and call platform APIs', async (t) => {
       // Worker déjà démarré dans before()
       // On crée un job
-      const jobId = await queueEpisodeResolution(6, 1, '2025-10-27', 'Worker Test Episode', 'https://example.com/cover.jpg')
-      assert.ok(jobId, 'Job should be created')
+      const queueResult = await queueEpisodeResolution(6, 1, '2025-10-27', 'Worker Test Episode', 'https://example.com/cover.jpg')
+      assert.equal(queueResult.queued, true)
+      const jobId = queueResult.jobId
       
       // Attendre que le worker traite le job (pg-boss poll + API calls prend 15-20s)
       // Job traite: Spotify API + Apple API + Deezer API + OG Image (qui fail)
@@ -232,12 +233,14 @@ describe('episodeQueue', () => {
       await pgClient.query(`DELETE FROM episode_links WHERE season = 2 AND episode IN (1, 2)`)
       
       // 1. Queue résolution pour S2E1 avec SA date de publication (vraie date du RSS)
-      const jobId1 = await queueEpisodeResolution(2, 1, '2025-10-27', 'S2E1 Episode Title', 'https://example.com/s2e1.jpg')
-      assert.ok(jobId1, 'S2E1 job should be created')
+      const queueResult1 = await queueEpisodeResolution(2, 1, '2025-10-27', 'S2E1 Episode Title', 'https://example.com/s2e1.jpg')
+      assert.equal(queueResult1.queued, true)
+      const jobId1 = queueResult1.jobId
       
       // 2. Queue résolution pour S2E2 avec SA date de publication (vraie date du RSS : 4 nov 2025, pas 27 oct)
-      const jobId2 = await queueEpisodeResolution(2, 2, '2025-11-04', 'S2E2 Episode Title', 'https://example.com/s2e2.jpg')
-      assert.ok(jobId2, 'S2E2 job should be created')
+      const queueResult2 = await queueEpisodeResolution(2, 2, '2025-11-04', 'S2E2 Episode Title', 'https://example.com/s2e2.jpg')
+      assert.equal(queueResult2.queued, true)
+      const jobId2 = queueResult2.jobId
       
       // 3. Attendre que les deux workers traitent les jobs (polling jusqu'à 30s max)
       // teamSize=2 permet traitement parallèle, mais APIs externes peuvent être lentes

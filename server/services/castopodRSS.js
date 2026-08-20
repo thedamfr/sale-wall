@@ -93,6 +93,10 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
 
     // Extract episode type (full, trailer, bonus)
     const episodeType = matchedItem['itunes:episodeType'] || 'full';
+    const guid = matchedItem.guid;
+    const itemGuid = typeof guid === 'string' || typeof guid === 'number'
+      ? String(guid)
+      : guid?.['#text'] || null;
 
     return {
       season: parseInt(matchedItem['itunes:season']),
@@ -107,6 +111,7 @@ export async function fetchEpisodeFromRSS(season, episode, timeout = 5000) {
       image: matchedItem['itunes:image']?.['@_href'] || null,
       audioUrl: matchedItem.enclosure?.['@_url'] || '',
       episodeLink: matchedItem.link || '', // Castopod episode page
+      itemGuid,
       feedLastBuildDate // Channel-level lastBuildDate pour cache invalidation OG Images
     };
   } finally {
@@ -157,6 +162,6 @@ function formatDateFrench(date) {
  * @property {string|null} image - Episode cover URL or null
  * @property {string} audioUrl - MP3 direct link
  * @property {string} episodeLink - Castopod episode page URL
+ * @property {string|null} itemGuid - Episode GUID used for OP3 statistics
  * @property {string|null} feedLastBuildDate - RSS channel lastBuildDate (for OG image cache invalidation)
  */
-

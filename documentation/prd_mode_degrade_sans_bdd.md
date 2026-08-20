@@ -2,9 +2,9 @@
 
 ## Statut
 
-- **Version** : 0.3
+- **Version** : 1.0
 - **Date** : 19 août 2026
-- **Statut** : Lot 1 déployé en production ; Lots 2 à 4 à planifier
+- **Statut** : Lots 1 à 4 implémentés et validés avant revue ; déploiement des Lots 2 à 4 non effectué
 - **Périmètre** : application `sale-wall`, routes Sale-wall, pages podcast et worker `pg-boss`
 - **Incident déclencheur** : PostgreSQL temporairement en recovery, échec de `pg-boss`, arrêt du processus Node.js et réponses HTTP 503 globales
 
@@ -606,6 +606,9 @@ La liveness mesure uniquement la capacité du processus HTTP à répondre. Elle 
   },
   "episodeWorker": {
     "state": "retry_scheduled"
+  },
+  "episodeIntents": {
+    "pending": 1
   }
 }
 ```
@@ -813,6 +816,8 @@ Scénario recommandé avec un PostgreSQL contrôlable :
 
 ### Lot 1 — Home disponible sans DB
 
+**Statut : déployé et vérifié en production le 19 août 2026.**
+
 - partir du comportement validé avec `ALLOW_DEGRADED_MODE=true` sans le considérer comme la solution finale ;
 - rendre le démarrage HTTP tolérant par défaut à l'échec initial de `pg-boss` ;
 - introduire les états et le singleton de reconnexion ;
@@ -824,6 +829,8 @@ Scénario recommandé avec un PostgreSQL contrôlable :
 
 ### Lot 2 — Fallbacks produit
 
+**Statut : implémenté et validé localement, prêt pour revue.**
+
 - rendre la lecture DB des pages épisode optionnelle ;
 - ajouter l'état de contenu partiel dans `podcast.hbs` ;
 - ajouter l'état d'indisponibilité dans `index.hbs` ;
@@ -831,11 +838,15 @@ Scénario recommandé avec un PostgreSQL contrôlable :
 
 ### Lot 3 — Intentions et reprise
 
+**Statut : implémenté et validé localement, prêt pour revue.**
+
 - ajouter le buffer borné d'intentions ;
 - drainer à la reconnexion ;
 - valider la déduplication avec `singletonKey`.
 
 ### Lot 4 — Observabilité complète et validation de reprise
+
+**Statut : code et simulation locale réelle terminés ; validation Clever Cloud à faire après merge et autorisation de déploiement.**
 
 - enrichir `/health` ;
 - ajouter les logs de transition ;
@@ -884,3 +895,78 @@ Le mode dégradé est terminé lorsque :
 - le retour au mode nominal ne demande ni action Clever Cloud ni redéploiement ;
 - les journaux permettent de reconstruire la chronologie panne → retries → reprise ;
 - la documentation ADR du smartlink est mise à jour pour remplacer la décision historique de fail-hard.
+
+---
+
+## 19. Bilan d'implémentation avant revue
+
+Les Lots 2 à 4 ont été implémentés sur la PR de suivi du Lot 1. Cette
+section distingue les preuves locales acquises de la validation de production,
+qui reste volontairement à faire après merge.
+
+### 19.1 Comportements livrés
+
+- modèle PostgreSQL `unknown`, `unavailable`, `read_only`, `read_write`, avec
+  probe de `pg_is_in_recovery()` et `transaction_read_only` ; une connexion
+  refusée en `57P03` reste `unavailable`, tandis qu'un standby qui accepte les
+  lectures est `read_only` ;
+- page épisode 200 depuis le RSS sans DB, fallbacks génériques correctement
+  libellés, statistiques masquées et cache HTTP raccourci en contenu partiel ;
+- Sale-wall 200 avec un état indisponible distinct d'un wall vide, sans
+  enregistrement, statistiques artificielles ni vote ;
+- création et vote refusés avant traitement avec un contrat 503 stable et
+  `Retry-After: 60` ; compensation S3 en best effort si la DB tombe après upload ;
+- contrat explicite de mise en queue, instance `pg-boss` atomique et worker
+  idempotent avant les appels externes coûteux ;
+- buffer `Map` limité à 100 intentions, TTL d'une heure, payload RSS validé,
+  déduplication et drainage à la reconnexion ;
+- transitions DB, worker et mode journalisées ; taille du buffer ajoutée à
+  `/health` sans information de connexion.
+
+### 19.2 Validation automatisée
+
+| Vérification | Résultat |
+|---|---:|
+| Migrations sur PostgreSQL 16 vide | 7/7 appliquées |
+| Suite complète séquentielle | 115 tests réussis, 0 échec |
+| Build PostCSS et vues | réussi |
+| Probe sur PostgreSQL réel configuré en lecture seule | `read_only` |
+| Tests ciblés du mode dégradé | états DB, 20 requêtes concurrentes, fallbacks, 503, compensation et arrêt couverts |
+| Déduplication de reprise | 20 visites → 1 intention → 1 envoi |
+| Idempotence du worker | cache complet → aucun appel externe coûteux |
+
+Le runner Node.js 24.3 a produit deux erreurs IPC
+`Unable to deserialize cloned data` lorsque les fichiers Fastify étaient lancés
+en parallèle. Les mêmes tests étaient verts isolément ; le script `npm test`
+exécute désormais les fichiers avec `--test-concurrency=1` et constitue la
+commande de référence reproductible.
+
+### 19.3 Validation PostgreSQL réelle dans un même processus
+
+Le scénario complet a été exécuté avec un PostgreSQL 16 isolé, sans redémarrer
+Node.js :
+
+1. application démarrée avec PostgreSQL arrêté : worker
+   `retry_scheduled`, DB `unavailable`, `/health` en mode `degraded` ;
+2. `/`, `/podcast`, `/podcast/2/1` et `/wall` en 200 ; message partiel sur
+   l'épisode et message indisponible sur le wall ;
+3. création et vote en 503 avec `Retry-After: 60` ;
+4. PostgreSQL remis en ligne sur la même adresse et migrations appliquées ;
+5. retry réussi : DB `read_write`, worker `ready`, mode `normal`, zéro intention
+   restante ;
+6. contrôle en base : un job logique `resolve-episode` et une ligne
+   `episode_links` pour l'intention créée pendant la panne ; le cas des vingt
+   visites concurrentes est couvert séparément par le test automatisé ;
+7. seconde coupure : erreur runtime PostgreSQL `57P01`, retour automatique à
+   `unavailable` / `retry_scheduled`, `/wall` toujours en 200 dégradé ;
+8. `SIGINT` pendant le retry : timer annulé, worker arrêté et pool fermé
+   proprement.
+
+### 19.4 Reste à valider après merge
+
+- déployer les Lots 2 à 4 sur Clever Cloud avec une autorisation explicite ;
+- vérifier le commit actif, le payload `/health` enrichi et les routes touchées ;
+- lors d'une indisponibilité réelle ou d'une simulation autorisée, confirmer que
+  Clever Cloud conserve l'instance HTTP et que le worker revient sans restart ;
+- retirer ensuite `ALLOW_DEGRADED_MODE` de la configuration Clever, puisqu'il
+  n'est plus lu par l'application.

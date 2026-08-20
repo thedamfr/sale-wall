@@ -14,6 +14,7 @@ describe('Castopod RSS Parser', () => {
       assert.match(episode.description, /Dans la tech/);
       assert.strictEqual(episode.duration, '43:11'); // 2591 seconds = 43:11
       assert.match(episode.audioUrl, /\.mp3$/);
+      assert.ok(episode.itemGuid, 'Episode GUID should be available for OP3 stats');
     });
 
     it('should parse episode S1E5 from RSS', async () => {

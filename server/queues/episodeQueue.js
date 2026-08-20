@@ -13,6 +13,15 @@ import { generateOGImage } from '../services/ogImageGenerator.js'
 import { uploadToS3, deleteFromS3 } from '../services/s3Service.js'
 
 let boss = null
+let queueShuttingDown = false
+
+export const EpisodeQueueReason = Object.freeze({
+  QUEUED: 'QUEUED',
+  ALREADY_QUEUED: 'ALREADY_QUEUED',
+  WORKER_UNAVAILABLE: 'WORKER_UNAVAILABLE',
+  SHUTTING_DOWN: 'SHUTTING_DOWN',
+  QUEUE_ERROR: 'QUEUE_ERROR'
+})
 
 function getConnectionString() {
   return process.env.DATABASE_URL
@@ -65,6 +74,7 @@ async function createStartedQueue(options = {}) {
 export async function initQueue(options = {}) {
   const candidate = await createStartedQueue(options)
   boss = candidate
+  queueShuttingDown = false
   return candidate
 }
 
@@ -74,6 +84,10 @@ export async function initQueue(options = {}) {
  */
 export function getBoss() {
   return boss
+}
+
+export function setEpisodeQueueShuttingDown(shuttingDown) {
+  queueShuttingDown = Boolean(shuttingDown)
 }
 
 export async function stopQueue(instance = boss) {
@@ -89,23 +103,53 @@ export async function stopQueue(instance = boss) {
  * @param {string} episodeDate - Date publication ISO (YYYY-MM-DD)
  * @param {string} title - Titre épisode  
  * @param {string} imageUrl - URL image cover
- * @returns {Promise<string|null>} Job ID ou null si worker désactivé
+ * @returns {Promise<object>} Résultat explicite de mise en queue
  */
 export async function queueEpisodeResolution(season, episode, episodeDate, title, imageUrl, feedLastBuildDate = null, audioUrl = null) {
-  // Safe guard: Si worker pas initialisé (tests avec DISABLE_WORKER=true), retourner null
+  if (queueShuttingDown) {
+    return {
+      queued: false,
+      reason: EpisodeQueueReason.SHUTTING_DOWN
+    };
+  }
+
+  // Safe guard: le rendu HTTP reste disponible tant que le worker est absent.
   if (!boss) {
-    console.warn('[queueEpisodeResolution] Worker not initialized, skipping job queue');
-    return null;
+    return {
+      queued: false,
+      reason: EpisodeQueueReason.WORKER_UNAVAILABLE
+    };
   }
   
-  return boss.send('resolve-episode', 
-    { season, episode, episodeDate, title, imageUrl, feedLastBuildDate, audioUrl },
-    {
-      singletonKey: `episode-${season}-${episode}`,  // Idempotency key (throttling)
-      singletonSeconds: 300  // Throttle 5 min : 1 job max par slot temporel
-      // Note: Pas de retryLimit (pas de retry auto, worker doit être idempotent)
+  try {
+    const jobId = await boss.send('resolve-episode',
+      { season, episode, episodeDate, title, imageUrl, feedLastBuildDate, audioUrl },
+      {
+        singletonKey: `episode-${season}-${episode}`,  // Idempotency key (throttling)
+        singletonSeconds: 300  // Throttle 5 min : 1 job max par slot temporel
+        // Note: Pas de retryLimit (pas de retry auto, worker doit être idempotent)
+      }
+    )
+
+    if (!jobId) {
+      return {
+        queued: false,
+        reason: EpisodeQueueReason.ALREADY_QUEUED
+      }
     }
-  )
+
+    return {
+      queued: true,
+      reason: EpisodeQueueReason.QUEUED,
+      jobId
+    }
+  } catch (error) {
+    return {
+      queued: false,
+      reason: EpisodeQueueReason.QUEUE_ERROR,
+      error
+    }
+  }
 }
 
 /**
@@ -133,10 +177,47 @@ export async function startWorker(fastify, options = {}, queue = boss) {
     
     console.log(`[Worker ${job.id}] Resolving S${season}E${episode}: ${title}`)
     console.log(`[Worker ${job.id}] imageUrl:`, imageUrl, '| feedLastBuildDate:', feedLastBuildDate)
-    
-    // TODO Phase 5: Vérifier si déjà résolu en BDD (idempotent check)
-    // const existing = await db.query('SELECT * FROM episode_links WHERE season=$1 AND episode=$2', [season, episode])
-    // if (existing.spotify_episode_id) { return } // Déjà fait
+
+    // Idempotency check before image generation and platform API calls. The route
+    // may enqueue again after a retry window even though another visit completed
+    // the cache in the meantime.
+    const cacheClient = await fastify.pg.connect()
+    try {
+      const cacheResult = await cacheClient.query(
+        `SELECT spotify_url, apple_url, deezer_url, og_image_url,
+                feed_last_build, generated_at
+         FROM episode_links
+         WHERE season = $1 AND episode = $2`,
+        [season, episode]
+      )
+      const cached = cacheResult.rows[0]
+      const cachedFeedDate = cached?.feed_last_build
+        ? new Date(cached.feed_last_build).getTime()
+        : Number.NEGATIVE_INFINITY
+      const requestedFeedDate = feedLastBuildDate
+        ? new Date(feedLastBuildDate).getTime()
+        : Number.NEGATIVE_INFINITY
+      const generatedAt = cached?.generated_at
+        ? new Date(cached.generated_at).getTime()
+        : Number.NEGATIVE_INFINITY
+      const imageIsFresh = Date.now() - generatedAt <= 7 * 24 * 60 * 60 * 1000
+      const feedIsFresh = cachedFeedDate >= requestedFeedDate
+      const cacheIsComplete = Boolean(
+        cached?.spotify_url
+        && cached?.apple_url
+        && cached?.deezer_url
+        && cached?.og_image_url
+        && imageIsFresh
+        && feedIsFresh
+      )
+
+      if (cacheIsComplete) {
+        console.log(`[Worker ${job.id}] Cache already complete, skipping enrichment`)
+        return { skipped: true, reason: 'CACHE_COMPLETE' }
+      }
+    } finally {
+      cacheClient.release()
+    }
     
     // Use episode date from RSS for platform API lookups
     
@@ -274,6 +355,7 @@ export async function initializeEpisodeWorker(fastify, {
     candidate = await createStartedQueue(queueOptions)
     await startWorker(fastify, workerOptions, candidate)
     boss = candidate
+    queueShuttingDown = false
     return candidate
   } catch (error) {
     if (boss === candidate) boss = null

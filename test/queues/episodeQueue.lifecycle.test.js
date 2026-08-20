@@ -5,10 +5,11 @@ import {
   getBoss,
   initializeEpisodeWorker,
   queueEpisodeResolution,
+  setEpisodeQueueShuttingDown,
   stopQueue
 } from '../../server/queues/episodeQueue.js'
 
-function createFakeBoss({ failAt } = {}) {
+function createFakeBoss({ failAt, sendResult, sendError } = {}) {
   const candidate = new EventEmitter()
   candidate.calls = []
   candidate.stopCalls = 0
@@ -27,7 +28,12 @@ function createFakeBoss({ failAt } = {}) {
     candidate.publishedDuringWork = getBoss()
     if (failAt === 'work') throw new Error('worker registration failed')
   }
-  candidate.send = async () => '00000000-0000-0000-0000-000000000001'
+  candidate.send = async () => {
+    if (sendError) throw sendError
+    return sendResult === undefined
+      ? '00000000-0000-0000-0000-000000000001'
+      : sendResult
+  }
   candidate.stop = async () => {
     candidate.stopCalls += 1
   }
@@ -35,10 +41,26 @@ function createFakeBoss({ failAt } = {}) {
 }
 
 afterEach(async () => {
+  setEpisodeQueueShuttingDown(false)
   await stopQueue()
 })
 
 describe('episodeQueue lifecycle', () => {
+  test('returns an explicit contract when the worker is unavailable', async () => {
+    const result = await queueEpisodeResolution(
+      2,
+      1,
+      '2025-10-27',
+      'Test episode',
+      'https://example.com/cover.jpg'
+    )
+
+    assert.deepEqual(result, {
+      queued: false,
+      reason: 'WORKER_UNAVAILABLE'
+    })
+  })
+
   test('does not publish a partially initialized pg-boss instance', async () => {
     const candidate = createFakeBoss({ failAt: 'work' })
 
@@ -76,7 +98,7 @@ describe('episodeQueue lifecycle', () => {
     assert.equal(getBoss(), candidate)
     assert.equal(candidate.workerOptions.teamSize, 2)
 
-    const jobId = await queueEpisodeResolution(
+    const queueResult = await queueEpisodeResolution(
       2,
       1,
       '2025-10-27',
@@ -84,6 +106,99 @@ describe('episodeQueue lifecycle', () => {
       'https://example.com/cover.jpg'
     )
 
-    assert.equal(jobId, '00000000-0000-0000-0000-000000000001')
+    assert.deepEqual(queueResult, {
+      queued: true,
+      reason: 'QUEUED',
+      jobId: '00000000-0000-0000-0000-000000000001'
+    })
+  })
+
+  test('distinguishes throttling, queue errors and shutdown', async () => {
+    const throttledBoss = createFakeBoss({ sendResult: null })
+    await initializeEpisodeWorker(
+      { pg: {} },
+      { queueOptions: { bossFactory: () => throttledBoss } }
+    )
+
+    assert.deepEqual(
+      await queueEpisodeResolution(2, 1, '2025-10-27', 'Episode', null),
+      { queued: false, reason: 'ALREADY_QUEUED' }
+    )
+
+    const queueError = Object.assign(new Error('database unavailable'), {
+      code: 'ECONNRESET'
+    })
+    throttledBoss.send = async () => {
+      throw queueError
+    }
+    const queueErrorResult = await queueEpisodeResolution(
+      2,
+      1,
+      '2025-10-27',
+      'Episode',
+      null
+    )
+    assert.equal(queueErrorResult.queued, false)
+    assert.equal(queueErrorResult.reason, 'QUEUE_ERROR')
+    assert.equal(queueErrorResult.error, queueError)
+
+    setEpisodeQueueShuttingDown(true)
+    assert.deepEqual(
+      await queueEpisodeResolution(2, 1, '2025-10-27', 'Episode', null),
+      { queued: false, reason: 'SHUTTING_DOWN' }
+    )
+  })
+
+  test('skips costly enrichment when the current episode cache is already complete', async () => {
+    const candidate = createFakeBoss()
+    let releaseCalls = 0
+    const queries = []
+    const fastify = {
+      pg: {
+        async connect() {
+          return {
+            async query(sql, params) {
+              queries.push({ sql, params })
+              return {
+                rows: [{
+                  spotify_url: 'https://open.spotify.com/episode/direct',
+                  apple_url: 'https://podcasts.apple.com/episode/direct',
+                  deezer_url: 'https://deezer.com/episode/direct',
+                  og_image_url: 'https://media.example/og.png',
+                  feed_last_build: '2026-08-19T12:00:00.000Z',
+                  generated_at: new Date().toISOString()
+                }]
+              }
+            },
+            release() {
+              releaseCalls += 1
+            }
+          }
+        }
+      }
+    }
+
+    await initializeEpisodeWorker(
+      fastify,
+      { queueOptions: { bossFactory: () => candidate } }
+    )
+
+    const output = await candidate.handler([{
+      id: 'job-id',
+      data: {
+        season: 2,
+        episode: 1,
+        episodeDate: '2025-10-27',
+        title: 'Episode',
+        imageUrl: 'https://example.com/cover.jpg',
+        feedLastBuildDate: '2026-08-19T12:00:00.000Z',
+        audioUrl: 'https://example.com/audio.mp3'
+      }
+    }])
+
+    assert.deepEqual(output, { skipped: true, reason: 'CACHE_COMPLETE' })
+    assert.equal(queries.length, 1)
+    assert.deepEqual(queries[0].params, [2, 1])
+    assert.equal(releaseCalls, 1)
   })
 })

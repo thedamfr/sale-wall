@@ -237,12 +237,15 @@ class VoiceRecorder {
         method: 'POST',
         body: formData
       });
-      
+
+      const result = await response.json().catch(() => ({
+        success: false,
+        message: `Erreur ${response.status}: ${response.statusText}`
+      }));
+
       if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        throw new Error(result.message || `Erreur ${response.status}: ${response.statusText}`);
       }
-      
-      const result = await response.json();
       
       if (result.success) {
         this.showSuccess('Votre histoire a été partagée avec succès !');
