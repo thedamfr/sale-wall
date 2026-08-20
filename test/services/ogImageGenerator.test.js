@@ -7,9 +7,11 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { generateOGImage } from '../../server/services/ogImageGenerator.js';
 import { Jimp } from 'jimp';
+import { fileURLToPath } from 'node:url';
 
-// Test thumbnail URL (cover podcast Castopod)
-const TEST_THUMBNAIL = 'https://cellar-c2.services.clever-cloud.com/salete-media-podcast/podcasts/charbonwafer/cover_feed.png';
+const TEST_THUMBNAIL = fileURLToPath(
+  new URL('../../public/images/charbon-wafer-original.png', import.meta.url)
+);
 
 test('generateOGImage - should return PNG buffer with correct dimensions', async () => {
   // Arrange

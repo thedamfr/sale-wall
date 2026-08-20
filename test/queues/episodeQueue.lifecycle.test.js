@@ -24,9 +24,14 @@ function createFakeBoss({ failAt, sendResult, sendError } = {}) {
   candidate.work = async (name, options, handler) => {
     candidate.calls.push(`work:${name}`)
     candidate.workerOptions = options
-    candidate.handler = handler
+    candidate.handlers ||= new Map()
+    candidate.handlers.set(name, handler)
+    if (name === 'resolve-episode') candidate.handler = handler
     candidate.publishedDuringWork = getBoss()
     if (failAt === 'work') throw new Error('worker registration failed')
+  }
+  candidate.schedule = async (name) => {
+    candidate.calls.push(`schedule:${name}`)
   }
   candidate.send = async () => {
     if (sendError) throw sendError
@@ -111,6 +116,36 @@ describe('episodeQueue lifecycle', () => {
       reason: 'QUEUED',
       jobId: '00000000-0000-0000-0000-000000000001'
     })
+  })
+
+  test('registers OP3 on the same candidate before publishing the singleton', async () => {
+    const candidate = createFakeBoss()
+    let factoryCalls = 0
+    const fastify = {
+      pg: { pool: {} },
+      databaseAvailability: { getState: () => 'read_write' }
+    }
+
+    const initialized = await initializeEpisodeWorker(fastify, {
+      queueOptions: {
+        bossFactory: () => {
+          factoryCalls += 1
+          return candidate
+        }
+      },
+      op3Options: {
+        env: { OP3_API_TOKEN: 'test-token', OP3_GUID: 'test-guid' },
+        refresh: async () => ({ status: 'updated', updatedCount: 1 })
+      }
+    })
+
+    assert.equal(initialized, candidate)
+    assert.equal(factoryCalls, 1)
+    assert.equal(candidate.publishedDuringWork, null)
+    assert.ok(candidate.calls.includes('createQueue:op3-stats-refresh'))
+    assert.ok(candidate.calls.includes('work:op3-stats-refresh'))
+    assert.ok(candidate.calls.includes('schedule:op3-stats-refresh'))
+    assert.equal(getBoss(), candidate)
   })
 
   test('distinguishes throttling, queue errors and shutdown', async () => {

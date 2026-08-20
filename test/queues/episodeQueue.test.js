@@ -10,8 +10,10 @@ import pg from 'pg'
 import { initQueue, getBoss, queueEpisodeResolution, startWorker } from '../../server/queues/episodeQueue.js'
 
 const { Client, Pool } = pg
+const runLiveQueueTests = process.env.RUN_EXTERNAL_INTEGRATION_TESTS === 'true'
+  && Boolean(process.env.DATABASE_URL)
 
-describe('episodeQueue', () => {
+describe('episodeQueue', { skip: !runLiveQueueTests }, () => {
   let pgClient
   let pgPool // Pool pour le worker (connexions multiples)
 

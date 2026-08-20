@@ -15,5 +15,8 @@ export async function build() {
   process.env.DISABLE_WORKER = 'true';
   
   const { buildApp } = await import('../../server.js');
-  return buildApp();
+  return buildApp({
+    initializeStorage: false,
+    initializeOp3: false
+  });
 }

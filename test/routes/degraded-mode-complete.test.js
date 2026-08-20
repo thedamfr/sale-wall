@@ -188,12 +188,15 @@ describe('complete degraded mode routes', () => {
     const statsFailureApp = await buildApp({
       initializeStorage: false,
       initializeOp3: false,
+      op3PublicStatsEnabled: true,
       databaseUrl: UNAVAILABLE_DATABASE_URL,
       databaseConfigured: false,
       databaseAvailability: availability,
       databaseAdapter: {
         async query() {
-          return { rows: [] }
+          throw Object.assign(new Error('connection terminated'), {
+            code: 'ECONNRESET'
+          })
         },
         pool: {
           async query() {
