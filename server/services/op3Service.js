@@ -6,7 +6,9 @@ const RECENT_SNAPSHOT_MS = 36 * 60 * 60 * 1000
 const MAX_HISTORICAL_AGE_MS = 7 * 24 * 60 * 60 * 1000
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
-const OP3_TIMEOUT_MS = 8000
+// OP3 is called only by the background worker; the paginated raw-download query
+// can legitimately take longer than an interactive HTTP request.
+const OP3_TIMEOUT_MS = 30000
 
 let cachedShowUuid = null
 let cachedPodcastGuid = null

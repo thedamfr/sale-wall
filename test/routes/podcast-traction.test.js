@@ -253,6 +253,9 @@ describe('episode OP3 proof', () => {
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /81 téléchargements mesurés par OP3/)
     assert.match(response.body, /Un téléchargement peut être automatique/)
+    assert.match(response.body, /summary class="[^"]*list-none/)
+    assert.match(response.body, /class="mt-3 rounded-lg/)
+    assert.doesNotMatch(response.body, /class="absolute [^"]*top-6/)
     assert.doesNotMatch(response.body, /certifi[ée].*IAB/i)
   })
 
