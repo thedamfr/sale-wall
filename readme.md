@@ -617,8 +617,8 @@ L'application est déployée sur CleverCloud avec les addons suivants :
 Sans `OP3_API_TOKEN` ou `OP3_GUID`, le refresh est silencieusement désactivé. Les
 routes HTTP n'appellent jamais OP3 et `/podcast` conserve son contenu éditorial
 si PostgreSQL, le cache ou le RSS ne sont pas disponibles. Avant toute activation
-en production, appliquer la migration `008`, révoquer les secrets OP3 et Spotify
-exposés dans l'historique Git, puis contrôler le cache en lecture seule. Voir le
+en production, appliquer la migration `008`, utiliser uniquement des secrets
+ayant remplacé ceux exposés dans l'historique Git, puis contrôler le cache en lecture seule. Voir le
 [PRD traction podcast et OP3](documentation/prd_traction_podcast_op3.md).
 
 ### 3. Déploiement

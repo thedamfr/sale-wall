@@ -95,7 +95,8 @@ L'absence de `OP3_API_TOKEN` ou `OP3_GUID` désactive silencieusement le refresh
 peut être rempli et inspecté avant activation. Un seul flag public suffit.
 
 La rotation des secrets OP3 et Spotify exposés dans l'historique Git est un gate
-obligatoire avant activation production.
+obligatoire avant activation production. Ce gate a été confirmé satisfait le
+20 août 2026 dans le PRD, sans consigner les nouvelles valeurs.
 
 ### 6. Sélection et fraîcheur
 

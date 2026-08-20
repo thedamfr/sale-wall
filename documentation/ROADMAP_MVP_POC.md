@@ -54,7 +54,8 @@
 - ✅ Encart populaire sur `/podcast` et badge historique sur les épisodes
 - ✅ Wording exact « téléchargements mesurés par OP3 » et explication accessible
 - ✅ Affichage contrôlé par `OP3_PUBLIC_STATS_ENABLED`
-- ⛔ Activation bloquée avant rotation des secrets et migration/configuration autorisées
+- ✅ Secrets OP3 et Spotify remplacés ; nouvelles empreintes confirmées sur Clever
+- ⛔ Activation bloquée avant migration, remplissage et inspection du cache
 
 **US2.1 - Choix appli sans redirect auto** : 🟡 Liens existent mais UX à améliorer
 - Template affiche boutons providers
@@ -125,8 +126,9 @@
 - [x] `/podcast` : populaire hebdomadaire, fallback historique et fallback éditorial ✅
 - [x] Pages épisode : seuil, wording téléchargement et explication accessible ✅
 - [x] Tests seuils, fraîcheur, pannes, read-only, singleton et secrets ✅
-- [ ] Rotation/révocation OP3 et Spotify avant activation production
-- [ ] Migration et variables Clever, uniquement après autorisation explicite
+- [x] Rotation/révocation OP3 et Spotify avant activation production ✅
+- [x] `OP3_API_TOKEN` et `OP3_GUID` configurés, flag public désactivé ✅
+- [ ] Migration Clever, uniquement après autorisation explicite
 - [ ] Remplissage et inspection read-only du cache avant activation du flag public
 - **Référence** : [`prd_traction_podcast_op3.md`](prd_traction_podcast_op3.md)
 

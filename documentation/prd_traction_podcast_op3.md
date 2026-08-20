@@ -58,9 +58,10 @@ OP3**, jamais d'écoutes garanties.
 - PostgreSQL n'est ni en recovery ni en lecture seule au moment du contrôle.
 - La table `op3_stats` n'existe pas en production. Aucune migration n'a été
   lancée pendant ce preflight.
-- Les noms de variables Clever ne contiennent ni `OP3_API_TOKEN`, ni `OP3_GUID`,
-  ni `OP3_PUBLIC_STATS_ENABLED`.
-- Aucune variable Clever n'a été créée ou modifiée.
+- Lors du preflight initial, les noms de variables Clever ne contenaient ni
+  `OP3_API_TOKEN`, ni `OP3_GUID`, ni `OP3_PUBLIC_STATS_ENABLED`.
+- Aucune variable Clever n'a été créée ou modifiée par l'implémentation ou le
+  preflight automatisé.
 
 ### 2.4 Contrat OP3 officiel actuel
 
@@ -99,9 +100,13 @@ Sources officielles :
 - Un script exploratoire journalise un préfixe du token OP3.
 - L'ancienne queue OP3 journalise l'URI PostgreSQL complète.
 
-Ces valeurs sont retirées du dépôt courant sans réécriture d'historique. La
-révocation/rotation OP3 et Spotify reste un gate obligatoire avant activation ou
-prochain déploiement exposant ces intégrations.
+Ces valeurs sont retirées du dépôt courant sans réécriture d'historique.
+
+Le 20 août 2026, le propriétaire a confirmé leur révocation/rotation. Une
+comparaison read-only d'empreintes a confirmé que les variables Clever OP3 et
+Spotify présentes diffèrent des valeurs historiques, sans lire ni afficher les
+nouveaux secrets. `OP3_GUID` est également présent et le flag public reste
+absent, donc désactivé. Le gate de rotation est désormais satisfait.
 
 ## 3. Objectifs
 
@@ -252,15 +257,16 @@ ni appel réseau, ni avertissement répétitif.
 
 ## 10. Activation progressive
 
-Ordre de rollout futur, hors de cette livraison :
+État confirmé le 20 août 2026 : secrets OP3 et Spotify remplacés,
+`OP3_API_TOKEN` et `OP3_GUID` présents, flag public absent donc désactivé.
 
-1. révoquer et remplacer les secrets OP3 et Spotify exposés historiquement ;
-2. appliquer les migrations autorisées et vérifier le rollback ;
-3. configurer `OP3_API_TOKEN` et `OP3_GUID`, flag public absent ou faux ;
-4. laisser le worker remplir le cache ;
-5. inspecter en lecture seule fraîcheur, association GUID et volumes ;
-6. activer `OP3_PUBLIC_STATS_ENABLED=true` ;
-7. vérifier `/podcast`, une page épisode et `/health`.
+Ordre de rollout restant, hors de cette livraison :
+
+1. autoriser puis appliquer les migrations et vérifier le rollback ;
+2. laisser le worker remplir le cache ;
+3. inspecter en lecture seule fraîcheur, association GUID et volumes ;
+4. activer `OP3_PUBLIC_STATS_ENABLED=true` ;
+5. vérifier `/podcast`, une page épisode et `/health`.
 
 Rollback public : remettre uniquement `OP3_PUBLIC_STATS_ENABLED=false`. Ne pas
 supprimer la table ni les données dans l'urgence.
@@ -324,9 +330,10 @@ supprimé après ces contrôles. Aucun accès d'écriture production n'a eu lieu
 
 ### 13.3 Gates avant production
 
-- révoquer/rotater les secrets OP3 et Spotify historiquement exposés ;
+- **Terminé** : secrets OP3 et Spotify révoqués/remplacés ; les variables Clever
+  présentes ne correspondent plus aux empreintes historiques ;
+- **Terminé** : `OP3_API_TOKEN` et `OP3_GUID` configurés avec flag public absent ;
 - faire autoriser et appliquer les migrations Clever ;
-- créer `OP3_API_TOKEN` et `OP3_GUID` sans activer le flag public ;
 - laisser le singleton worker remplir le cache puis l'inspecter en lecture seule ;
 - activer ensuite `OP3_PUBLIC_STATS_ENABLED=true` après validation humaine ;
 - exécuter les smoke tests de rollout et conserver le rollback par flag.
