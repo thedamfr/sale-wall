@@ -27,6 +27,7 @@ Documentation technique et décisions architecturales du projet Saleté Sincère
 ### 📌 Product Requirements
 - **Homepage** : [`./prd_homepage.md`](./prd_homepage.md)
 - **Mode dégradé sans base de données** : [`./prd_mode_degrade_sans_bdd.md`](./prd_mode_degrade_sans_bdd.md) - Résilience HTTP, fallback podcast et reconnexion singleton de `pg-boss`
+- **Traction podcast et OP3** : [`./prd_traction_podcast_op3.md`](./prd_traction_podcast_op3.md) - Preuve sociale, cache quotidien et activation progressive
 
 ### � Sécurité & Audits
 - **Guide d'audit** : [`./audit_guide.md`](./audit_guide.md) - Comment lancer les audits OWASP

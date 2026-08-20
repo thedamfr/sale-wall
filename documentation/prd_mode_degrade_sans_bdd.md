@@ -247,6 +247,7 @@ Une page épisode doit continuer à afficher l'épisode, tout en signalant discr
 - la génération et l'envoi des images Open Graph ;
 - la mise à jour du cache `episode_links` ;
 - la déduplication des traitements par épisode.
+- le rafraîchissement quotidien dédupliqué du cache OP3, sur le même singleton.
 
 ### O4 — Revenir automatiquement à la normale
 
@@ -970,3 +971,19 @@ Node.js :
   Clever Cloud conserve l'instance HTTP et que le worker revient sans restart ;
 - retirer ensuite `ALLOW_DEGRADED_MODE` de la configuration Clever, puisqu'il
   n'est plus lu par l'application.
+
+### 19.5 Amendement OP3 — 20 août 2026
+
+Le [PRD traction podcast et OP3](./prd_traction_podcast_op3.md) étend localement
+le comportement de `/podcast` sans remettre en cause le contrat de disponibilité
+ci-dessus :
+
+- le fallback éditorial reste indépendant de PostgreSQL, du RSS, d'OP3 et de
+  `pg-boss` ;
+- si le flag public est actif et que l'état DB déjà connu est lisible, la route
+  peut effectuer une lecture optionnelle et interceptée du cache OP3 ;
+- la route ne déclenche aucun probe PostgreSQL, appel OP3 ou job ;
+- toute erreur DB/RSS masque simplement l'encart dynamique et conserve la
+  réponse 200 ;
+- `op3-stats-refresh` réutilise le candidat et la boucle de retry `pg-boss`
+  existants ; aucune seconde instance n'est créée.

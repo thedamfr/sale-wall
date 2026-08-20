@@ -18,6 +18,12 @@ fail-hard plus bas sont conservés uniquement comme historique de la décision d
 2025. La spécification et les preuves de validation sont dans
 [`../prd_mode_degrade_sans_bdd.md`](../prd_mode_degrade_sans_bdd.md).
 
+**Amendement 2026-08-20 — OP3 réutilise le singleton.** La queue quotidienne
+`op3-stats-refresh` est créée, consommée et planifiée sur la même instance
+`PgBoss` que `resolve-episode`, conformément à l'ADR-0015. Toute valeur secrète
+autrefois copiée dans cet ADR doit être considérée comme compromise et remplacée
+avant la prochaine activation concernée.
+
 ---
 
 ## Contexte
@@ -1443,7 +1449,7 @@ CREATE TABLE episode_links (
 **Variables d'environnement ajoutées** (CleverCloud) :
 ```bash
 SPOTIFY_CLIENT_ID=2ec608bfda5841108e105c76522d684a
-SPOTIFY_CLIENT_SECRET=8b7fcba903c04cdaa638124dc255117e
+SPOTIFY_CLIENT_SECRET=<revoked-secret-redacted>
 SPOTIFY_SHOW_ID=07VuGnu0YSacC671s0DQ3a
 APPLE_PODCAST_ID=1846531745
 DEEZER_SHOW_ID=1002292972
