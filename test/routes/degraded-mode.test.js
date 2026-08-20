@@ -39,6 +39,50 @@ async function waitForState(manager, expectedState) {
 }
 
 describe('degraded startup', () => {
+  test('keeps database-independent routes up when PostgreSQL registration fails', async () => {
+    const originalNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    let app
+
+    try {
+      app = await buildApp({
+        initializeStorage: false,
+        initializeOp3: false,
+        databaseAdapterFactory: () => {
+          throw Object.assign(new Error('connection refused'), {
+            code: 'ECONNREFUSED'
+          })
+        },
+        databaseConfigured: true,
+        episodeFetcher: async () => RSS_EPISODE
+      })
+
+      const [home, episode, wall] = await Promise.all([
+        app.inject({ method: 'GET', url: '/' }),
+        app.inject({ method: 'GET', url: '/podcast/2/1' }),
+        app.inject({ method: 'GET', url: '/wall' })
+      ])
+      const health = await app.inject({ method: 'GET', url: '/health' })
+
+      assert.equal(home.statusCode, 200)
+      assert.equal(episode.statusCode, 200)
+      assert.match(episode.body, /Un épisode à reprendre/)
+      assert.equal(wall.statusCode, 200)
+      assert.match(wall.body, /Le Sale-wall est temporairement indisponible/)
+      assert.deepEqual(health.json(), {
+        ok: true,
+        mode: 'degraded',
+        database: { state: 'unavailable' },
+        episodeWorker: { state: 'stopped' },
+        episodeIntents: { pending: 1 }
+      })
+    } finally {
+      await app?.close()
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV
+      else process.env.NODE_ENV = originalNodeEnv
+    }
+  })
+
   test('builds HTTP without awaiting a pending worker connection', async () => {
     const candidate = createCandidate()
     let resolveStart
@@ -57,6 +101,9 @@ describe('degraded startup', () => {
         jitterRatio: 0
       }
     })
+
+    assert.equal(typeof app.pg.connect, 'function')
+    assert.equal(typeof app.pg.pool.query, 'function')
 
     const [home, podcast, health] = await Promise.all([
       app.inject({ method: 'GET', url: '/' }),

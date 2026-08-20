@@ -6,9 +6,9 @@ import fastifyView from "@fastify/view";
 import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyFormbody from "@fastify/formbody";
-import fastifyPostgres from "@fastify/postgres";
 import fastifyRateLimit from "@fastify/rate-limit";
 import handlebars from "handlebars";
+import pg from "pg";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter, newsletterLimiter, newsletterActionLimiter } from "./server/middleware/rateLimiter.js";
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
@@ -36,6 +36,17 @@ import {
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const { Pool } = pg;
+
+function createPostgresAdapter(options) {
+  const pool = new Pool(options);
+  return {
+    connect: pool.connect.bind(pool),
+    query: pool.query.bind(pool),
+    pool,
+    close: pool.end.bind(pool)
+  };
+}
 
 export function getHealthPayload(
   workerManager,
@@ -81,6 +92,7 @@ export function getHealthPayload(
 export async function buildApp({
   initializeStorage = true,
   initializeOp3 = true,
+  databaseAdapterFactory = createPostgresAdapter,
   databaseUrl: databaseUrlOverride,
   databaseConfigured: databaseConfiguredOverride,
   databaseAdapter: databaseAdapterOverride,
@@ -205,33 +217,46 @@ if (!isProduction) {
     : 'local fallback configured');
 }
 
-try {
-  await app.register(fastifyPostgres, {
-    connectionString: databaseUrl,
-    max: 1, // Une seule connexion suffit (pas de requêtes longues)
-    connectionTimeoutMillis: 1500,
-    query_timeout: 2000
-  });
-  console.log('✅ Database pool registered');
-} catch (error) {
-  console.error('❌ Database connection failed:', error.message);
-  console.error('💡 Make sure PostgreSQL addon is created and env vars are set');
-  
-  // En production, on peut vouloir continuer sans DB pour debugger
-  if (process.env.NODE_ENV === 'production') {
-    console.warn('⚠️  Running without database in production mode');
-  } else {
-    throw error;
+let database = databaseAdapterOverride || null;
+let ownsDatabaseAdapter = false;
+
+if (!database) {
+  try {
+    database = databaseAdapterFactory({
+      connectionString: databaseUrl,
+      max: 1, // Une seule connexion suffit (pas de requêtes longues)
+      connectionTimeoutMillis: 1500,
+      query_timeout: 2000
+    });
+    ownsDatabaseAdapter = true;
+    console.log('✅ Database pool registered');
+  } catch (error) {
+    console.error(
+      '❌ Database pool registration failed:',
+      error?.code || error?.name || 'UNKNOWN'
+    );
+
+    if (isProduction) {
+      console.warn('⚠️  Running without database adapter in production mode');
+    } else {
+      throw error;
+    }
   }
 }
 
-const database = databaseAdapterOverride || {
-  connect: () => app.pg.connect(),
-  query: (...args) => app.pg.pool.query(...args),
-  pool: app.pg.pool
-};
+if (ownsDatabaseAdapter) {
+  app.addHook('onClose', async () => {
+    await database.close();
+  });
+}
+if (database) {
+  app.decorate('pg', database);
+}
+
 const databaseAvailability = databaseAvailabilityOverride || createDatabaseAvailability({
-  probe: () => probeDatabaseState(database),
+  probe: () => database
+    ? probeDatabaseState(database)
+    : DatabaseState.UNAVAILABLE,
   logger: app.log,
   initialState: hasDatabase ? DatabaseState.UNKNOWN : DatabaseState.UNAVAILABLE
 });
@@ -1184,7 +1209,9 @@ app.get('/api/audio/proxy', {
 
 // Initialize pg-boss independently from HTTP startup.
 // The manager owns the single retry loop and never publishes a partial instance.
-const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true' && hasDatabase;
+const WORKER_ENABLED = process.env.DISABLE_WORKER !== 'true'
+  && hasDatabase
+  && database !== null;
 
 if (WORKER_ENABLED) {
   const startEpisodeWorker = episodeWorkerStarter
@@ -1248,9 +1275,11 @@ if (WORKER_ENABLED) {
   // Intentionally not awaited: Fastify can listen while pg-boss connects/retries.
   void episodeWorkerManager.ensureStarted();
 } else {
-  const reason = process.env.DISABLE_WORKER === 'true' 
-    ? 'DISABLE_WORKER=true' 
-    : 'No database connection (DATABASE_URL or POSTGRESQL_ADDON_URI missing)';
+  const reason = process.env.DISABLE_WORKER === 'true'
+    ? 'DISABLE_WORKER=true'
+    : !hasDatabase
+      ? 'No database connection (DATABASE_URL or POSTGRESQL_ADDON_URI missing)'
+      : 'Database adapter unavailable';
   console.log(`⚠️  Worker disabled (${reason})`);
   console.log('   Episode resolution jobs will remain unavailable');
 }
