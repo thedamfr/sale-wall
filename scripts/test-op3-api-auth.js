@@ -17,7 +17,7 @@ if (!OP3_API_TOKEN || !OP3_GUID) {
 }
 
 console.log('🔍 OP3 API Exploration avec Auth (ADR-0015)\n');
-console.log(`Token: ${OP3_API_TOKEN.substring(0, 10)}...`);
+console.log('Token OP3 chargé depuis l’environnement');
 console.log(`Podcast GUID: ${OP3_GUID}\n`);
 
 // Test 1: Lookup show UUID depuis GUID
@@ -87,7 +87,7 @@ async function testEpisodeDownloadCounts(showUuid) {
         
         top3.forEach((ep, i) => {
           console.log(`    ${i+1}. "${ep.title}"`);
-          console.log(`       - All-time: ${ep.downloadsAll} écoutes`);
+          console.log(`       - All-time: ${ep.downloadsAll} téléchargements`);
           console.log(`       - 30 jours: ${ep.downloads30 || 'N/A'}`);
           console.log(`       - 7 jours: ${ep.downloads7 || 'N/A'}`);
           console.log(`       - itemGuid: ${ep.itemGuid.substring(0, 50)}...`);
@@ -196,25 +196,22 @@ async function testRateLimits() {
   console.log('');
   
   console.log('📊 Données disponibles:');
-  console.log('  - downloads1 (1er jour)');
-  console.log('  - downloads3 (3 jours)');
-  console.log('  - downloads7 (7 jours)');
-  console.log('  - downloads30 (30 jours) ← On affichera ça');
+  console.log('  - downloads1/3/7/30 (cumul des premiers jours après publication)');
   console.log('  - downloadsAll (all-time)');
+  console.log('  - téléchargements bruts paginés pour calculer les fenêtres glissantes');
   console.log('');
   
   console.log('🎯 Architecture retenue:');
   console.log('  1. GUID stocké en .env (OP3_GUID)');
-  console.log('  2. Lookup show UUID au démarrage (cache mémoire)');
-  console.log('  3. /queries/episode-download-counts endpoint');
-  console.log('  4. Cache PostgreSQL 24h (table op3_stats)');
-  console.log('  5. Badge affiché si downloads30 ≥ 10');
+  console.log('  2. Appels OP3 uniquement dans le worker en arrière-plan');
+  console.log('  3. Fenêtres glissantes 7/30 calculées depuis /downloads/show');
+  console.log('  4. Cache PostgreSQL alimenté quotidiennement sur le singleton pg-boss');
+  console.log('  5. Badge public contrôlé par OP3_PUBLIC_STATS_ENABLED et seuil ≥ 10');
   console.log('');
   
-  console.log('🔄 Prochaines étapes (Sprint 1):');
-  console.log('  [ ] Implémenter server/services/op3Service.js');
-  console.log('  [ ] Migration 007_op3_stats.sql');
-  console.log('  [ ] Intégrer badge dans podcast.hbs');
-  console.log('  [ ] Update ADR-0015 section "Décision"');
+  console.log('🔒 Avant activation production:');
+  console.log('  [ ] Révoquer et remplacer le token historiquement exposé');
+  console.log('  [ ] Appliquer les migrations autorisées jusqu’à 008');
+  console.log('  [ ] Remplir puis inspecter le cache avant d’activer le flag public');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 })();
