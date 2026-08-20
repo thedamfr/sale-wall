@@ -8,13 +8,15 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 
 const { Client } = pg;
+const runDatabaseTests = process.env.RUN_DATABASE_INTEGRATION_TESTS === 'true'
+  && Boolean(process.env.DATABASE_URL);
 
-describe('GET /podcast/:season/:episode - OG Image cache check', () => {
+describe('GET /podcast/:season/:episode - OG Image cache check', { skip: !runDatabaseTests }, () => {
   let pgClient;
 
   before(async () => {
     pgClient = new Client({
-      connectionString: process.env.DATABASE_URL || 'postgresql://salete:salete@localhost:5432/salete'
+      connectionString: process.env.DATABASE_URL
     });
     await pgClient.connect();
   });

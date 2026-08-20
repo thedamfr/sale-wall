@@ -47,14 +47,15 @@
 - Manque : Cibles tactiles ≥ 44px
 - Manque : Contrastes AA WCAG
 
-**US1.3 - Compteur OP3 public** : ✅ Intégration basique faite
+**US1.3 - Preuve sociale OP3** : ✅ Implémentée, activation production à préparer
 - ✅ Proxy audio `/api/audio/proxy` tracking OP3 (ADR-0014)
-- ⚠️ Stats OP3 : play counts OK, geo stats = serveur IP
-- Besoin : Service `op3Service.js` (fetch stats via OP3 API)
-- Besoin : Affichage "X écoutes" près du titre (UI template)
-- Besoin : Infobulle explicative
-- Besoin : Cache 24h (MAJ 1×/jour)
-- Note : X-Forwarded-For envoyé mais pas whitelisté OP3
+- ✅ Téléchargements OP3 rafraîchis quotidiennement dans PostgreSQL
+- ✅ Fenêtres glissantes 7/30 jours calculées en arrière-plan
+- ✅ Encart populaire sur `/podcast` et badge historique sur les épisodes
+- ✅ Wording exact « téléchargements mesurés par OP3 » et explication accessible
+- ✅ Affichage contrôlé par `OP3_PUBLIC_STATS_ENABLED`
+- ✅ Secrets OP3 et Spotify remplacés ; nouvelles empreintes confirmées sur Clever
+- ⛔ Activation bloquée avant migration, remplissage et inspection du cache
 
 **US2.1 - Choix appli sans redirect auto** : 🟡 Liens existent mais UX à améliorer
 - Template affiche boutons providers
@@ -117,24 +118,19 @@
 - [x] ADR-0014 : Proxy audio pour tracking OP3 ✅
 - [x] Proxy `/api/audio/proxy` avec headers X-Forwarded-For ✅
 - [x] Documentation trade-offs OP3 (play counts OK, geo = serveur) ✅
-- [x] ADR-0015 : OP3 Stats Integration (phase exploratoire) ✅
-- [ ] **Sprint 0 (exploration 1-2h)** :
-  - [ ] Test API OP3 publique (`scripts/test-op3-api.js`)
-  - [ ] Test scraping dashboard OP3 (fallback)
-  - [ ] Analyse RSS Castopod (tags `<podcast:*>`)
-  - [ ] Décision architecture + update ADR-0015
-- [ ] **Sprint 1 (implémentation 2-3h)** :
-  - [ ] Migration `007_op3_stats.sql` (table cache)
-  - [ ] Service `op3Service.js` (fetch + cache 24h)
-  - [ ] Route `/api/episodes/:s/:e/stats`
-  - [ ] Template `podcast.hbs` : Badge "X écoutes" + infobulle
-  - [ ] Tests unitaires + E2E
-- [ ] **Sprint 2 (tests 1h)** :
-  - [ ] Tests edge cases (< 10, API down, cache stale)
-  - [ ] Monitoring logs OP3 errors
-  - [ ] Performance : latence < 100ms ajoutée
-- [ ] (Optionnel) Contact OP3 pour whitelisting X-Forwarded-For
-- **Effort total** : 4-6h (architecture déjà pensée ADR-0015)
+- [x] ADR-0015 révisé selon le contrat officiel actuel ✅
+- [x] PRD traction podcast et preflight produit/technique/sécurité ✅
+- [x] Migration additive `008_op3_rolling_downloads.sql` ✅
+- [x] Service validé : fenêtre glissante 7/30, total historique, pagination ✅
+- [x] Refresh quotidien dédupliqué sur le singleton `pg-boss` ✅
+- [x] `/podcast` : populaire hebdomadaire, fallback historique et fallback éditorial ✅
+- [x] Pages épisode : seuil, wording téléchargement et explication accessible ✅
+- [x] Tests seuils, fraîcheur, pannes, read-only, singleton et secrets ✅
+- [x] Rotation/révocation OP3 et Spotify avant activation production ✅
+- [x] `OP3_API_TOKEN` et `OP3_GUID` configurés, flag public désactivé ✅
+- [ ] Migration Clever, uniquement après autorisation explicite
+- [ ] Remplissage et inspection read-only du cache avant activation du flag public
+- **Référence** : [`prd_traction_podcast_op3.md`](prd_traction_podcast_op3.md)
 
 **Durée totale Épopée 1** : ~4-6 sessions (8-12h)
 

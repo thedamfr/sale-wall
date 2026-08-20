@@ -11,6 +11,7 @@ import {
 } from '../services/platformAPIs.js'
 import { generateOGImage } from '../services/ogImageGenerator.js'
 import { uploadToS3, deleteFromS3 } from '../services/s3Service.js'
+import { registerOp3StatsQueue } from './op3StatsQueue.js'
 
 let boss = null
 let queueShuttingDown = false
@@ -347,13 +348,15 @@ export async function startWorker(fastify, options = {}, queue = boss) {
  */
 export async function initializeEpisodeWorker(fastify, {
   queueOptions = {},
-  workerOptions = {}
+  workerOptions = {},
+  op3Options = {}
 } = {}) {
   let candidate = null
 
   try {
     candidate = await createStartedQueue(queueOptions)
     await startWorker(fastify, workerOptions, candidate)
+    await registerOp3StatsQueue(candidate, fastify, op3Options)
     boss = candidate
     queueShuttingDown = false
     return candidate

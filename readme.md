@@ -337,6 +337,12 @@ npm test
 npm run test:watch
 ```
 
+La suite par défaut reste hermétique au réseau et aux bases externes. Les anciens
+tests d'intégration réels sont opt-in : `RUN_DATABASE_INTEGRATION_TESTS=true`
+avec une `DATABASE_URL` de test pour PostgreSQL, ou
+`RUN_EXTERNAL_INTEGRATION_TESTS=true` avec une base de test et les credentials
+plateformes requis. Ne jamais pointer ces tests vers la production.
+
 ### Structure des tests
 
 ```
@@ -600,6 +606,20 @@ L'application est déployée sur CleverCloud avec les addons suivants :
 - `BREVO_LIST_ID="3"` : ID liste "Saleté Sincère" dans Brevo
 - `BREVO_DOI_TEMPLATE_ID="TBD"` : ID template email double opt-in
 - `SALENEWS_PUBLIC_BASEURL="https://saletesincere.fr"` : URL publique pour redirections
+
+#### Variables OP3 (activation progressive)
+
+- `OP3_API_TOKEN` : bearer token utilisé uniquement par le worker en arrière-plan ;
+- `OP3_GUID` : `podcast:guid` du flux suivi par OP3 ;
+- `OP3_PUBLIC_STATS_ENABLED` : mettre à `true` seulement après remplissage et
+  contrôle du cache ; absent ou différent de `true`, aucun compteur n'est public.
+
+Sans `OP3_API_TOKEN` ou `OP3_GUID`, le refresh est silencieusement désactivé. Les
+routes HTTP n'appellent jamais OP3 et `/podcast` conserve son contenu éditorial
+si PostgreSQL, le cache ou le RSS ne sont pas disponibles. Avant toute activation
+en production, appliquer la migration `008`, utiliser uniquement des secrets
+ayant remplacé ceux exposés dans l'historique Git, puis contrôler le cache en lecture seule. Voir le
+[PRD traction podcast et OP3](documentation/prd_traction_podcast_op3.md).
 
 ### 3. Déploiement
 ```bash

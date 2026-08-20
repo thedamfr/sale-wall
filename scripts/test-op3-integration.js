@@ -6,6 +6,7 @@
 import 'dotenv/config';
 import pg from 'pg';
 import { updateOP3StatsCache, initOP3Service } from '../server/services/op3Service.js';
+import { probeDatabaseState } from '../server/resilience/databaseAvailability.js';
 
 const { Pool } = pg;
 
@@ -32,8 +33,7 @@ async function main() {
     `);
     
     if (!tableCheck.rows[0].exists) {
-      console.log('   ⚠️  Table op3_stats not found. Run migration 007 first:');
-      console.log('   $ psql $DATABASE_URL < sql/007_op3_stats.sql\n');
+      console.log('   ⚠️  Table op3_stats not found. Run all migrations through 008 first.\n');
       process.exit(1);
     }
     console.log('   ✅ Table exists\n');
@@ -43,10 +43,10 @@ async function main() {
   }
   
   // 2. Initialize OP3 service
-  console.log('2️⃣  Initializing OP3 service (show UUID lookup)...');
+  console.log('2️⃣  Checking OP3 configuration...');
   try {
     await initOP3Service();
-    console.log('   ✅ OP3 service initialized\n');
+    console.log('   ✅ OP3 configuration checked\n');
   } catch (err) {
     console.error('   ❌ Init failed:', err.message);
     process.exit(1);
@@ -55,7 +55,8 @@ async function main() {
   // 3. Fetch and cache episode stats
   console.log('3️⃣  Fetching episode stats from OP3 API...');
   try {
-    const count = await updateOP3StatsCache(pool);
+    const databaseState = await probeDatabaseState(pool);
+    const count = await updateOP3StatsCache(pool, { databaseState });
     console.log(`   ✅ Cached ${count} episodes\n`);
   } catch (err) {
     console.error('   ❌ Update failed:', err.message);
@@ -66,7 +67,7 @@ async function main() {
   console.log('4️⃣  Reading cached stats from PostgreSQL...');
   try {
     const result = await pool.query(`
-      SELECT item_guid, downloads_all, downloads_30, fetched_at
+      SELECT item_guid, downloads_all, downloads_30, downloads_7, fetched_at
       FROM op3_stats
       ORDER BY downloads_all DESC
       LIMIT 5
@@ -79,8 +80,9 @@ async function main() {
       result.rows.forEach((row, i) => {
         const guid = row.item_guid.substring(row.item_guid.lastIndexOf('/') + 1, row.item_guid.length - 5);
         console.log(`   ${i + 1}. ${guid}`);
-        console.log(`      All-time: ${row.downloads_all} downloads`);
-        console.log(`      30 days: ${row.downloads_30 || 'N/A'}`);
+        console.log(`      All-time: ${row.downloads_all} téléchargements`);
+        console.log(`      30 jours glissants: ${row.downloads_30 ?? 'N/A'}`);
+        console.log(`      7 jours glissants: ${row.downloads_7 ?? 'N/A'}`);
         console.log(`      Cached: ${new Date(row.fetched_at).toLocaleString('fr-FR')}\n`);
       });
     }

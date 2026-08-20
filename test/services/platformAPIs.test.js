@@ -39,9 +39,18 @@ import {
   buildFallbackLinks
 } from '../../server/services/platformAPIs.js'
 
+const runExternalTests = process.env.RUN_EXTERNAL_INTEGRATION_TESTS === 'true'
+const hasSpotifyCredentials = Boolean(
+  process.env.SPOTIFY_CLIENT_ID
+  && process.env.SPOTIFY_CLIENT_SECRET
+  && process.env.SPOTIFY_SHOW_ID
+)
+const skipExternal = { skip: !runExternalTests }
+const skipSpotify = { skip: !runExternalTests || !hasSpotifyCredentials }
+
 describe('platformAPIs', () => {
   describe('getSpotifyToken', () => {
-    test('should authenticate with Spotify and return access token', async () => {
+    test('should authenticate with Spotify and return access token', skipSpotify, async () => {
       const token = await getSpotifyToken()
       
       assert.ok(token, 'Token should be defined')
@@ -49,7 +58,7 @@ describe('platformAPIs', () => {
       assert.ok(token.length > 0, 'Token should not be empty')
     })
 
-    test('should return a valid token that works with Spotify API', async () => {
+    test('should return a valid token that works with Spotify API', skipSpotify, async () => {
       const token = await getSpotifyToken()
       
       // Teste que le token fonctionne en appelant l'API shows
@@ -72,13 +81,15 @@ describe('platformAPIs', () => {
         /Missing Spotify credentials/
       )
       
-      process.env.SPOTIFY_CLIENT_ID = originalClientId
-      process.env.SPOTIFY_CLIENT_SECRET = originalClientSecret
+      if (originalClientId === undefined) delete process.env.SPOTIFY_CLIENT_ID
+      else process.env.SPOTIFY_CLIENT_ID = originalClientId
+      if (originalClientSecret === undefined) delete process.env.SPOTIFY_CLIENT_SECRET
+      else process.env.SPOTIFY_CLIENT_SECRET = originalClientSecret
     })
   })
   
   describe('searchSpotifyEpisode', () => {
-    test('should find episode by date and return deeplink', async () => {
+    test('should find episode by date and return deeplink', skipSpotify, async () => {
       const episodeDate = '2025-10-27'
       
       const deeplink = await searchSpotifyEpisode(episodeDate)
@@ -88,7 +99,7 @@ describe('platformAPIs', () => {
       assert.ok(deeplink.includes('4uuRA1SjUKWPI3G0NmpCQx')) // ID épisode S2E1
     })
 
-    test('should find different episode for different date', async () => {
+    test('should find different episode for different date', skipSpotify, async () => {
       const episodeDate = '2025-10-17' // Bande-Annonce Saison Pilote
       
       const deeplink = await searchSpotifyEpisode(episodeDate)
@@ -99,7 +110,7 @@ describe('platformAPIs', () => {
       assert.ok(!deeplink.includes('4uuRA1SjUKWPI3G0NmpCQx'), 'Should NOT be S2E1 ID')
     })
 
-    test('should find third different episode', async () => {
+    test('should find third different episode', skipSpotify, async () => {
       const episodeDate = '2025-10-15' // BOUCLIER 🛡️
       
       const deeplink = await searchSpotifyEpisode(episodeDate)
@@ -109,7 +120,7 @@ describe('platformAPIs', () => {
       assert.ok(deeplink.includes('55hcQ7NGJfzfo8sMCXBsrx'), 'Should be BOUCLIER ID')
     })
     
-    test('should return null if episode not found', async () => {
+    test('should return null if episode not found', skipSpotify, async () => {
       const episodeDate = '2099-12-31' // Date future
       
       const deeplink = await searchSpotifyEpisode(episodeDate)
@@ -119,7 +130,7 @@ describe('platformAPIs', () => {
   })
   
   describe('searchAppleEpisode', () => {
-    test('should find episode by date and return deeplink', async () => {
+    test('should find episode by date and return deeplink', skipExternal, async () => {
       const episodeDate = '2025-10-27'
       
       const deeplink = await searchAppleEpisode(episodeDate)
@@ -130,7 +141,7 @@ describe('platformAPIs', () => {
       assert.ok(deeplink.includes('i=1000733777469')) // trackId S2E1
     })
 
-    test('should find different episode for different date', async () => {
+    test('should find different episode for different date', skipExternal, async () => {
       const episodeDate = '2025-10-17' // Bande-annonce
       
       const deeplink = await searchAppleEpisode(episodeDate)
@@ -140,7 +151,7 @@ describe('platformAPIs', () => {
       assert.ok(!deeplink.includes('i=1000733777469'), 'Should NOT be S2E1 trackId')
     })
     
-    test('should return null if episode not found', async () => {
+    test('should return null if episode not found', skipExternal, async () => {
       const episodeDate = '2099-12-31'
       
       const deeplink = await searchAppleEpisode(episodeDate)
@@ -150,7 +161,7 @@ describe('platformAPIs', () => {
   })
   
   describe('searchDeezerEpisode', () => {
-    test('should find episode by date and return deeplink', async () => {
+    test('should find episode by date and return deeplink', skipExternal, async () => {
       const episodeDate = '2025-10-27'
       
       const deeplink = await searchDeezerEpisode(episodeDate)
@@ -159,7 +170,7 @@ describe('platformAPIs', () => {
       assert.strictEqual(deeplink, 'https://www.deezer.com/fr/episode/804501282')
     })
 
-    test('should find different episode for different date', async () => {
+    test('should find different episode for different date', skipExternal, async () => {
       const episodeDate = '2025-10-17' // Bande-annonce
       
       const deeplink = await searchDeezerEpisode(episodeDate)
@@ -169,7 +180,7 @@ describe('platformAPIs', () => {
       assert.ok(!deeplink.includes('804501282'), 'Should NOT be S2E1 ID')
     })
     
-    test('should return null if episode not found', async () => {
+    test('should return null if episode not found', skipExternal, async () => {
       const episodeDate = '2099-12-31'
       
       const deeplink = await searchDeezerEpisode(episodeDate)
@@ -181,8 +192,13 @@ describe('platformAPIs', () => {
   describe('buildPodcastAddictLink', () => {
     test('should encode audioUrl and build deeplink', () => {
       const audioUrl = 'https://op3.dev/e,pg=bb74e9c5-20e5-5226-8491-d512ad8ebe04/podcasts.saletesincere.fr/audio/@charbonwafer/une-collaboration-un-peu-speciale.mp3?_from=podcastaddict.com'
+      const originalPodcastId = process.env.PODCASTADDICT_PODCAST_ID
+      process.env.PODCASTADDICT_PODCAST_ID = '6137997'
       
       const deeplink = buildPodcastAddictLink(audioUrl)
+
+      if (originalPodcastId === undefined) delete process.env.PODCASTADDICT_PODCAST_ID
+      else process.env.PODCASTADDICT_PODCAST_ID = originalPodcastId
       
       assert.ok(deeplink.includes('https://podcastaddict.com/episode/'))
       assert.ok(deeplink.includes('podcastId=6137997'))

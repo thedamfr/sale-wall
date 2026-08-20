@@ -14,7 +14,16 @@ import { uploadLimiter, voteLimiter, pageLimiter, apiLimiter, newsletterLimiter,
 import { validateAudio, audioValidationMiddleware } from "./server/validators/audioValidator.js";
 import { setupSecurityHeaders, setupErrorHandler } from "./server/middleware/security.js";
 import newsletterRoutes from "./server/newsletter/routes.js";
-import { fetchEpisodeFromRSS } from "./server/services/castopodRSS.js";
+import {
+  fetchEpisodeFromRSS,
+  fetchPublishedEpisodesFromRSS
+} from "./server/services/castopodRSS.js";
+import {
+  getEpisodeDownloadProof,
+  getEpisodeStats,
+  getEpisodeStatsForGuids,
+  selectPopularEpisode
+} from "./server/services/op3Service.js";
 import {
   EpisodeQueueReason,
   initializeEpisodeWorker,
@@ -91,13 +100,17 @@ export function getHealthPayload(
  */
 export async function buildApp({
   initializeStorage = true,
-  initializeOp3 = true,
   databaseAdapterFactory = createPostgresAdapter,
   databaseUrl: databaseUrlOverride,
   databaseConfigured: databaseConfiguredOverride,
   databaseAdapter: databaseAdapterOverride,
   databaseAvailability: databaseAvailabilityOverride,
   episodeFetcher = fetchEpisodeFromRSS,
+  podcastEpisodesFetcher = fetchPublishedEpisodesFromRSS,
+  op3EpisodeStatsReader = getEpisodeStats,
+  op3StatsListReader = getEpisodeStatsForGuids,
+  op3PublicStatsEnabled = process.env.OP3_PUBLIC_STATS_ENABLED === 'true',
+  now = () => new Date(),
   episodeQueuer = queueEpisodeResolution,
   episodeIntentBuffer: episodeIntentBufferOverride,
   episodeWorkerStarter,
@@ -905,6 +918,36 @@ function formatDuration(seconds) {
 }
 
 // Route podcast générale (liens show)
+app.get("/podcast/", {
+  config: {
+    rateLimit: pageLimiter
+  }
+}, async (req, reply) => {
+  const { season, episode, ...otherQuery } = req.query;
+  const remainingQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(otherQuery)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined && item !== null) remainingQuery.append(key, String(item));
+    }
+  }
+  const suffix = remainingQuery.size > 0 ? `?${remainingQuery}` : '';
+  if (season && episode) {
+    return reply.code(301).redirect(
+      `/podcast/${encodeURIComponent(season)}/${encodeURIComponent(episode)}${suffix}`
+    );
+  }
+
+  const originalQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(req.query)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined && item !== null) originalQuery.append(key, String(item));
+    }
+  }
+  return reply.code(301).redirect(
+    originalQuery.size > 0 ? `/podcast?${originalQuery}` : '/podcast'
+  );
+});
+
 app.get("/podcast", {
   config: {
     rateLimit: pageLimiter
@@ -916,8 +959,26 @@ app.get("/podcast", {
     return reply.code(301).redirect(`/podcast/${season}/${episode}`);
   }
   
+  let popularEpisode = null;
+  const databaseState = databaseAvailability.getState();
+  if (op3PublicStatsEnabled && database && canReadDatabase(databaseState)) {
+    try {
+      const episodes = await podcastEpisodesFetcher(5000);
+      const itemGuids = episodes.map(({ itemGuid }) => itemGuid).filter(Boolean);
+      const stats = await op3StatsListReader(database.pool, itemGuids);
+      popularEpisode = selectPopularEpisode({ episodes, stats, now: now() });
+    } catch (error) {
+      if (!reportDatabaseError(error, 'podcast_traction_cache')) {
+        app.log.warn({
+          event: 'podcast_traction_unavailable',
+          errorCode: error?.code || error?.name || 'UNKNOWN'
+        }, 'podcast_traction_unavailable');
+      }
+    }
+  }
+
   reply.header('Cache-Control', 'public, max-age=3600');
-  return reply.view("podcast.hbs", { episodeData: null });
+  return reply.view("podcast.hbs", { episodeData: null, popularEpisode });
 });
 
 /**
@@ -1036,17 +1097,10 @@ app.get("/podcast/:season/:episode", {
 
   // 4. Fetch OP3 stats from cache (ADR-0015)
   let episodeStats = null;
-  if (canReadDatabase(databaseState) && episodeData.itemGuid) {
+  if (op3PublicStatsEnabled && canReadDatabase(databaseState) && episodeData.itemGuid) {
     try {
-      const { getEpisodeStats, formatStatsForDisplay } = await import('./server/services/op3Service.js');
-      const stats = await getEpisodeStats(database.pool, episodeData.itemGuid);
-      if (stats && stats.downloadsAll >= 10) {
-        episodeStats = {
-          downloadsAll: stats.downloadsAll,
-          downloads30: stats.downloads30,
-          displayText: formatStatsForDisplay(stats.downloadsAll)
-        };
-      }
+      const stats = await op3EpisodeStatsReader(database.pool, episodeData.itemGuid);
+      episodeStats = getEpisodeDownloadProof(stats, now());
     } catch (error) {
       if (reportDatabaseError(error, 'podcast_episode_stats')) {
         databaseState = databaseAvailability.getState();
@@ -1282,18 +1336,6 @@ if (WORKER_ENABLED) {
       : 'Database adapter unavailable';
   console.log(`⚠️  Worker disabled (${reason})`);
   console.log('   Episode resolution jobs will remain unavailable');
-}
-
-// ============================================================================
-// OP3 SERVICE INITIALIZATION (ADR-0015)
-// ============================================================================
-if (initializeOp3) {
-  try {
-    const { initOP3Service } = await import('./server/services/op3Service.js');
-    await initOP3Service(); // Preload show UUID in memory
-  } catch (err) {
-    console.warn('⚠️  OP3 service init failed (stats will be unavailable):', err.message);
-  }
 }
 
   return app;

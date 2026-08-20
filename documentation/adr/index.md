@@ -30,7 +30,7 @@ tags: [adr, index, architecture, decisions]
 | [ADR-0012](./adr_0012_og_images_smartlinks.md) | OG Images for Smartlinks | ✅ **Implémenté** | 2025-11 | Podcasting, SEO | Feature |
 | [ADR-0013](./adr_0013_audio_player_smartlink.md) | Audio Player on Smartlink | ✅ **Implémenté** | 2025-11 | Audio, UX | Feature |
 | [ADR-0014](./adr_0014_audio_proxy_waveform.md) | Audio Proxy for Waveform | ✅ **Implémenté** | 2025-11 | Audio, CORS | Feature |
-| [ADR-0015](./adr_0015_op3_stats_integration.md) | OP3 Stats Integration | 🔍 **Exploration** | 2025-11 | Analytics, API | Feature |
+| [ADR-0015](./adr_0015_op3_stats_integration.md) | Preuve sociale podcast via cache OP3 | ✅ **Implémenté** | 2026-08 | Podcast, OP3, pg-boss | Feature |
 
 ## 📊 Statistiques
 
@@ -73,7 +73,7 @@ tags: [adr, index, architecture, decisions]
 - [ADR-0012](./adr_0012_og_images_smartlinks.md) - OG Images Generation
 
 ### 📊 Analytics & Stats
-- [ADR-0015](./adr_0015_op3_stats_integration.md) - OP3 Stats Integration (phase exploratoire)
+- [ADR-0015](./adr_0015_op3_stats_integration.md) - Preuve sociale podcast via cache OP3
 
 ## ✍️ Créer un nouvel ADR
 
