@@ -2,8 +2,8 @@
 
 ## Statut
 
-- **Version** : 1.0
-- **Date** : 19 août 2026
+- **Version** : 1.1
+- **Date** : 25 août 2026
 - **Statut** : Lots 1 à 4 implémentés et validés avant revue ; déploiement des Lots 2 à 4 non effectué
 - **Périmètre** : application `sale-wall`, routes Sale-wall, pages podcast et worker `pg-boss`
 - **Incident déclencheur** : PostgreSQL temporairement en recovery, échec de `pg-boss`, arrêt du processus Node.js et réponses HTTP 503 globales
@@ -370,11 +370,15 @@ Comportement attendu :
 - mémoriser une intention d'enrichissement bornée en mémoire ;
 - répondre HTTP 200.
 
-#### Message proposé
+#### Présentation des fallbacks
 
-> Certains liens directs et les statistiques sont temporairement indisponibles. L'épisode reste accessible normalement.
+Lorsqu'un lien direct d'épisode manque, conserver le lien générique de la
+plateforme et le libeller explicitement « Écouter le podcast ». Le lien Castopod
+de l'épisode, le lecteur audio et les autres fallbacks restent disponibles.
 
-Le message doit être discret, accessible et absent lorsque toutes les informations utiles sont disponibles malgré un état technique dégradé.
+Masquer simplement les statistiques OP3 absentes. Ne pas afficher d'alerte de
+contenu partiel tant que chaque action visible conserve une destination
+fonctionnelle.
 
 ### 6.4 Sale-wall — `GET /wall`
 

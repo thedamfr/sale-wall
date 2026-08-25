@@ -81,7 +81,7 @@ describe('complete degraded mode routes', () => {
     await app.close()
   })
 
-  test('renders a complete RSS episode with an explicit partial-content notice', async () => {
+  test('renders a complete RSS episode with functional fallbacks and no warning', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/podcast/2/1'
@@ -93,10 +93,9 @@ describe('complete degraded mode routes', () => {
     assert.match(response.body, /27 octobre 2025/)
     assert.match(response.body, /media\.example\/cover\.jpg/)
     assert.match(response.body, /media\.example\/episode\.mp3/)
-    assert.match(
-      response.body,
-      /Certains liens directs et les statistiques sont temporairement indisponibles/
-    )
+    assert.doesNotMatch(response.body, /Certains liens directs et les statistiques/)
+    assert.match(response.body, /open\.spotify\.com\/show\/07VuGnu0YSacC671s0DQ3a/)
+    assert.match(response.body, /deezer\.com\/fr\/show\/1002292972/)
     assert.match(
       response.body,
       /<div class="text-xs text-gray-500">Écouter le podcast<\/div>/
@@ -232,7 +231,7 @@ describe('complete degraded mode routes', () => {
 
       assert.equal(response.statusCode, 200)
       assert.match(response.body, /open\.spotify\.com\/episode\/direct/)
-      assert.match(response.body, /Certains liens directs et les statistiques/)
+      assert.doesNotMatch(response.body, /Certains liens directs et les statistiques/)
       assert.equal(availability.getState(), DatabaseState.UNAVAILABLE)
     } finally {
       await statsFailureApp.close()

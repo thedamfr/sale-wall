@@ -228,6 +228,41 @@ describe('GET /podcast traction card', () => {
 })
 
 describe('episode OP3 proof', () => {
+  test('keeps fallback links usable without warning while direct links are pending', async () => {
+    const rssEpisode = {
+      ...publishedEpisodes()[0],
+      pubDate: '20 août 2026',
+      rawPubDate: '2026-08-20',
+      audioUrl: 'https://media.example/episode-3.mp3',
+      feedLastBuildDate: '2026-08-20T08:00:00.000Z',
+      isTruncated: false
+    }
+    const app = await createApp({
+      episodeFetcher: async () => rssEpisode,
+      databaseAdapter: {
+        async query() { return { rows: [] } },
+        pool: { async query() { return { rows: [] } } },
+        async connect() {
+          return {
+            async query() { return { rows: [] } },
+            release() {}
+          }
+        }
+      }
+    })
+
+    const response = await app.inject({ method: 'GET', url: '/podcast/2/3' })
+
+    assert.equal(response.statusCode, 200)
+    assert.match(response.body, /podcasts\.apple\.com\/us\/podcast\/pas-de-charbon-pas-de-wafer/)
+    assert.match(response.body, /open\.spotify\.com\/show\/07VuGnu0YSacC671s0DQ3a/)
+    assert.match(response.body, /deezer\.com\/fr\/show\/1002292972/)
+    assert.match(response.body, /podcastaddict\.com\/podcast\/pas-de-charbon-pas-de-wafer\/6137997/)
+    assert.match(response.body, /Écouter le podcast/)
+    assert.doesNotMatch(response.body, /temporairement indisponibles|arrivent bientôt/)
+    assert.doesNotMatch(response.body, /role="status"/)
+  })
+
   test('shows a stable accessible download badge without IAB claims', async () => {
     const rssEpisode = {
       ...publishedEpisodes()[0],

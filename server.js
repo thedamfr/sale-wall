@@ -1133,7 +1133,6 @@ app.get("/podcast/:season/:episode", {
     platformLinks,
     ogImageUrl: platformLinks?.og_image_url || null, // Pass OG image for player cover
     episodeStats, // OP3 badge data (ADR-0015)
-    episodeContentPartial
   });
 });
 

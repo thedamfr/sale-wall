@@ -644,12 +644,6 @@
   .border-\[\#d4af37\] {
     border-color: #d4af37;
   }
-  .border-amber-400\/40 {
-    border-color: color-mix(in srgb, oklch(82.8% 0.189 84.429) 40%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      border-color: color-mix(in oklab, var(--color-amber-400) 40%, transparent);
-    }
-  }
   .border-gray-700 {
     border-color: var(--color-gray-700);
   }
@@ -685,12 +679,6 @@
   }
   .bg-\[\#d4af37\] {
     background-color: #d4af37;
-  }
-  .bg-amber-950\/30 {
-    background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 30%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-amber-950) 30%, transparent);
-    }
   }
   .bg-black\/30 {
     background-color: color-mix(in srgb, #000 30%, transparent);
@@ -984,9 +972,6 @@
   }
   .text-\[\#F2F2EF\] {
     color: #F2F2EF;
-  }
-  .text-amber-100 {
-    color: var(--color-amber-100);
   }
   .text-black {
     color: var(--color-black);
