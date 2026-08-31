@@ -19,7 +19,7 @@
     <meta property="og:description" content="{{episodeData.description}}">
     {{!-- Phase 5: OG Image custom (ADR-0012) avec fallback RSS thumbnail --}}
     {{#if platformLinks.og_image_url}}
-    <meta property="og:image" content="{{platformLinks.og_image_url}}">
+    <meta property="og:image" content="https://saletesincere.fr/cdn-cgi/image/width=1200,quality=85,format=png/{{platformLinks.og_image_url}}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     {{else if episodeData.image}}
@@ -36,7 +36,7 @@
     <meta name="twitter:description" content="{{episodeData.description}}">
     {{!-- Phase 5: Twitter Card custom OG Image avec fallback --}}
     {{#if platformLinks.og_image_url}}
-    <meta name="twitter:image" content="{{platformLinks.og_image_url}}">
+    <meta name="twitter:image" content="https://saletesincere.fr/cdn-cgi/image/width=1200,quality=85,format=png/{{platformLinks.og_image_url}}">
     {{else if episodeData.image}}
     <meta name="twitter:image" content="{{episodeData.image}}">
     {{else}}
@@ -103,7 +103,7 @@
             {{#if popularEpisode}}
             <article class="mb-8 overflow-hidden rounded-2xl border border-purple-600/30 bg-gradient-to-r from-purple-900/20 to-indigo-900/20">
                 {{#if popularEpisode.episode.image}}
-                <img src="{{popularEpisode.episode.image}}" alt="Jaquette de l'épisode {{popularEpisode.episode.title}}" class="h-auto w-full">
+                <img src="/cdn-cgi/image/width=662,quality=85,format=auto/{{popularEpisode.episode.image}}" alt="Jaquette de l'épisode {{popularEpisode.episode.title}}" width="662" height="662" fetchpriority="high" class="h-auto w-full">
                 {{/if}}
                 <div class="p-6">
                     <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-yellow-400">{{popularEpisode.label}}</p>

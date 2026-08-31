@@ -208,10 +208,14 @@ describe('GET /podcast traction card', () => {
     assert.match(response.body, /Le troisième épisode/)
     assert.match(response.body, /42 téléchargements mesurés par OP3/)
     assert.match(response.body, /href="\/podcast\/2\/3"/)
-    assert.match(response.body, /media\.example\/episode-3\.jpg/)
     assert.match(
       response.body,
-      /<img[^>]+media\.example\/episode-3\.jpg[^>]+class="[^"]*h-auto[^"]*w-full[^"]*"/
+      /<img[^>]+src="\/cdn-cgi\/image\/width=662,quality=85,format=auto\/https:\/\/media\.example\/episode-3\.jpg"[^>]+class="[^"]*h-auto[^"]*w-full[^"]*"/
+    )
+    assert.doesNotMatch(response.body, /rel="preconnect"[^>]+cellar-c2\.services\.clever-cloud\.com/)
+    assert.match(
+      response.body,
+      /<img[^>]+media\.example\/episode-3\.jpg[^>]+width="662"[^>]+height="662"[^>]+fetchpriority="high"/
     )
     assert.doesNotMatch(
       response.body,

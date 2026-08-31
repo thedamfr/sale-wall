@@ -169,6 +169,14 @@ describe('complete degraded mode routes', () => {
 
       assert.equal(episodeResponse.statusCode, 200)
       assert.match(episodeResponse.body, /open\.spotify\.com\/episode\/direct/)
+      assert.match(
+        episodeResponse.body,
+        /<meta property="og:image" content="https:\/\/saletesincere\.fr\/cdn-cgi\/image\/width=1200,quality=85,format=png\/https:\/\/media\.example\/og\.png">/
+      )
+      assert.match(
+        episodeResponse.body,
+        /<meta name="twitter:image" content="https:\/\/saletesincere\.fr\/cdn-cgi\/image\/width=1200,quality=85,format=png\/https:\/\/media\.example\/og\.png">/
+      )
       assert.doesNotMatch(episodeResponse.body, /Certains liens directs et les statistiques/)
       assert.equal(wallResponse.statusCode, 200)
       assert.match(wallResponse.body, /Le Sale-wall est temporairement indisponible/)
