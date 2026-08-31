@@ -959,11 +959,65 @@ app.get("/podcast", {
     return reply.code(301).redirect(`/podcast/${season}/${episode}`);
   }
   
+  let episodes = [];
+  let latestEpisode = null;
   let popularEpisode = null;
-  const databaseState = databaseAvailability.getState();
-  if (op3PublicStatsEnabled && database && canReadDatabase(databaseState)) {
+  let databaseState = databaseAvailability.getState();
+
+  try {
+    const publishedEpisodes = await podcastEpisodesFetcher(5000);
+    episodes = Array.isArray(publishedEpisodes) ? publishedEpisodes : [];
+    latestEpisode = episodes[0] || null;
+  } catch (error) {
+    app.log.warn({
+      event: 'podcast_latest_episode_unavailable',
+      errorCode: error?.code || error?.name || 'UNKNOWN'
+    }, 'podcast_latest_episode_unavailable');
+  }
+
+  let podcastSocialImage = latestEpisode?.image
+    ? {
+        url: latestEpisode.image,
+        alt: `Jaquette de l'épisode ${latestEpisode.title}`
+      }
+    : null;
+
+  if (latestEpisode && database && canReadDatabase(databaseState)) {
     try {
-      const episodes = await podcastEpisodesFetcher(5000);
+      const imageResult = await database.pool.query(
+        `SELECT og_image_url
+         FROM episode_links
+         WHERE season = $1 AND episode = $2`,
+        [latestEpisode.season, latestEpisode.episode]
+      );
+      const generatedImageUrl = imageResult.rows[0]?.og_image_url;
+      if (generatedImageUrl) {
+        podcastSocialImage = {
+          url: generatedImageUrl,
+          alt: `Jaquette de l'épisode ${latestEpisode.title}`,
+          width: 1200,
+          height: 630
+        };
+      }
+    } catch (error) {
+      if (reportDatabaseError(error, 'podcast_latest_episode_image')) {
+        databaseState = databaseAvailability.getState();
+      } else {
+        app.log.warn({
+          event: 'podcast_latest_episode_image_unavailable',
+          errorCode: error?.code || error?.name || 'UNKNOWN'
+        }, 'podcast_latest_episode_image_unavailable');
+      }
+    }
+  }
+
+  if (
+    op3PublicStatsEnabled
+    && database
+    && canReadDatabase(databaseState)
+    && episodes.length > 0
+  ) {
+    try {
       const itemGuids = episodes.map(({ itemGuid }) => itemGuid).filter(Boolean);
       const stats = await op3StatsListReader(database.pool, itemGuids);
       popularEpisode = selectPopularEpisode({ episodes, stats, now: now() });
@@ -978,7 +1032,11 @@ app.get("/podcast", {
   }
 
   reply.header('Cache-Control', 'public, max-age=3600');
-  return reply.view("podcast.hbs", { episodeData: null, popularEpisode });
+  return reply.view("podcast.hbs", {
+    episodeData: null,
+    popularEpisode,
+    podcastSocialImage
+  });
 });
 
 /**

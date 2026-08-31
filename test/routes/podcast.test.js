@@ -6,7 +6,9 @@ describe('GET /podcast route', () => {
   let app;
 
   before(async () => {
-    app = await build();
+    app = await build({
+      podcastEpisodesFetcher: async () => []
+    });
   });
 
   after(async () => {
