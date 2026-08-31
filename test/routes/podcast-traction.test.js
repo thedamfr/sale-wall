@@ -146,6 +146,14 @@ describe('GET /podcast traction card', () => {
     assert.match(response.body, /42 téléchargements mesurés par OP3/)
     assert.match(response.body, /href="\/podcast\/2\/3"/)
     assert.match(response.body, /media\.example\/episode-3\.jpg/)
+    assert.match(
+      response.body,
+      /<img[^>]+media\.example\/episode-3\.jpg[^>]+class="[^"]*h-auto[^"]*w-full[^"]*"/
+    )
+    assert.doesNotMatch(
+      response.body,
+      /<img[^>]+media\.example\/episode-3\.jpg[^>]+object-cover/
+    )
     assert.equal(queueCalls, 0)
   })
 
