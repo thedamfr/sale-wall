@@ -123,6 +123,43 @@ describe('podcast canonical URL', () => {
 })
 
 describe('GET /podcast traction card', () => {
+  test('uses the latest published episode OG image for sharing, independently from popularity', async () => {
+    const adapter = databaseAdapter()
+    adapter.pool.query = async (query, values) => {
+      assert.match(query, /SELECT og_image_url/)
+      assert.deepEqual(values, [2, 3])
+      return { rows: [{ og_image_url: 'https://media.example/latest-og.png' }] }
+    }
+    const app = await createApp({
+      databaseAdapter: adapter,
+      podcastEpisodesFetcher: async () => publishedEpisodes(),
+      op3StatsListReader: async () => [
+        { itemGuid: 'guid-1', downloads7: 12, downloadsAll: 30, fetchedAt: NOW },
+        { itemGuid: 'guid-2', downloads7: 50, downloadsAll: 90, fetchedAt: NOW },
+        { itemGuid: 'guid-3', downloads7: 42, downloadsAll: 80, fetchedAt: NOW }
+      ]
+    })
+
+    const response = await app.inject({ method: 'GET', url: '/podcast' })
+
+    assert.equal(response.statusCode, 200)
+    assert.match(response.body, /Le deuxième épisode/)
+    assert.match(
+      response.body,
+      /<meta property="og:image" content="https:\/\/media\.example\/latest-og\.png">/
+    )
+    assert.match(response.body, /<meta property="og:image:width" content="1200">/)
+    assert.match(response.body, /<meta property="og:image:height" content="630">/)
+    assert.match(
+      response.body,
+      /<meta property="og:image:alt" content="Jaquette de l&#x27;épisode Le troisième épisode">/
+    )
+    assert.match(
+      response.body,
+      /<meta name="twitter:image" content="https:\/\/media\.example\/latest-og\.png">/
+    )
+  })
+
   test('renders the selected popular episode from RSS and cached OP3 stats', async () => {
     let queueCalls = 0
     const app = await createApp({
@@ -157,7 +194,7 @@ describe('GET /podcast traction card', () => {
     assert.equal(queueCalls, 0)
   })
 
-  test('renders the editorial fallback without a DB probe or RSS call', async () => {
+  test('uses the latest RSS image for sharing without a DB probe or stats read', async () => {
     let probeCalls = 0
     let rssCalls = 0
     let statsCalls = 0
@@ -180,9 +217,44 @@ describe('GET /podcast traction card', () => {
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Le Podcast est sorti/)
+    assert.match(
+      response.body,
+      /<meta property="og:image" content="https:\/\/media\.example\/episode-3\.jpg">/
+    )
     assert.equal(probeCalls, 0)
-    assert.equal(rssCalls, 0)
+    assert.equal(rssCalls, 1)
     assert.equal(statsCalls, 0)
+  })
+
+  test('falls back to the latest RSS image when the generated image cache is unavailable', async () => {
+    const databaseAvailability = availability(
+      DatabaseState.READ_WRITE,
+      async () => DatabaseState.READ_WRITE
+    )
+    const error = new Error('database connection lost')
+    error.code = 'ECONNRESET'
+    const adapter = databaseAdapter()
+    adapter.pool.query = async () => { throw error }
+    let statsCalls = 0
+    const app = await createApp({
+      databaseAdapter: adapter,
+      databaseAvailability,
+      podcastEpisodesFetcher: async () => publishedEpisodes(),
+      op3StatsListReader: async () => {
+        statsCalls += 1
+        return []
+      }
+    })
+
+    const response = await app.inject({ method: 'GET', url: '/podcast' })
+
+    assert.equal(response.statusCode, 200)
+    assert.match(
+      response.body,
+      /<meta property="og:image" content="https:\/\/media\.example\/episode-3\.jpg">/
+    )
+    assert.equal(statsCalls, 0)
+    assert.equal(databaseAvailability.getState(), DatabaseState.UNAVAILABLE)
   })
 
   test('renders the editorial fallback when the RSS fetch fails', async () => {
@@ -195,6 +267,14 @@ describe('GET /podcast traction card', () => {
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Le Podcast est sorti/)
+    assert.match(
+      response.body,
+      /<meta property="og:image" content="https:\/\/saletesincere\.fr\/images\/preview-podcast-smartlink\.jpg">/
+    )
+    assert.match(
+      response.body,
+      /<meta name="twitter:image" content="https:\/\/saletesincere\.fr\/images\/preview-podcast-smartlink\.jpg">/
+    )
     assert.doesNotMatch(response.body, /RSS unavailable/)
   })
 
@@ -219,19 +299,25 @@ describe('GET /podcast traction card', () => {
     assert.equal(databaseAvailability.getState(), DatabaseState.UNAVAILABLE)
   })
 
-  test('does no RSS or cache work while public stats are disabled', async () => {
-    let calls = 0
+  test('still refreshes the latest share image while public stats are disabled', async () => {
+    let rssCalls = 0
+    let statsCalls = 0
     const app = await createApp({
       op3PublicStatsEnabled: false,
-      podcastEpisodesFetcher: async () => { calls += 1; return publishedEpisodes() },
-      op3StatsListReader: async () => { calls += 1; return [] }
+      podcastEpisodesFetcher: async () => { rssCalls += 1; return publishedEpisodes() },
+      op3StatsListReader: async () => { statsCalls += 1; return [] }
     })
 
     const response = await app.inject({ method: 'GET', url: '/podcast' })
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Le Podcast est sorti/)
-    assert.equal(calls, 0)
+    assert.match(
+      response.body,
+      /<meta property="og:image" content="https:\/\/media\.example\/episode-3\.jpg">/
+    )
+    assert.equal(rssCalls, 1)
+    assert.equal(statsCalls, 0)
   })
 })
 

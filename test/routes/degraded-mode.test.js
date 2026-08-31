@@ -95,6 +95,7 @@ describe('degraded startup', () => {
       databaseConfigured: true,
       episodeWorkerStarter: () => startGate,
       episodeWorkerStopper: (instance) => instance.stop(),
+      podcastEpisodesFetcher: async () => [RSS_EPISODE],
       workerManagerOptions: {
         jitterRatio: 0
       }

@@ -10,12 +10,13 @@
  * ⚠️ DISABLE_WORKER=true prevents episodeQueue worker from starting
  * in buildApp() - tests that need the worker start it explicitly.
  */
-export async function build() {
+export async function build(options = {}) {
   // Désactiver worker pg-boss pour les tests (sauf episodeQueue.test.js qui le gère)
   process.env.DISABLE_WORKER = 'true';
   
   const { buildApp } = await import('../../server.js');
   return buildApp({
+    ...options,
     initializeStorage: false
   });
 }

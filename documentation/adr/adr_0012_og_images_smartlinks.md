@@ -2,7 +2,7 @@
 
 **Date**: 2025-11-06  
 **Auteur**: Damien Cavaillès  
-**Statut**: 🚧 EN RÉDACTION (Phase 0 - Investigation)  
+**Statut**: ✅ IMPLÉMENTÉ
 **Contexte**: Images Open Graph personnalisées pour les liens `/podcast/:season/:episode`  
 **Dépend de**: ADR-0011 (smartlink implémenté)
 
@@ -293,6 +293,30 @@ npm install jimp
 
 ---
 
+## Extension du 31 août 2026 : image sociale de `/podcast`
+
+La route générale `/podcast` met en avant l'image du dernier épisode publié,
+indépendamment de l'épisode populaire éventuellement affiché dans la page :
+
+1. la liste RSS déjà triée par date fournit le dernier épisode ;
+2. si PostgreSQL est déjà connu comme lisible, `episode_links.og_image_url`
+   fournit en priorité son image 1200×630 générée ;
+3. sans image générée ou sans PostgreSQL, la jaquette de l'épisode issue du RSS
+   est utilisée ;
+4. si le RSS échoue ou ne contient aucun épisode exploitable, l'image générique
+   historique reste le dernier fallback.
+
+La lecture RSS est bornée à cinq secondes et ne lance aucun probe PostgreSQL.
+Une panne RSS, PostgreSQL ou OP3 ne modifie pas le statut HTTP 200 de
+`/podcast`. Les métadonnées Twitter utilisent des attributs `name`, et les
+images Open Graph et Twitter exposent un texte alternatif.
+
+Cette extension n'ajoute ni génération d'image dans la requête HTTP, ni job,
+ni écriture en base. La génération reste sous la responsabilité du worker
+décrit dans cet ADR.
+
+---
+
 ## Limitations & Décisions de compromis
 
 ### Podcast Addict : Fallback vers show (pas épisode)
@@ -331,4 +355,3 @@ npm install jimp
 - Investigation + Implémentation : ~6h
 - Déploiement + debug : ~1h
 - **Total** : ~7h
-
