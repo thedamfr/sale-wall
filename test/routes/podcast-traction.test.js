@@ -5,6 +5,7 @@ import {
   createDatabaseAvailability,
   DatabaseState
 } from '../../server/resilience/databaseAvailability.js'
+import { getOGImageS3Key } from '../../server/services/ogImageLayout.js'
 
 const NOW = new Date('2026-08-20T12:00:00.000Z')
 const apps = []
@@ -124,11 +125,19 @@ describe('podcast canonical URL', () => {
 
 describe('GET /podcast traction card', () => {
   test('uses the latest published episode OG image for sharing, independently from popularity', async () => {
+    const latestEpisode = publishedEpisodes()[0]
+    const expectedKey = getOGImageS3Key({
+      season: latestEpisode.season,
+      episode: latestEpisode.episode,
+      imageUrl: latestEpisode.image,
+      feedLastBuildDate: latestEpisode.feedLastBuildDate
+    })
+    const expectedUrl = `https://media.example/${expectedKey}`
     const adapter = databaseAdapter()
     adapter.pool.query = async (query, values) => {
       assert.match(query, /SELECT og_image_url/)
       assert.deepEqual(values, [2, 3])
-      return { rows: [{ og_image_url: 'https://media.example/latest-og.png' }] }
+      return { rows: [{ og_image_url: expectedUrl }] }
     }
     const app = await createApp({
       databaseAdapter: adapter,
@@ -141,23 +150,40 @@ describe('GET /podcast traction card', () => {
     })
 
     const response = await app.inject({ method: 'GET', url: '/podcast' })
+    const health = await app.inject({ method: 'GET', url: '/health' })
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Le deuxième épisode/)
-    assert.match(
-      response.body,
-      /<meta property="og:image" content="https:\/\/media\.example\/latest-og\.png">/
-    )
+    assert.ok(response.body.includes(`<meta property="og:image" content="${expectedUrl}">`))
     assert.match(response.body, /<meta property="og:image:width" content="1200">/)
     assert.match(response.body, /<meta property="og:image:height" content="630">/)
     assert.match(
       response.body,
       /<meta property="og:image:alt" content="Jaquette de l&#x27;épisode Le troisième épisode">/
     )
+    assert.ok(response.body.includes(`<meta name="twitter:image" content="${expectedUrl}">`))
+    assert.equal(health.json().episodeIntents.pending, 0)
+  })
+
+  test('schedules regeneration when the latest image uses a legacy cache key', async () => {
+    const adapter = databaseAdapter()
+    adapter.pool.query = async () => ({
+      rows: [{ og_image_url: 'https://media.example/og-images/s2e3.png' }]
+    })
+    const app = await createApp({
+      databaseAdapter: adapter,
+      podcastEpisodesFetcher: async () => publishedEpisodes()
+    })
+
+    const response = await app.inject({ method: 'GET', url: '/podcast' })
+    const health = await app.inject({ method: 'GET', url: '/health' })
+
+    assert.equal(response.statusCode, 200)
     assert.match(
       response.body,
-      /<meta name="twitter:image" content="https:\/\/media\.example\/latest-og\.png">/
+      /<meta property="og:image" content="https:\/\/media\.example\/og-images\/s2e3\.png">/
     )
+    assert.equal(health.json().episodeIntents.pending, 1)
   })
 
   test('renders the selected popular episode from RSS and cached OP3 stats', async () => {

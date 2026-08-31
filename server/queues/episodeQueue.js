@@ -9,6 +9,10 @@ import {
   searchAppleEpisode, 
   searchDeezerEpisode
 } from '../services/platformAPIs.js'
+import {
+  getOGImageS3Key,
+  isExpectedOGImageUrl
+} from '../services/ogImageLayout.js'
 import { generateOGImage } from '../services/ogImageGenerator.js'
 import { uploadToS3, deleteFromS3 } from '../services/s3Service.js'
 import { registerOp3StatsQueue } from './op3StatsQueue.js'
@@ -182,6 +186,12 @@ export async function startWorker(fastify, options = {}, queue = boss) {
     // Idempotency check before image generation and platform API calls. The route
     // may enqueue again after a retry window even though another visit completed
     // the cache in the meantime.
+    const expectedOgImageS3Key = getOGImageS3Key({
+      season,
+      episode,
+      imageUrl,
+      feedLastBuildDate
+    })
     const cacheClient = await fastify.pg.connect()
     try {
       const cacheResult = await cacheClient.query(
@@ -210,6 +220,7 @@ export async function startWorker(fastify, options = {}, queue = boss) {
         && cached?.og_image_url
         && imageIsFresh
         && feedIsFresh
+        && isExpectedOGImageUrl(cached?.og_image_url, expectedOgImageS3Key)
       )
 
       if (cacheIsComplete) {
@@ -232,8 +243,8 @@ export async function startWorker(fastify, options = {}, queue = boss) {
       // 1. Générer PNG buffer avec blur effect
       const ogImageBuffer = await generateOGImage(imageUrl);
       
-      // 2. S3 Key: og-images/s{season}e{episode}.png
-      ogImageS3Key = `og-images/s${season}e${episode}.png`;
+      // 2. Deterministic key derived from episode data and the layout version
+      ogImageS3Key = expectedOgImageS3Key;
       
       // 3. Upload PNG vers S3 (cleanup de l'ancienne sera fait dans le bloc DB)
       ogImageUrl = await uploadToS3(ogImageBuffer, ogImageS3Key, 'image/png');

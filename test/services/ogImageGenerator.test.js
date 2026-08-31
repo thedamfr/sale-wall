@@ -48,7 +48,7 @@ test('generateOGImage - should apply blur effect to background', async () => {
   assert.notStrictEqual(topLeftPixel, centerPixel, 'Background should be blurred (different from center)');
 });
 
-test('generateOGImage - should composite center image 400x400', async () => {
+test('generateOGImage - should composite center image 560x560', async () => {
   // Arrange
   const episodeImageUrl = TEST_THUMBNAIL;
   
@@ -58,17 +58,20 @@ test('generateOGImage - should composite center image 400x400', async () => {
   // Assert
   const image = await Jimp.read(buffer);
   
-  // Vérifier que le centre contient bien une zone de 400×400
-  // En vérifiant que les pixels du centre sont différents du fond gris
-  const centerX = Math.floor((1200 - 400) / 2);
-  const centerY = Math.floor((630 - 400) / 2);
-  
-  // Pixel dans la zone centrale (devrait être de la vignette, pas du fond gris)
-  const centerPixel = image.getPixelColor(centerX + 200, centerY + 200);
-  
-  // Pixel hors zone centrale (devrait être fond blurré)
-  const outsidePixel = image.getPixelColor(50, 50);
-  
-  // Les deux zones devraient être différentes
-  assert.notStrictEqual(centerPixel, outsidePixel, 'Center image should be distinct from background');
+  const centerImageSize = 560;
+  const centerX = Math.floor((1200 - centerImageSize) / 2);
+  const centerY = Math.floor((630 - centerImageSize) / 2);
+  const expectedCenterImage = (await Jimp.read(TEST_THUMBNAIL)).cover({
+    w: centerImageSize,
+    h: centerImageSize
+  });
+
+  const leftEdgePixel = image.getPixelColor(centerX + 10, centerY + 280);
+  const expectedLeftEdgePixel = expectedCenterImage.getPixelColor(10, 280);
+
+  assert.strictEqual(
+    leftEdgePixel,
+    expectedLeftEdgePixel,
+    'The sharp episode artwork should cover 560px and remain readable in social previews'
+  );
 });

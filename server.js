@@ -19,6 +19,10 @@ import {
   fetchPublishedEpisodesFromRSS
 } from "./server/services/castopodRSS.js";
 import {
+  getOGImageS3Key,
+  isExpectedOGImageUrl
+} from "./server/services/ogImageLayout.js";
+import {
   getEpisodeDownloadProof,
   getEpisodeStats,
   getEpisodeStatsForGuids,
@@ -960,6 +964,7 @@ app.get("/podcast", {
   }
   
   let episodes = [];
+  let latestImageNeedsRegeneration = false;
   let latestEpisode = null;
   let popularEpisode = null;
   let databaseState = databaseAvailability.getState();
@@ -991,6 +996,13 @@ app.get("/podcast", {
         [latestEpisode.season, latestEpisode.episode]
       );
       const generatedImageUrl = imageResult.rows[0]?.og_image_url;
+      const expectedOgImageS3Key = getOGImageS3Key({
+        season: latestEpisode.season,
+        episode: latestEpisode.episode,
+        imageUrl: latestEpisode.image,
+        feedLastBuildDate: latestEpisode.feedLastBuildDate
+      });
+      latestImageNeedsRegeneration = !isExpectedOGImageUrl(generatedImageUrl, expectedOgImageS3Key);
       if (generatedImageUrl) {
         podcastSocialImage = {
           url: generatedImageUrl,
@@ -1008,6 +1020,26 @@ app.get("/podcast", {
           errorCode: error?.code || error?.name || 'UNKNOWN'
         }, 'podcast_latest_episode_image_unavailable');
       }
+    }
+  }
+
+  if (latestEpisode && latestImageNeedsRegeneration) {
+    const intent = {
+      season: latestEpisode.season,
+      episode: latestEpisode.episode,
+      episodeDate: latestEpisode.rawPubDate,
+      title: latestEpisode.title,
+      imageUrl: latestEpisode.image,
+      feedLastBuildDate: latestEpisode.feedLastBuildDate,
+      audioUrl: latestEpisode.audioUrl
+    };
+    const workerReady = episodeWorkerManager?.getStatus().state === EpisodeWorkerState.READY;
+    const queueResult = workerReady
+      ? await enqueueEpisodeIntent(intent)
+      : { queued: false, reason: EpisodeQueueReason.WORKER_UNAVAILABLE };
+
+    if (!queueResult.queued && queueResult.reason !== EpisodeQueueReason.ALREADY_QUEUED) {
+      episodeIntentBuffer.remember(intent);
     }
   }
 
@@ -1046,13 +1078,17 @@ app.get("/podcast", {
  * @param {string|null} cachedFeedLastBuild - feed_last_build en BDD
  * @param {string|null} generatedAt - Timestamp génération OG Image
  * @param {string|Date} rssFeedLastBuildDate - lastBuildDate du RSS
+ * @param {string} expectedS3Key - Clé correspondant aux données et au layout actuels
  * @returns {boolean} true si OG Image doit être régénérée
  */
-function checkOGImageNeeds(ogImageUrl, cachedFeedLastBuild, generatedAt, rssFeedLastBuildDate) {
+function checkOGImageNeeds(ogImageUrl, cachedFeedLastBuild, generatedAt, rssFeedLastBuildDate, expectedS3Key) {
   // Condition 1: Pas d'OG Image → doit générer
   if (!ogImageUrl) return true;
   
-  // Condition 2: RSS lastBuildDate a changé → doit régénérer
+  // Condition 2: La clé ne correspond plus aux données ou au layout actuels
+  if (!isExpectedOGImageUrl(ogImageUrl, expectedS3Key)) return true;
+
+  // Condition 3: RSS lastBuildDate a changé → doit régénérer
   if (cachedFeedLastBuild && rssFeedLastBuildDate) {
     const cachedDate = new Date(cachedFeedLastBuild);
     const rssDate = new Date(rssFeedLastBuildDate);
@@ -1062,7 +1098,7 @@ function checkOGImageNeeds(ogImageUrl, cachedFeedLastBuild, generatedAt, rssFeed
     }
   }
   
-  // Condition 3: OG Image > 7 jours (fallback staleness)
+  // Condition 4: OG Image > 7 jours (fallback staleness)
   if (generatedAt) {
     const daysSinceGeneration = (Date.now() - new Date(generatedAt)) / (1000 * 60 * 60 * 24);
     if (daysSinceGeneration > 7) {
@@ -1113,12 +1149,19 @@ app.get("/podcast/:season/:episode", {
       );
 
       if (cacheResult.rows.length > 0) {
+        const expectedOgImageS3Key = getOGImageS3Key({
+          season,
+          episode,
+          imageUrl: episodeData.image,
+          feedLastBuildDate: episodeData.feedLastBuildDate
+        });
         platformLinks = cacheResult.rows[0];
         const needsOGRegeneration = checkOGImageNeeds(
           platformLinks.og_image_url,
           platformLinks.feed_last_build,
           platformLinks.generated_at,
-          episodeData.feedLastBuildDate
+          episodeData.feedLastBuildDate,
+          expectedOgImageS3Key
         );
         shouldQueueJob = !platformLinks.spotify_url || needsOGRegeneration;
       }

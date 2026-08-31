@@ -8,6 +8,7 @@
 import { Jimp } from 'jimp';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { OG_IMAGE_CENTER_SIZE } from './ogImageLayout.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +16,7 @@ const __dirname = path.dirname(__filename);
 // Constantes OG Image
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
-const CENTER_IMAGE_SIZE = 400;
+const CENTER_IMAGE_SIZE = OG_IMAGE_CENTER_SIZE;
 const BLUR_RADIUS = 40;
 const BG_COLOR = 0x333333ff; // Gris foncé
 const BACKGROUND_IMAGE = path.join(__dirname, '../../public/images/charbon-wafer-kintsugi.jpg');

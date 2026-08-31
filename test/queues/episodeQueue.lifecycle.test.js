@@ -8,6 +8,7 @@ import {
   setEpisodeQueueShuttingDown,
   stopQueue
 } from '../../server/queues/episodeQueue.js'
+import { getOGImageS3Key } from '../../server/services/ogImageLayout.js'
 
 function createFakeBoss({ failAt, sendResult, sendError } = {}) {
   const candidate = new EventEmitter()
@@ -186,6 +187,12 @@ describe('episodeQueue lifecycle', () => {
 
   test('skips costly enrichment when the current episode cache is already complete', async () => {
     const candidate = createFakeBoss()
+    const expectedOgImageS3Key = getOGImageS3Key({
+      season: 2,
+      episode: 1,
+      imageUrl: 'https://example.com/cover.jpg',
+      feedLastBuildDate: '2026-08-19T12:00:00.000Z'
+    })
     let releaseCalls = 0
     const queries = []
     const fastify = {
@@ -199,7 +206,7 @@ describe('episodeQueue lifecycle', () => {
                   spotify_url: 'https://open.spotify.com/episode/direct',
                   apple_url: 'https://podcasts.apple.com/episode/direct',
                   deezer_url: 'https://deezer.com/episode/direct',
-                  og_image_url: 'https://media.example/og.png',
+                  og_image_url: `https://media.example/${expectedOgImageS3Key}`,
                   feed_last_build: '2026-08-19T12:00:00.000Z',
                   generated_at: new Date().toISOString()
                 }]
