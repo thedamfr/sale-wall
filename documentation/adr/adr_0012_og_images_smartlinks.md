@@ -38,13 +38,18 @@ Au lieu de faire du text rendering complexe, on prend la **vignette de l'épisod
 │           │   Vignette    │                 │
 │           │   nette       │                 │
 │           │   centrée     │                 │
-│           │   400×400     │                 │
+│           │   560×560     │                 │
 │           └───────────────┘                 │
 │              (carrée MVP)                   │
 └────────────────────────────────────────────┘
 ```
 
 ### Pourquoi cette approche
+
+Depuis août 2026, la vignette nette mesure **560×560px**. Le format initial de
+400×400px apparaissait trop petit une fois la carte 1200×630 réduite dans le fil
+LinkedIn ; les 35px de marge verticale restants conservent le fond flouté sans
+dominer la composition.
 
 ✅ **Zéro fonts** : Pas de text rendering = pas de galère fonts  
 ✅ **Zéro template** : Vignette déjà dans Castopod  
@@ -135,9 +140,14 @@ Complexité inutile (SVG → PNG → composite)
 ### 3. Migration : 4 colonnes `episode_links`
 
 - `og_image_url` : URL CDN
-- `og_image_s3_key` : Pour cleanup
+- `og_image_s3_key` : clé déterministe pour le cache et le cleanup
 - `feed_last_build` : Détection changements RSS
 - `generated_at` : Fallback 7 jours
+
+Depuis août 2026, `og_image_s3_key` contient un SHA-256 tronqué calculé à partir
+de la saison, du numéro d'épisode, de l'URL de jaquette, de la date de mise à jour
+RSS et de la version du gabarit. Une modification des données ou de la composition
+invalide donc le cache sans régénération répétée.
 
 ---
 
