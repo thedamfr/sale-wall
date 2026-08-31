@@ -133,6 +133,7 @@ describe('GET /podcast traction card', () => {
       feedLastBuildDate: latestEpisode.feedLastBuildDate
     })
     const expectedUrl = `https://media.example/${expectedKey}`
+    const expectedTransformedUrl = `https://saletesincere.fr/cdn-cgi/image/width=1200,height=630,fit=cover,quality=85,format=png/${expectedUrl}`
     const adapter = databaseAdapter()
     adapter.pool.query = async (query, values) => {
       assert.match(query, /SELECT og_image_url/)
@@ -154,14 +155,14 @@ describe('GET /podcast traction card', () => {
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Le deuxième épisode/)
-    assert.ok(response.body.includes(`<meta property="og:image" content="${expectedUrl}">`))
+    assert.ok(response.body.includes(`<meta property="og:image" content="${expectedTransformedUrl}">`))
     assert.match(response.body, /<meta property="og:image:width" content="1200">/)
     assert.match(response.body, /<meta property="og:image:height" content="630">/)
     assert.match(
       response.body,
       /<meta property="og:image:alt" content="Jaquette de l&#x27;épisode Le troisième épisode">/
     )
-    assert.ok(response.body.includes(`<meta name="twitter:image" content="${expectedUrl}">`))
+    assert.ok(response.body.includes(`<meta name="twitter:image" content="${expectedTransformedUrl}">`))
     assert.equal(health.json().episodeIntents.pending, 0)
   })
 
@@ -181,7 +182,7 @@ describe('GET /podcast traction card', () => {
     assert.equal(response.statusCode, 200)
     assert.match(
       response.body,
-      /<meta property="og:image" content="https:\/\/media\.example\/og-images\/s2e3\.png">/
+      /<meta property="og:image" content="https:\/\/saletesincere\.fr\/cdn-cgi\/image\/width=1200,height=630,fit=cover,quality=85,format=png\/https:\/\/media\.example\/og-images\/s2e3\.png">/
     )
     assert.equal(health.json().episodeIntents.pending, 1)
   })
@@ -210,7 +211,7 @@ describe('GET /podcast traction card', () => {
     assert.match(response.body, /href="\/podcast\/2\/3"/)
     assert.match(
       response.body,
-      /<img[^>]+src="\/cdn-cgi\/image\/width=662,quality=85,format=auto\/https:\/\/media\.example\/episode-3\.jpg"[^>]+class="[^"]*h-auto[^"]*w-full[^"]*"/
+      /<img[^>]+src="\/cdn-cgi\/image\/width=662,height=662,fit=pad,background=%23000000,quality=85,format=auto\/https:\/\/media\.example\/episode-3\.jpg"[^>]+class="[^"]*h-auto[^"]*w-full[^"]*"/
     )
     assert.doesNotMatch(response.body, /rel="preconnect"[^>]+cellar-c2\.services\.clever-cloud\.com/)
     assert.match(
