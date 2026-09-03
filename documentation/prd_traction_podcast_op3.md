@@ -2,9 +2,10 @@
 
 ## Statut
 
-- **Version** : 1.1
-- **Date** : 20 août 2026
-- **Statut** : implémenté et vérifié localement ; activation production bloquée
+- **Version** : 1.2
+- **Date** : 3 septembre 2026
+- **Statut** : fonctionnalité initiale activée en production ; évolution 1.2
+  vérifiée localement et en attente de déploiement
 - **Périmètre** : `/podcast`, `/podcast/:season/:episode`, cache OP3 et worker `pg-boss`
 
 ## 1. Résumé produit
@@ -167,8 +168,14 @@ En cas d'égalité, l'épisode publié le plus récemment est sélectionné.
 ### 5.4 Contenu de l'encart
 
 L'encart affiche, si disponibles dans le RSS : image, saison et numéro, titre,
-extrait court, durée, compteur de téléchargements et CTA vers
-`/podcast/:season/:episode`.
+extrait court, durée, compteur cumulé de téléchargements depuis la sortie et CTA
+vers `/podcast/:season/:episode`.
+
+Le compteur hebdomadaire reste le signal de sélection sous « Le plus populaire
+cette semaine », mais n'est plus présenté comme la preuve sociale principale. Le
+texte public utilise `downloads_all` sous la forme « Déjà N téléchargements depuis
+sa sortie, mesurés par OP3 » afin de ne pas réduire la traction de l'épisode à la
+seule fenêtre glissante de sept jours.
 
 ## 6. Expérience page épisode
 

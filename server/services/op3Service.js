@@ -65,8 +65,9 @@ export function selectPopularEpisode({ episodes, stats, now = new Date() }) {
     return {
       kind: 'weekly',
       label: 'Le plus populaire cette semaine',
-      downloads: weekly.stat.downloads7,
-      displayText: formatDownloadsForDisplay(weekly.stat.downloads7),
+      downloads: weekly.stat.downloadsAll,
+      weeklyDownloads: weekly.stat.downloads7,
+      displayText: formatCumulativeDownloadsForDisplay(weekly.stat.downloadsAll),
       episode: weekly.episode
     }
   }
@@ -80,9 +81,15 @@ export function selectPopularEpisode({ episodes, stats, now = new Date() }) {
     kind: 'allTime',
     label: "L'épisode le plus populaire",
     downloads: historical.stat.downloadsAll,
-    displayText: formatDownloadsForDisplay(historical.stat.downloadsAll),
+    displayText: formatCumulativeDownloadsForDisplay(historical.stat.downloadsAll),
     episode: historical.episode
   }
+}
+
+function formatCumulativeDownloadsForDisplay(downloads) {
+  const displayText = formatDownloadsForDisplay(downloads)
+  if (!displayText) return null
+  return `Déjà ${downloads} téléchargements depuis sa sortie, mesurés par OP3`
 }
 
 export function formatDownloadsForDisplay(downloads) {

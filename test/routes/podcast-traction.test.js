@@ -207,7 +207,11 @@ describe('GET /podcast traction card', () => {
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Le plus populaire cette semaine/)
     assert.match(response.body, /Le troisième épisode/)
-    assert.match(response.body, /42 téléchargements mesurés par OP3/)
+    assert.match(
+      response.body,
+      /Déjà 80 téléchargements depuis sa sortie, mesurés par OP3/
+    )
+    assert.doesNotMatch(response.body, />42 téléchargements mesurés par OP3</)
     assert.match(response.body, /href="\/podcast\/2\/3"/)
     assert.match(
       response.body,
