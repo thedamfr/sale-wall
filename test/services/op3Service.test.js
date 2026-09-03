@@ -44,7 +44,7 @@ describe('selectPopularEpisode', () => {
     ]
     const stats = [
       stat({ itemGuid: 'guid-1', downloads7: 12 }),
-      stat({ itemGuid: 'guid-2', downloads7: 31 }),
+      stat({ itemGuid: 'guid-2', downloads7: 31, downloadsAll: 86 }),
       stat({ itemGuid: 'guid-3', downloads7: 18 })
     ]
 
@@ -52,7 +52,12 @@ describe('selectPopularEpisode', () => {
 
     assert.equal(selected.kind, 'weekly')
     assert.equal(selected.episode.itemGuid, 'guid-2')
-    assert.equal(selected.downloads, 31)
+    assert.equal(selected.downloads, 86)
+    assert.equal(selected.weeklyDownloads, 31)
+    assert.equal(
+      selected.displayText,
+      'Déjà 86 téléchargements depuis sa sortie, mesurés par OP3'
+    )
     assert.equal(selected.label, 'Le plus populaire cette semaine')
   })
 
@@ -73,6 +78,10 @@ describe('selectPopularEpisode', () => {
     assert.equal(selected.kind, 'allTime')
     assert.equal(selected.episode.itemGuid, 'guid-2')
     assert.equal(selected.downloads, 95)
+    assert.equal(
+      selected.displayText,
+      'Déjà 95 téléchargements depuis sa sortie, mesurés par OP3'
+    )
     assert.equal(selected.label, "L'épisode le plus populaire")
   })
 
