@@ -1,6 +1,6 @@
 # PRD — Disponibilité vidéo sur les pages podcast
 
-**Version :** 1.4
+**Version :** 1.5
 **Date :** 2026-09-04
 **Statut :** implémenté localement, activation production à réaliser
 
@@ -16,9 +16,9 @@ une présentation discrète inspirée des métadonnées Apple Podcasts.
 
 ## Expérience attendue
 
-- `/podcast` affiche une petite pastille « Vidéo » suivie uniquement du site
-  officiel, d'Apple Podcasts et de Spotify lorsqu'au moins un épisode publié
-  possède une preuve ; YouTube n'est pas mentionné sur cette page.
+- `/podcast` n'affiche aucune métadonnée ou pastille de disponibilité vidéo.
+- La chaîne YouTube reste proposée parmi les plateformes de diffusion de
+  `/podcast`.
 - `/podcast/:season/:episode` affiche la même métadonnée au niveau de l’épisode.
 - Les cartes Spotify et YouTube reçoivent une micro-pastille vidéo seulement
   lorsque la vidéo de cet épisode est vérifiée sur la plateforme concernée.
@@ -148,7 +148,8 @@ optionnelle des nouvelles colonnes perd uniquement ce cache dérivé.
 ## Critères d’acceptation
 
 - Le lien de chaîne YouTube seul ne déclenche aucune disponibilité vidéo.
-- `/podcast` n'affiche ni YouTube dans la métadonnée vidéo, ni carte YouTube.
+- `/podcast` n'affiche aucune métadonnée vidéo et conserve la carte de la chaîne
+  YouTube parmi les plateformes de diffusion.
 - Une enclosure RSS ne déclenche jamais Spotify ou YouTube.
 - Un épisode Spotify vidéo vérifié est indiqué même sans enclosure RSS.
 - S3E2 affiche Spotify 4K et YouTube 4K, avec une micro-pastille sur chacune des
@@ -195,6 +196,12 @@ La version 1.4 resserre le rendu après revue visuelle : la page principale ne
 mentionne plus YouTube et une page épisode ne propose plus de lien générique vers
 la chaîne lorsqu'aucune vidéo directe n'a été réconciliée. Les 28 tests ciblés de
 routes podcast, mode dégradé et traction réussissent.
+
+La version 1.5 clarifie la revue visuelle : la métadonnée vidéo agrégée disparaît
+entièrement de `/podcast`, tandis que la carte générique YouTube revient dans la
+liste des plateformes de diffusion. Elle ne revient jamais comme fallback sur une
+page épisode. La pastille YouTube vidéo utilise un fond rouge et un texte blanc
+pour assurer un contraste lisible.
 
 Aucun changement de production, de variable Clever Cloud ou de base distante
 n’est inclus dans cette activation locale.

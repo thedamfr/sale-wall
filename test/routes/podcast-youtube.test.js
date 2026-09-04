@@ -73,17 +73,15 @@ async function createApp({ youtubeUrl = null } = {}) {
 }
 
 describe('podcast YouTube links', () => {
-  test('does not render a generic YouTube destination on the main podcast page', async () => {
-    const app = await createApp({
-      youtubeUrl: 'https://www.youtube.com/watch?v=Bbbbbbbbb-1'
-    })
+  test('renders the generic YouTube channel among platforms on the main podcast page', async () => {
+    const app = await createApp()
 
     const response = await app.inject({ method: 'GET', url: '/podcast' })
 
     assert.equal(response.statusCode, 200)
-    assert.doesNotMatch(response.body, new RegExp(`href="${legacyChannelUrl}"`))
-    assert.doesNotMatch(response.body, /Voir les épisodes vidéo/)
-    assert.doesNotMatch(response.body, /src="\/images\/youtube-logo\.svg"/)
+    assert.match(response.body, new RegExp(`href="${legacyChannelUrl}"`))
+    assert.match(response.body, /Voir les épisodes vidéo/)
+    assert.match(response.body, /src="\/images\/youtube-logo\.svg" alt=""/)
   })
 
   test('links an episode page to its resolved YouTube video', async () => {

@@ -67,6 +67,7 @@ async function createApp(platformLinks = null, {
     }),
     episodeFetcher: async () => episode,
     podcastEpisodesFetcher: async () => episodes,
+    youtubeChannelUrl: null,
     youtubeEpisodeResolutionEnabled: true
   })
   apps.push(app)
@@ -80,7 +81,7 @@ function elementById(body, tag, id) {
 }
 
 describe('podcast format and platform availability', () => {
-  test('lists only independently verified platforms on /podcast', async () => {
+  test('does not render an aggregate video tag on /podcast', async () => {
     const hostedEpisode = episodeData({
       season: 3,
       episode: 3,
@@ -109,16 +110,10 @@ describe('podcast format and platform availability', () => {
     })
 
     const response = await app.inject({ method: 'GET', url: '/podcast' })
-    const availability = elementById(response.body, 'p', 'podcast-video-availability')
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Choisis ton format et ta plateforme/)
-    assert.match(availability, />Vidéo</)
-    assert.match(availability, /Site officiel/)
-    assert.match(availability, /Apple Podcasts/)
-    assert.match(availability, /Spotify/)
-    assert.doesNotMatch(availability, /YouTube/)
-    assert.doesNotMatch(response.body, /src="\/images\/youtube-logo\.svg"/)
+    assert.doesNotMatch(response.body, /id="podcast-video-availability"/)
     assert.doesNotMatch(response.body, /id="podcast-availability"/)
   })
 
@@ -166,6 +161,11 @@ describe('podcast format and platform availability', () => {
       response.body,
       /href="https:\/\/www\.youtube\.com\/watch\?v&#x3D;Bbbbbbbbb-1"[\s\S]*?>Vidéo 4K<\/span>[\s\S]*?<\/a>/
     )
+    assert.match(
+      response.body,
+      /class="rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white">Vidéo 4K<\/span>/
+    )
+    assert.doesNotMatch(response.body, /text-red-600">Vidéo 4K<\/span>/)
     assert.match(
       response.body,
       /<meta property="og:image" content="https:\/\/i\.ytimg\.com\/vi\/Bbbbbbbbb-1\/maxresdefault\.jpg">/

@@ -95,33 +95,6 @@ export function getHealthPayload(
   };
 }
 
-function getPodcastVideoAvailability(episodes, platformRows) {
-  const hostedVideo = episodes.some((episode) => episode?.hasVideo);
-  const episodeKeys = new Set(episodes.map(({ season, episode }) => `${season}:${episode}`));
-  const currentPlatformRows = platformRows.filter(({ season, episode }) => (
-    episodeKeys.has(`${season}:${episode}`)
-  ));
-  const platforms = [];
-
-  if (hostedVideo) platforms.push('Site officiel');
-  if (episodes.some((episode) => (
-    episode?.videoFormats?.hls
-    && currentPlatformRows.some((row) => (
-      row.season === episode.season
-      && row.episode === episode.episode
-      && row.apple_url
-    ))
-  ))) {
-    platforms.push('Apple Podcasts');
-  }
-  if (currentPlatformRows.some((row) => row.spotify_video_available === true)) {
-    platforms.push('Spotify');
-  }
-  return platforms.length > 0
-    ? { platformsText: platforms.join(' · ') }
-    : null;
-}
-
 function getEpisodeVideoAvailability(episodeData, platformLinks) {
   const hostedVideo = Boolean(episodeData?.hasVideo);
   const platforms = [];
@@ -182,6 +155,7 @@ export async function buildApp({
   op3EpisodeStatsReader = getEpisodeStats,
   op3StatsListReader = getEpisodeStatsForGuids,
   op3PublicStatsEnabled = process.env.OP3_PUBLIC_STATS_ENABLED === 'true',
+  youtubeChannelUrl = process.env.YOUTUBE_CHANNEL_URL || null,
   youtubeEpisodeResolutionEnabled = isYouTubeEpisodeResolutionConfigured(),
   now = () => new Date(),
   episodeQueuer = queueEpisodeResolution,
@@ -1036,7 +1010,6 @@ app.get("/podcast", {
   let latestImageNeedsRegeneration = false;
   let latestEpisode = null;
   let popularEpisode = null;
-  let podcastPlatformRows = [];
   let databaseState = databaseAvailability.getState();
 
   try {
@@ -1056,31 +1029,6 @@ app.get("/podcast", {
         alt: `Jaquette de l'épisode ${latestEpisode.title}`
       }
     : null;
-
-  if (episodes.length > 0 && database && canReadDatabase(databaseState)) {
-    let client = null;
-    try {
-      client = await database.connect();
-      const platformResult = await client.query(
-        `SELECT season, episode, apple_url, spotify_video_available
-         FROM episode_links
-         WHERE apple_url IS NOT NULL
-            OR spotify_video_available IS TRUE`
-      );
-      podcastPlatformRows = platformResult.rows;
-    } catch (error) {
-      if (reportDatabaseError(error, 'podcast_video_availability')) {
-        databaseState = databaseAvailability.getState();
-      } else {
-        app.log.warn({
-          event: 'podcast_video_availability_unavailable',
-          errorCode: error?.code || error?.name || 'UNKNOWN'
-        }, 'podcast_video_availability_unavailable');
-      }
-    } finally {
-      client?.release();
-    }
-  }
 
   if (latestEpisode && database && canReadDatabase(databaseState)) {
     try {
@@ -1163,7 +1111,7 @@ app.get("/podcast", {
     episodeData: null,
     popularEpisode,
     podcastSocialImage,
-    podcastVideoAvailability: getPodcastVideoAvailability(episodes, podcastPlatformRows)
+    youtubeUrl: youtubeChannelUrl
   });
 });
 
@@ -1359,7 +1307,7 @@ app.get("/podcast/:season/:episode", {
     },
     platformLinks,
     episodeVideoAvailability: getEpisodeVideoAvailability(episodeData, platformLinks),
-    showYouTubeLink: Boolean(platformLinks?.youtube_url),
+    youtubeUrl: platformLinks?.youtube_url || null,
     ogImageUrl: platformLinks?.og_image_url || null, // Pass OG image for player cover
     episodeStats, // OP3 badge data (ADR-0015)
   });

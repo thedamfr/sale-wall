@@ -33,7 +33,8 @@ exacte `https://saletesincere.fr/podcast/:season/:episode` dans la description
 YouTube. Cette méthode évite un second worker et les ambiguïtés de titres. La
 colonne additive `episode_links.youtube_url` est introduite par la migration 009.
 Si la clé API ou la playlist manque, YouTube n'entre pas dans le critère de cache
-complet et aucune carte YouTube n'est rendue. La spécification d'activation est
+complet et aucune carte YouTube n'est rendue sur la page épisode. `/podcast`
+conserve son lien de navigation vers la chaîne. La spécification d'activation est
 dans [`../prd_youtube_podcast.md`](../prd_youtube_podcast.md).
 
 **Amendement 2026-09-04 — preuves vidéo indépendantes et image YouTube.** La
@@ -41,9 +42,10 @@ présence d'un `podcast:alternateEnclosure` MP4 ou HLS doté d'une source HTTP(S
 valide est uniquement la source de vérité de la vidéo hébergée. Elle ne prouve
 ni Spotify ni YouTube. Apple exige en plus le lien direct du même épisode,
 Spotify exige un lien direct et un verdict vidéo de son oEmbed officiel mis en
-cache, et YouTube exige un lien vidéo direct résolu. `/podcast` ne mentionne pas
-YouTube et une page épisode sans lien direct ne rend aucune carte YouTube ; il
-n'existe pas de redirection de secours vers la chaîne. Les qualités HD/4K sont des
+cache, et YouTube exige un lien vidéo direct résolu. `/podcast` ne rend aucune
+métadonnée vidéo agrégée mais conserve YouTube parmi ses plateformes de diffusion.
+Une page épisode sans lien direct ne rend aucune carte YouTube ; il n'existe pas
+de redirection de secours vers la chaîne. Les qualités HD/4K sont des
 métadonnées éditoriales explicites, car les API publiques utilisées ne les
 exposent pas de façon fiable. La migration 010 ajoute le verdict Spotify et le
 cache de miniature YouTube. Lorsqu'une vidéo possède une miniature `maxres`
