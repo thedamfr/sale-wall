@@ -1,6 +1,6 @@
 # PRD — Disponibilité vidéo sur les pages podcast
 
-**Version :** 1.3
+**Version :** 1.4
 **Date :** 2026-09-04
 **Statut :** implémenté localement, activation production à réaliser
 
@@ -16,13 +16,15 @@ une présentation discrète inspirée des métadonnées Apple Podcasts.
 
 ## Expérience attendue
 
-- `/podcast` affiche une petite pastille « Vidéo » suivie uniquement des
-  plateformes pour lesquelles au moins un épisode publié possède une preuve.
+- `/podcast` affiche une petite pastille « Vidéo » suivie uniquement du site
+  officiel, d'Apple Podcasts et de Spotify lorsqu'au moins un épisode publié
+  possède une preuve ; YouTube n'est pas mentionné sur cette page.
 - `/podcast/:season/:episode` affiche la même métadonnée au niveau de l’épisode.
 - Les cartes Spotify et YouTube reçoivent une micro-pastille vidéo seulement
   lorsque la vidéo de cet épisode est vérifiée sur la plateforme concernée.
-- Le lien générique vers la chaîne YouTube reste disponible, mais n’est jamais
-  présenté comme le lien vidéo de l’épisode.
+- La carte YouTube n'existe sur une page épisode que lorsqu'un lien direct vers
+  la vidéo de cet épisode a été réconcilié. Aucun lien générique de chaîne ne la
+  remplace.
 - S3E1 est marqué « Spotify (HD) ».
 - S3E2 est marqué « Spotify (4K) · YouTube (4K) ».
 - Lorsque YouTube fournit une miniature `maxres` 16/9, elle devient l’image Open
@@ -146,11 +148,13 @@ optionnelle des nouvelles colonnes perd uniquement ce cache dérivé.
 ## Critères d’acceptation
 
 - Le lien de chaîne YouTube seul ne déclenche aucune disponibilité vidéo.
+- `/podcast` n'affiche ni YouTube dans la métadonnée vidéo, ni carte YouTube.
 - Une enclosure RSS ne déclenche jamais Spotify ou YouTube.
 - Un épisode Spotify vidéo vérifié est indiqué même sans enclosure RSS.
 - S3E2 affiche Spotify 4K et YouTube 4K, avec une micro-pastille sur chacune des
   deux cartes.
 - S3E1 affiche Spotify HD et n’affiche pas YouTube sans lien direct.
+- Une page épisode sans lien YouTube direct n'affiche aucune carte YouTube.
 - Une réponse Spotify audio-only interdit la pastille Spotify.
 - Une vidéo YouTube avec miniature `maxres` valide utilise cette image dans
   `og:image` et `twitter:image` en 1280 × 720.
@@ -186,6 +190,11 @@ Validation de la version 1.3 :
   4K et YouTube 4K, les deux liens directs, les deux micro-pastilles et la
   miniature YouTube 1280 × 720 dans `og:image` et `twitter:image` ;
 - `/podcast/3/2/` redirige vers l’URL canonique sans slash final.
+
+La version 1.4 resserre le rendu après revue visuelle : la page principale ne
+mentionne plus YouTube et une page épisode ne propose plus de lien générique vers
+la chaîne lorsqu'aucune vidéo directe n'a été réconciliée. Les 28 tests ciblés de
+routes podcast, mode dégradé et traction réussissent.
 
 Aucun changement de production, de variable Clever Cloud ou de base distante
 n’est inclus dans cette activation locale.

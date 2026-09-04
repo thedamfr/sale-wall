@@ -117,8 +117,6 @@ function getPodcastVideoAvailability(episodes, platformRows) {
   if (currentPlatformRows.some((row) => row.spotify_video_available === true)) {
     platforms.push('Spotify');
   }
-  if (currentPlatformRows.some((row) => row.youtube_url)) platforms.push('YouTube');
-
   return platforms.length > 0
     ? { platformsText: platforms.join(' · ') }
     : null;
@@ -184,7 +182,6 @@ export async function buildApp({
   op3EpisodeStatsReader = getEpisodeStats,
   op3StatsListReader = getEpisodeStatsForGuids,
   op3PublicStatsEnabled = process.env.OP3_PUBLIC_STATS_ENABLED === 'true',
-  youtubeChannelUrl = process.env.YOUTUBE_CHANNEL_URL || null,
   youtubeEpisodeResolutionEnabled = isYouTubeEpisodeResolutionConfigured(),
   now = () => new Date(),
   episodeQueuer = queueEpisodeResolution,
@@ -1065,11 +1062,10 @@ app.get("/podcast", {
     try {
       client = await database.connect();
       const platformResult = await client.query(
-        `SELECT season, episode, apple_url, spotify_video_available, youtube_url
+        `SELECT season, episode, apple_url, spotify_video_available
          FROM episode_links
          WHERE apple_url IS NOT NULL
-            OR spotify_video_available IS TRUE
-            OR youtube_url IS NOT NULL`
+            OR spotify_video_available IS TRUE`
       );
       podcastPlatformRows = platformResult.rows;
     } catch (error) {
@@ -1167,8 +1163,6 @@ app.get("/podcast", {
     episodeData: null,
     popularEpisode,
     podcastSocialImage,
-    showYouTubeLink: Boolean(youtubeChannelUrl),
-    youtubeChannelUrl,
     podcastVideoAvailability: getPodcastVideoAvailability(episodes, podcastPlatformRows)
   });
 });
@@ -1365,8 +1359,7 @@ app.get("/podcast/:season/:episode", {
     },
     platformLinks,
     episodeVideoAvailability: getEpisodeVideoAvailability(episodeData, platformLinks),
-    showYouTubeLink: Boolean(youtubeChannelUrl || platformLinks?.youtube_url),
-    youtubeChannelUrl,
+    showYouTubeLink: Boolean(platformLinks?.youtube_url),
     ogImageUrl: platformLinks?.og_image_url || null, // Pass OG image for player cover
     episodeStats, // OP3 badge data (ADR-0015)
   });

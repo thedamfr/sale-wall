@@ -7,7 +7,6 @@ import {
 } from '../../server/resilience/databaseAvailability.js'
 
 const apps = []
-const youtubeChannelUrl = 'https://www.youtube.com/@charbonwafer'
 
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()))
@@ -54,7 +53,6 @@ function databaseAdapter(platformLinks = null, podcastPlatformRows = []) {
 }
 
 async function createApp(platformLinks = null, {
-  channelUrl = youtubeChannelUrl,
   episode = episodeData(),
   episodes = [episode],
   podcastPlatformRows = []
@@ -69,7 +67,6 @@ async function createApp(platformLinks = null, {
     }),
     episodeFetcher: async () => episode,
     podcastEpisodesFetcher: async () => episodes,
-    youtubeChannelUrl: channelUrl,
     youtubeEpisodeResolutionEnabled: true
   })
   apps.push(app)
@@ -120,14 +117,14 @@ describe('podcast format and platform availability', () => {
     assert.match(availability, /Site officiel/)
     assert.match(availability, /Apple Podcasts/)
     assert.match(availability, /Spotify/)
-    assert.match(availability, /YouTube/)
+    assert.doesNotMatch(availability, /YouTube/)
+    assert.doesNotMatch(response.body, /src="\/images\/youtube-logo\.svg"/)
     assert.doesNotMatch(response.body, /id="podcast-availability"/)
   })
 
-  test('does not treat the RSS feed or YouTube channel as episode publication proof', async () => {
+  test('does not treat the RSS feed as cross-platform publication proof', async () => {
     const audioEpisode = episodeData()
     const app = await createApp(null, {
-      channelUrl: youtubeChannelUrl,
       episode: audioEpisode,
       episodes: [audioEpisode]
     })
@@ -136,6 +133,7 @@ describe('podcast format and platform availability', () => {
 
     assert.equal(response.statusCode, 200)
     assert.doesNotMatch(response.body, /id="podcast-video-availability"/)
+    assert.doesNotMatch(response.body, /src="\/images\/youtube-logo\.svg"/)
   })
 
   test('shows S3E2 as 4K on Spotify and YouTube without an RSS video enclosure', async () => {
