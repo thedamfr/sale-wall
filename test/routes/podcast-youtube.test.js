@@ -95,14 +95,14 @@ describe('podcast YouTube links', () => {
     assert.match(response.body, /Voir Mais l’IA consomme de l’eau/)
   })
 
-  test('keeps the channel as the episode fallback while resolution is pending', async () => {
+  test('keeps the channel as a generic fallback without implying an episode video', async () => {
     const app = await createApp()
 
     const response = await app.inject({ method: 'GET', url: '/podcast/3/1' })
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, new RegExp(`href="${channelUrl}"`))
-    assert.match(response.body, /Vidéo en cours de référencement/)
+    assert.match(response.body, /Voir la chaîne du podcast/)
     assert.equal(response.headers['cache-control'], 'public, max-age=60')
   })
 })

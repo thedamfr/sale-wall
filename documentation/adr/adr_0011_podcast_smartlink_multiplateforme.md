@@ -36,15 +36,19 @@ Si la clé API ou la playlist manque, YouTube n'entre pas dans le critère de ca
 complet et la page conserve le lien de chaîne. La spécification d'activation est
 dans [`../prd_youtube_podcast.md`](../prd_youtube_podcast.md).
 
-**Amendement 2026-09-04 — disponibilité vidéo issue du flux.** La présence d'un
-`podcast:alternateEnclosure` MP4 ou HLS doté d'une source HTTP(S) valide devient
-la source de vérité pour la vidéo hébergée. Le parseur RSS n'expose au rendu que
-deux capacités booléennes (`mp4` et `hls`), jamais les URLs médias. Les pages
-utilisent une petite pastille dans leurs métadonnées plutôt qu'un encart dédié.
-Sur une page épisode, une destination n'est nommée que si son lien direct est
-résolu ; l'enclosure HLS qualifie Apple Podcasts et le contrat éditorial du
-podcast associe une enclosure vidéo plus un lien Spotify à la vidéo Spotify HD.
-YouTube reste une preuve vidéo indépendante lorsqu'un lien direct est résolu.
+**Amendement 2026-09-04 — preuves vidéo indépendantes et image YouTube.** La
+présence d'un `podcast:alternateEnclosure` MP4 ou HLS doté d'une source HTTP(S)
+valide est uniquement la source de vérité de la vidéo hébergée. Elle ne prouve
+ni Spotify ni YouTube. Apple exige en plus le lien direct du même épisode,
+Spotify exige un lien direct et un verdict vidéo de son oEmbed officiel mis en
+cache, et YouTube exige un lien vidéo direct résolu. Le lien générique de chaîne
+reste une navigation et ne qualifie aucun épisode. Les qualités HD/4K sont des
+métadonnées éditoriales explicites, car les API publiques utilisées ne les
+exposent pas de façon fiable. La migration 010 ajoute le verdict Spotify et le
+cache de miniature YouTube. Lorsqu'une vidéo possède une miniature `maxres`
+16/9 valide fournie par l'API YouTube, celle-ci devient l'image de partage de la
+page épisode ; l'image OG générée reste le fallback. Les détails et critères de
+validation sont dans [`../prd_youtube_podcast.md`](../prd_youtube_podcast.md).
 
 ---
 
