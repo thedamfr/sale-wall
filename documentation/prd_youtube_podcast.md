@@ -185,14 +185,16 @@ Extension d'interface 1.2 :
 - `npm run build` réussit. Le CSS régénéré par Tailwind 4.1.11 n'est pas conservé
   car l'artefact versionné vient de Tailwind 4.3.3 ; le rendu final utilise
   uniquement des classes déjà présentes dans cet artefact ;
-- la suite complète exécute 143 tests : 108 passent, 12 intégrations sont
-  ignorées et 23 échouent hors du changement. Vingt-deux anciens tests dépendent
-  des épisodes du flux RSS public, qui répond actuellement HTTP 500 ; le test
-  mémoire Jimp fluctue à 58,93 Mo, puis ses deux cas passent isolément avec une
-  croissance mesurée de -0,30 Mo et -0,05 Mo ;
+- après le retour du flux RSS public, la suite complète exécute 143 tests : 130
+  passent, 12 intégrations sont ignorées et seul le test mémoire Jimp fluctuant
+  échoue à 62,97 Mo pour un seuil de 60 Mo ; ses deux cas passent isolément avec
+  une croissance mesurée de -0,30 Mo et -0,05 Mo ;
 - `/podcast` et `/podcast/3/1` ont été contrôlés visuellement via l'aperçu
   Tailscale : aucun encart dédié, une métadonnée vidéo compacte et une
   micro-pastille « Vidéo HD » sur le lien Spotify.
+- le même aperçu est ensuite branché sur le flux RSS et les liens publics réels :
+  S3E1 remonte avec son titre et son lien Spotify direct de production, mais sans
+  pastille tant que le flux ne contient pas encore les enclosures MP4/HLS.
 
 À ce stade, aucun changement de production, de variable Clever Cloud ou de base
 de données distante n'a été fait.
