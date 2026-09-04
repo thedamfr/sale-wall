@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {
   getBoss,
   initializeEpisodeWorker,
+  isEpisodeCacheComplete,
   queueEpisodeResolution,
   setEpisodeQueueShuttingDown,
   stopQueue
@@ -52,6 +53,42 @@ afterEach(async () => {
 })
 
 describe('episodeQueue lifecycle', () => {
+  test('requires a YouTube link only when YouTube resolution is enabled', () => {
+    const expectedOgImageS3Key = getOGImageS3Key({
+      season: 3,
+      episode: 1,
+      imageUrl: 'https://example.com/cover.jpg',
+      feedLastBuildDate: '2026-09-04T08:00:00.000Z'
+    })
+    const cached = {
+      spotify_url: 'https://open.spotify.com/episode/direct',
+      apple_url: 'https://podcasts.apple.com/episode/direct',
+      deezer_url: 'https://deezer.com/episode/direct',
+      youtube_url: null,
+      og_image_url: `https://media.example/${expectedOgImageS3Key}`,
+      feed_last_build: '2026-09-04T08:00:00.000Z',
+      generated_at: '2026-09-04T09:00:00.000Z'
+    }
+    const options = {
+      expectedOgImageS3Key,
+      feedLastBuildDate: '2026-09-04T08:00:00.000Z',
+      now: new Date('2026-09-04T10:00:00.000Z').getTime()
+    }
+
+    assert.equal(isEpisodeCacheComplete(cached, options), true)
+    assert.equal(isEpisodeCacheComplete(cached, {
+      ...options,
+      youtubeResolutionEnabled: true
+    }), false)
+    assert.equal(isEpisodeCacheComplete({
+      ...cached,
+      youtube_url: 'https://www.youtube.com/watch?v=Bbbbbbbbb-1'
+    }, {
+      ...options,
+      youtubeResolutionEnabled: true
+    }), true)
+  })
+
   test('returns an explicit contract when the worker is unavailable', async () => {
     const result = await queueEpisodeResolution(
       2,

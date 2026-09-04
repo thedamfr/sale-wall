@@ -318,6 +318,25 @@
                         </svg>
                     </div>
                 </a>
+
+                {{#if youtubeChannelUrl}}
+                <!-- YouTube -->
+                <a href="{{#if platformLinks.youtube_url}}{{platformLinks.youtube_url}}{{else}}{{youtubeChannelUrl}}{{/if}}" target="_blank" rel="noopener noreferrer"
+                   class="block w-full bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-sm rounded-2xl px-6 py-4 transition-all duration-200 transform hover:scale-105 hover:shadow-lg border border-white border-opacity-20 text-black">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="/images/youtube-logo.svg" alt="" class="w-10 h-10 flex-shrink-0">
+                            <div class="text-left">
+                                <div class="font-semibold text-black">YouTube</div>
+                                <div class="text-xs text-gray-500">{{#if platformLinks.youtube_url}}Voir {{episodeData.title}}{{else}}{{#if youtubeResolutionPending}}Vidéo en cours de référencement{{else}}Voir les épisodes vidéo{{/if}}{{/if}}</div>
+                            </div>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </a>
+                {{/if}}
                 
                 <!-- Apple Podcasts -->
                 <a href="{{#if platformLinks.apple_url}}{{platformLinks.apple_url}}{{else}}https://podcasts.apple.com/us/podcast/pas-de-charbon-pas-de-wafer/id1846531745{{/if}}" target="_blank" rel="noopener noreferrer" 

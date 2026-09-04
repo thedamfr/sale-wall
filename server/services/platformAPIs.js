@@ -81,6 +81,84 @@ export async function searchDeezerEpisode(episodeDate) {
   return episode ? `https://www.deezer.com/fr/episode/${episode.id}` : null
 }
 
+export function isYouTubeEpisodeResolutionConfigured(env = process.env) {
+  return Boolean(env.YOUTUBE_API_KEY && env.YOUTUBE_UPLOADS_PLAYLIST_ID)
+}
+
+function descriptionReferencesEpisode(description, season, episode) {
+  if (typeof description !== 'string') return false
+
+  const episodeUrlPattern = /https:\/\/saletesincere\.fr\/podcast\/(\d+)\/(\d+)/g
+  const canonicalUrl = `https://saletesincere.fr/podcast/${season}/${episode}`
+  return Array.from(description.matchAll(episodeUrlPattern)).some((match) => (
+    match[0] === canonicalUrl
+  ))
+}
+
+/**
+ * Resolves a YouTube episode from the channel uploads playlist.
+ *
+ * The publication title and date are deliberately ignored. The contract is the
+ * canonical smartlink URL in the YouTube description, for example:
+ * https://saletesincere.fr/podcast/3/1
+ */
+export async function searchYouTubeEpisode(season, episode, {
+  apiKey = process.env.YOUTUBE_API_KEY,
+  uploadsPlaylistId = process.env.YOUTUBE_UPLOADS_PLAYLIST_ID,
+  fetchImpl = fetch,
+  maxPages = 20
+} = {}) {
+  if (!apiKey || !uploadsPlaylistId) return null
+  if (!Number.isInteger(season) || season < 1 || !Number.isInteger(episode) || episode < 0) {
+    return null
+  }
+
+  let pageToken = null
+  const visitedTokens = new Set()
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems')
+    url.searchParams.set('part', 'snippet')
+    url.searchParams.set('playlistId', uploadsPlaylistId)
+    url.searchParams.set('maxResults', '50')
+    url.searchParams.set('key', apiKey)
+    if (pageToken) url.searchParams.set('pageToken', pageToken)
+
+    let response
+    try {
+      response = await fetchImpl(url, { signal: AbortSignal.timeout(5000) })
+    } catch {
+      return null
+    }
+    if (!response.ok) return null
+
+    let data
+    try {
+      data = await response.json()
+    } catch {
+      return null
+    }
+
+    const matchingItem = Array.isArray(data?.items)
+      ? data.items.find(({ snippet }) => (
+          descriptionReferencesEpisode(snippet?.description, season, episode)
+          && /^[A-Za-z0-9_-]{11}$/.test(snippet?.resourceId?.videoId || '')
+        ))
+      : null
+
+    if (matchingItem) {
+      return `https://www.youtube.com/watch?v=${matchingItem.snippet.resourceId.videoId}`
+    }
+
+    const nextPageToken = data?.nextPageToken
+    if (!nextPageToken || visitedTokens.has(nextPageToken)) return null
+    visitedTokens.add(nextPageToken)
+    pageToken = nextPageToken
+  }
+
+  return null
+}
+
 export function buildPodcastAddictLink(audioUrl) {
   if (!audioUrl || audioUrl.trim() === '') {
     throw new Error('audioUrl required')

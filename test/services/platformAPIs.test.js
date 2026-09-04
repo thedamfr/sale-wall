@@ -35,6 +35,8 @@ import {
   searchSpotifyEpisode,
   searchAppleEpisode,
   searchDeezerEpisode,
+  searchYouTubeEpisode,
+  isYouTubeEpisodeResolutionConfigured,
   buildPodcastAddictLink,
   buildFallbackLinks
 } from '../../server/services/platformAPIs.js'
@@ -186,6 +188,149 @@ describe('platformAPIs', () => {
       const deeplink = await searchDeezerEpisode(episodeDate)
       
       assert.strictEqual(deeplink, null)
+    })
+  })
+
+  describe('searchYouTubeEpisode', () => {
+    test('finds the video whose description contains the exact canonical episode URL', async () => {
+      const requests = []
+      const fetchImpl = async (url) => {
+        requests.push(new URL(url))
+        return {
+          ok: true,
+          async json() {
+            return {
+              items: [
+                {
+                  snippet: {
+                    description: 'Voir aussi https://saletesincere.fr/podcast/3/10',
+                    resourceId: { videoId: 'AAAAAAAAAAA' }
+                  }
+                },
+                {
+                  snippet: {
+                    description: 'URL non canonique : https://saletesincere.fr/podcast/03/01',
+                    resourceId: { videoId: 'EEEEEEEEEEE' }
+                  }
+                },
+                {
+                  snippet: {
+                    description: 'Page de l’épisode : https://saletesincere.fr/podcast/3/1',
+                    resourceId: { videoId: 'Bbbbbbbbb-1' }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+
+      const result = await searchYouTubeEpisode(3, 1, {
+        apiKey: 'test-api-key',
+        uploadsPlaylistId: 'UU-test-uploads',
+        fetchImpl
+      })
+
+      assert.equal(result, 'https://www.youtube.com/watch?v=Bbbbbbbbb-1')
+      assert.equal(requests.length, 1)
+      assert.equal(requests[0].origin, 'https://www.googleapis.com')
+      assert.equal(requests[0].pathname, '/youtube/v3/playlistItems')
+      assert.equal(requests[0].searchParams.get('playlistId'), 'UU-test-uploads')
+      assert.equal(requests[0].searchParams.get('part'), 'snippet')
+      assert.equal(requests[0].searchParams.get('maxResults'), '50')
+    })
+
+    test('follows uploads playlist pagination without matching the video title', async () => {
+      let calls = 0
+      const fetchImpl = async (url) => {
+        calls += 1
+        const pageToken = new URL(url).searchParams.get('pageToken')
+        return {
+          ok: true,
+          async json() {
+            if (!pageToken) {
+              return {
+                nextPageToken: 'second-page',
+                items: [{
+                  snippet: {
+                    title: 'Saison 2 épisode 3',
+                    description: 'Le bon titre ne suffit pas.',
+                    resourceId: { videoId: 'CCCCCCCCCCC' }
+                  }
+                }]
+              }
+            }
+            return {
+              items: [{
+                snippet: {
+                  description: 'https://saletesincere.fr/podcast/2/3',
+                  resourceId: { videoId: 'DDDDDDDDDDD' }
+                }
+              }]
+            }
+          }
+        }
+      }
+
+      const result = await searchYouTubeEpisode(2, 3, {
+        apiKey: 'test-api-key',
+        uploadsPlaylistId: 'UU-test-uploads',
+        fetchImpl
+      })
+
+      assert.equal(result, 'https://www.youtube.com/watch?v=DDDDDDDDDDD')
+      assert.equal(calls, 2)
+    })
+
+    test('is silently disabled when the API configuration is incomplete', async () => {
+      let calls = 0
+
+      const result = await searchYouTubeEpisode(2, 3, {
+        apiKey: '',
+        uploadsPlaylistId: '',
+        fetchImpl: async () => {
+          calls += 1
+          throw new Error('should not fetch')
+        }
+      })
+
+      assert.equal(result, null)
+      assert.equal(calls, 0)
+      assert.equal(isYouTubeEpisodeResolutionConfigured({
+        YOUTUBE_API_KEY: 'key',
+        YOUTUBE_UPLOADS_PLAYLIST_ID: 'UU-test'
+      }), true)
+      assert.equal(isYouTubeEpisodeResolutionConfigured({
+        YOUTUBE_API_KEY: 'key'
+      }), false)
+    })
+
+    test('ignores malformed video identifiers and API failures', async () => {
+      const malformed = await searchYouTubeEpisode(1, 0, {
+        apiKey: 'test-api-key',
+        uploadsPlaylistId: 'UU-test-uploads',
+        fetchImpl: async () => ({
+          ok: true,
+          async json() {
+            return {
+              items: [{
+                snippet: {
+                  description: 'https://saletesincere.fr/podcast/1/0',
+                  resourceId: { videoId: 'not a valid id' }
+                }
+              }]
+            }
+          }
+        })
+      })
+      const failed = await searchYouTubeEpisode(1, 0, {
+        apiKey: 'test-api-key',
+        uploadsPlaylistId: 'UU-test-uploads',
+        fetchImpl: async () => ({ ok: false, status: 403 })
+      })
+
+      assert.equal(malformed, null)
+      assert.equal(failed, null)
     })
   })
   
