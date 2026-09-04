@@ -36,6 +36,16 @@ Si la clé API ou la playlist manque, YouTube n'entre pas dans le critère de ca
 complet et la page conserve le lien de chaîne. La spécification d'activation est
 dans [`../prd_youtube_podcast.md`](../prd_youtube_podcast.md).
 
+**Amendement 2026-09-04 — disponibilité vidéo issue du flux.** La présence d'un
+`podcast:alternateEnclosure` MP4 ou HLS doté d'une source HTTP(S) valide devient
+la source de vérité pour la vidéo hébergée. Le parseur RSS n'expose au rendu que
+deux capacités booléennes (`mp4` et `hls`), jamais les URLs médias. Les pages
+utilisent une petite pastille dans leurs métadonnées plutôt qu'un encart dédié.
+Sur une page épisode, une destination n'est nommée que si son lien direct est
+résolu ; l'enclosure HLS qualifie Apple Podcasts et le contrat éditorial du
+podcast associe une enclosure vidéo plus un lien Spotify à la vidéo Spotify HD.
+YouTube reste une preuve vidéo indépendante lorsqu'un lien direct est résolu.
+
 ---
 
 ## Contexte

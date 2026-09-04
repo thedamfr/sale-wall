@@ -1,31 +1,52 @@
-# PRD — Épisodes vidéo YouTube sur les pages podcast
+# PRD — Disponibilité vidéo sur les pages podcast
 
-**Version :** 1.1
+**Version :** 1.2
 **Date :** 2026-09-04  
 **Statut :** implémenté et validé localement, activation production à réaliser
 
 ## Problème
 
-Le podcast dispose désormais d'une chaîne YouTube et d'épisodes vidéo. La page
-générale doit rendre la chaîne visible. Une page épisode doit ouvrir la vidéo
-correspondante sans imposer une association manuelle fragile dans le code.
+Le podcast dispose d'épisodes vidéo distribués depuis l'hébergeur en MP4 et HLS,
+sur Spotify en HD et sur YouTube. Les pages podcast doivent rendre cette
+disponibilité visible sans ajouter un encart qui concurrence le contenu principal.
 
 ## Expérience attendue
 
-- `/podcast` affiche une carte YouTube vers la chaîne publique.
-- `/podcast` distingue explicitement l'écoute audio sur Castopod, Apple
-  Podcasts, Spotify, Deezer et Podcast Addict des épisodes filmés disponibles
-  sur YouTube.
+- `/podcast` affiche une petite pastille « Vidéo » suivie des plateformes
+  disponibles, dans la continuité des métadonnées existantes.
+- L'interface ne crée pas de nouvel encart de disponibilité.
 - `/podcast/:season/:episode` ouvre la vidéo précise si elle a été résolue.
-- Une page épisode annonce la vidéo uniquement lorsqu'un lien YouTube direct a
-  été résolu. Elle nomme séparément les plateformes disposant déjà d'un lien
-  audio direct vers cet épisode.
+- Une page épisode annonce la vidéo lorsque son RSS contient un
+  `podcast:alternateEnclosure` MP4 ou HLS valide, ou lorsqu'un lien YouTube
+  direct a été résolu.
+- Elle ne nomme que les destinations vidéo vérifiables pour cet épisode : site
+  officiel, Apple Podcasts avec HLS et lien direct, Spotify (HD) avec lien
+  direct, et YouTube avec lien direct.
+- La carte Spotify affiche une micro-pastille « Vidéo HD » pour l'épisode
+  concerné.
 - Tant que la vidéo n'est pas résolue, la même carte ouvre la chaîne et indique
   que son référencement est en cours lorsque l'API est active.
 - L'absence de PostgreSQL, de `pg-boss` ou de configuration YouTube ne doit pas
   empêcher le rendu des pages garanti par le mode dégradé existant.
 
-## Contrat éditorial
+## Contrats éditoriaux
+
+### Flux RSS vidéo
+
+L'épisode filmé contient un ou deux `podcast:alternateEnclosure` du namespace
+Podcasting 2.0 : un MP4 et un manifeste HLS. Chaque enclosure doit contenir au
+moins un `podcast:source` HTTP(S) valide. Les URLs de médias ne sont ni rendues
+ni journalisées par l'application ; seules les capacités MP4/HLS sont exposées
+au template.
+
+Apple Podcasts consomme le HLS publié dans le flux. Dans ce podcast, la présence
+d'une enclosure vidéo et d'un lien Spotify direct constitue le contrat métier
+indiquant que l'épisode correspondant est aussi disponible en HD sur Spotify.
+
+Références : [Podcast Namespace — alternate enclosure](https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md#alternate-enclosure) et
+[Apple Podcasts — publier une vidéo](https://podcasters.apple.com/support/5593-how-to-publish-video).
+
+### Association YouTube
 
 Chaque description YouTube contient l'URL canonique exacte de l'épisode :
 
@@ -44,15 +65,16 @@ lien vers `/podcast/3/10` ne correspond donc pas à `/podcast/3/1`.
 
 ## Fonctionnement
 
-1. Une visite de page épisode lit `episode_links.youtube_url` avec les autres
+1. La lecture du RSS détecte les enclosures alternatives `video/mp4` et HLS.
+2. Une visite de page épisode lit `episode_links.youtube_url` avec les autres
    liens de plateformes.
-2. Si YouTube est configuré et le lien manque, l'intention rejoint le job
+3. Si YouTube est configuré et le lien manque, l'intention rejoint le job
    `resolve-episode` déjà utilisé par `pg-boss`.
-3. Le worker appelle `playlistItems.list` sur la playlist d'uploads, 50 vidéos
+4. Le worker appelle `playlistItems.list` sur la playlist d'uploads, 50 vidéos
    par page, et cherche l'URL canonique dans `snippet.description`.
-4. Le `videoId` validé devient `https://www.youtube.com/watch?v={videoId}` et est
+5. Le `videoId` validé devient `https://www.youtube.com/watch?v={videoId}` et est
    conservé dans `episode_links.youtube_url`.
-5. Une visite suivante reçoit le lien vidéo direct. Le cache HTTP reste court
+6. Une visite suivante reçoit le lien vidéo direct. Le cache HTTP reste court
    tant que ce lien manque lorsque la résolution est activée.
 
 La méthode `playlistItems.list` expose la description, `resourceId.videoId` et
@@ -90,17 +112,20 @@ la colonne ; cette dernière opération perd les liens déjà résolus.
 - Chaque requête est bornée à 5 secondes et le parcours à 20 pages ; les jetons
   de pagination répétés sont arrêtés.
 - Une erreur API rend `null` et laisse le lien de chaîne utilisable.
-- La carte est un lien clavier standard, ouvert dans un nouvel onglet avec
-  `noopener noreferrer`, et son libellé texte expose explicitement YouTube.
+- Les enclosures sans type reconnu ou sans source HTTP(S) sont ignorées.
+- Les pastilles sont du texte HTML normal et ne remplacent pas le nom accessible
+  des liens de plateformes.
 
 ## Critères d'acceptation
 
-- La page générale affiche la chaîne lorsque son URL est configurée.
-- La page générale nomme les plateformes audio et indique que les épisodes
-  filmés sont disponibles en vidéo sur YouTube.
-- Une page épisode ne présente la vidéo comme disponible que si
-  `episode_links.youtube_url` est renseigné ; les plateformes audio sans lien
-  direct résolu ne figurent pas dans son récapitulatif de disponibilité.
+- La page générale affiche une métadonnée vidéo compacte et aucun encart dédié.
+- MP4 et HLS sont détectés depuis `podcast:alternateEnclosure`; les enclosures
+  audio et les sources non HTTP(S) ne déclenchent rien.
+- Une page épisode vidéo indique discrètement le site officiel, Apple Podcasts,
+  Spotify (HD) et YouTube lorsque les conditions de chaque destination sont
+  remplies.
+- Un épisode uniquement disponible sur YouTube reste identifié comme vidéo.
+- Un épisode RSS vidéo reste identifié comme tel pendant la résolution YouTube.
 - Une vidéo contenant le bon lien canonique est résolue, y compris après
   pagination.
 - Les titres similaires, les autres numéros d'épisode, les réponses en erreur et
@@ -151,6 +176,23 @@ Extension d'interface 1.1 :
 - `/podcast` et `/podcast/3/1` avec une vidéo résolue ont été contrôlés dans le
   navigateur local : hiérarchie accessible, libellés visibles et aucune erreur
   console.
+
+Extension d'interface 1.2 :
+
+- les 13 tests ciblés du parseur RSS et de l'affichage de disponibilité passent ;
+  ils couvrent MP4, HLS, les sources invalides, les liens directs et le fallback
+  YouTube ;
+- `npm run build` réussit. Le CSS régénéré par Tailwind 4.1.11 n'est pas conservé
+  car l'artefact versionné vient de Tailwind 4.3.3 ; le rendu final utilise
+  uniquement des classes déjà présentes dans cet artefact ;
+- la suite complète exécute 143 tests : 108 passent, 12 intégrations sont
+  ignorées et 23 échouent hors du changement. Vingt-deux anciens tests dépendent
+  des épisodes du flux RSS public, qui répond actuellement HTTP 500 ; le test
+  mémoire Jimp fluctue à 58,93 Mo, puis ses deux cas passent isolément avec une
+  croissance mesurée de -0,30 Mo et -0,05 Mo ;
+- `/podcast` et `/podcast/3/1` ont été contrôlés visuellement via l'aperçu
+  Tailscale : aucun encart dédié, une métadonnée vidéo compacte et une
+  micro-pastille « Vidéo HD » sur le lien Spotify.
 
 À ce stade, aucun changement de production, de variable Clever Cloud ou de base
 de données distante n'a été fait.

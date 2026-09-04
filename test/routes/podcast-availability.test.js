@@ -13,7 +13,7 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()))
 })
 
-function episodeData() {
+function episodeData({ hasVideo = true, videoFormats = { mp4: true, hls: true } } = {}) {
   return {
     season: 3,
     episode: 1,
@@ -25,7 +25,9 @@ function episodeData() {
     audioUrl: null,
     itemGuid: 'guid-3-1',
     rawPubDate: '2026-08-25',
-    feedLastBuildDate: '2026-09-04T08:00:00.000Z'
+    feedLastBuildDate: '2026-09-04T08:00:00.000Z',
+    hasVideo,
+    videoFormats
   }
 }
 
@@ -43,7 +45,11 @@ function databaseAdapter(platformLinks = null) {
   }
 }
 
-async function createApp(platformLinks = null, { channelUrl = youtubeChannelUrl } = {}) {
+async function createApp(platformLinks = null, {
+  channelUrl = youtubeChannelUrl,
+  episode = episodeData(),
+  episodes = [episode]
+} = {}) {
   const app = await buildApp({
     initializeStorage: false,
     databaseConfigured: false,
@@ -52,8 +58,8 @@ async function createApp(platformLinks = null, { channelUrl = youtubeChannelUrl 
       initialState: DatabaseState.READ_WRITE,
       probe: async () => DatabaseState.READ_WRITE
     }),
-    episodeFetcher: async () => episodeData(),
-    podcastEpisodesFetcher: async () => [],
+    episodeFetcher: async () => episode,
+    podcastEpisodesFetcher: async () => episodes,
     youtubeChannelUrl: channelUrl,
     youtubeEpisodeResolutionEnabled: true
   })
@@ -61,42 +67,47 @@ async function createApp(platformLinks = null, { channelUrl = youtubeChannelUrl 
   return app
 }
 
-function availabilitySection(body, id) {
-  const match = body.match(new RegExp(`<section[^>]+id="${id}"[\\s\\S]*?<\\/section>`))
-  assert.ok(match, `Expected the ${id} section to be rendered`)
+function elementById(body, tag, id) {
+  const match = body.match(new RegExp(`<${tag}[^>]+id="${id}"[\\s\\S]*?<\\/${tag}>`))
+  assert.ok(match, `Expected the ${id} element to be rendered`)
   return match[0]
 }
 
 describe('podcast format and platform availability', () => {
-  test('names the audio platforms and YouTube video availability on /podcast', async () => {
+  test('shows a discreet video badge with the known platforms on /podcast', async () => {
     const app = await createApp()
 
     const response = await app.inject({ method: 'GET', url: '/podcast' })
-    const availability = availabilitySection(response.body, 'podcast-availability')
+    const availability = elementById(response.body, 'p', 'podcast-video-availability')
 
     assert.equal(response.statusCode, 200)
     assert.match(response.body, /Choisis ton format et ta plateforme/)
-    assert.match(availability, /Écouter ou regarder Charbon &amp; Wafer/)
-    assert.match(availability, /Castopod/)
+    assert.match(availability, />Vidéo</)
+    assert.match(availability, /Site officiel/)
     assert.match(availability, /Apple Podcasts/)
-    assert.match(availability, /Spotify/)
-    assert.match(availability, /Deezer/)
-    assert.match(availability, /Podcast Addict/)
-    assert.match(availability, /Les épisodes filmés sont disponibles en vidéo sur YouTube/)
+    assert.match(availability, /Spotify \(HD\)/)
+    assert.match(availability, /YouTube/)
+    assert.doesNotMatch(response.body, /id="podcast-availability"/)
   })
 
-  test('does not advertise video on /podcast without a configured channel', async () => {
-    const app = await createApp(null, { channelUrl: null })
+  test('does not advertise video on /podcast when the feed and channel expose none', async () => {
+    const audioEpisode = episodeData({
+      hasVideo: false,
+      videoFormats: { mp4: false, hls: false }
+    })
+    const app = await createApp(null, {
+      channelUrl: null,
+      episode: audioEpisode,
+      episodes: [audioEpisode]
+    })
 
     const response = await app.inject({ method: 'GET', url: '/podcast' })
-    const availability = availabilitySection(response.body, 'podcast-availability')
 
     assert.equal(response.statusCode, 200)
-    assert.match(availability, /Disponible sur Castopod, Apple Podcasts, Spotify, Deezer et Podcast Addict/)
-    assert.doesNotMatch(availability, /disponibles en vidéo sur YouTube/)
+    assert.doesNotMatch(response.body, /id="podcast-video-availability"/)
   })
 
-  test('announces video only when the episode has a resolved YouTube link', async () => {
+  test('marks an RSS video episode as available on its direct platforms', async () => {
     const app = await createApp({
       spotify_url: 'https://open.spotify.com/episode/direct',
       apple_url: 'https://podcasts.apple.com/episode/direct',
@@ -109,19 +120,22 @@ describe('podcast format and platform availability', () => {
     })
 
     const response = await app.inject({ method: 'GET', url: '/podcast/3/1' })
-    const availability = availabilitySection(response.body, 'episode-availability')
+    const availability = elementById(response.body, 'div', 'episode-video-availability')
 
     assert.equal(response.statusCode, 200)
-    assert.match(availability, /Formats disponibles pour cet épisode/)
-    assert.match(availability, /Cet épisode est aussi disponible en vidéo sur YouTube/)
-    assert.match(availability, /Castopod/)
+    assert.match(availability, />Vidéo</)
+    assert.match(availability, /Site officiel/)
     assert.match(availability, /Apple Podcasts/)
-    assert.match(availability, /Spotify/)
-    assert.match(availability, /Deezer/)
-    assert.match(availability, /Podcast Addict/)
+    assert.match(availability, /Spotify \(HD\)/)
+    assert.match(availability, /YouTube/)
+    assert.match(
+      response.body,
+      /href="https:\/\/open\.spotify\.com\/episode\/direct"[\s\S]*?>Vidéo HD<\/span>[\s\S]*?<\/a>/
+    )
+    assert.doesNotMatch(response.body, /id="episode-availability"/)
   })
 
-  test('does not claim a video or unresolved direct audio platforms', async () => {
+  test('keeps RSS video availability visible while YouTube resolution is pending', async () => {
     const app = await createApp({
       spotify_url: 'https://open.spotify.com/episode/direct',
       apple_url: null,
@@ -134,14 +148,39 @@ describe('podcast format and platform availability', () => {
     })
 
     const response = await app.inject({ method: 'GET', url: '/podcast/3/1' })
-    const availability = availabilitySection(response.body, 'episode-availability')
+    const availability = elementById(response.body, 'div', 'episode-video-availability')
 
     assert.equal(response.statusCode, 200)
-    assert.match(availability, /Castopod/)
-    assert.match(availability, /Spotify/)
-    assert.doesNotMatch(availability, /disponible en vidéo sur YouTube/)
+    assert.match(availability, /Site officiel/)
+    assert.match(availability, /Spotify \(HD\)/)
     assert.doesNotMatch(availability, /Apple Podcasts/)
-    assert.doesNotMatch(availability, /Deezer/)
-    assert.doesNotMatch(availability, /Podcast Addict/)
+    assert.doesNotMatch(availability, /YouTube/)
+  })
+
+  test('lists only YouTube when the feed has no video enclosure', async () => {
+    const app = await createApp({
+      spotify_url: null,
+      apple_url: null,
+      deezer_url: null,
+      podcast_addict_url: null,
+      youtube_url: 'https://www.youtube.com/watch?v=Bbbbbbbbb-1',
+      og_image_url: 'https://media.example/og.png',
+      feed_last_build: '2026-09-04T08:00:00.000Z',
+      generated_at: new Date().toISOString()
+    }, {
+      episode: episodeData({
+        hasVideo: false,
+        videoFormats: { mp4: false, hls: false }
+      })
+    })
+
+    const response = await app.inject({ method: 'GET', url: '/podcast/3/1' })
+    const availability = elementById(response.body, 'div', 'episode-video-availability')
+
+    assert.equal(response.statusCode, 200)
+    assert.match(availability, /YouTube/)
+    assert.doesNotMatch(availability, /Site officiel/)
+    assert.doesNotMatch(availability, /Apple Podcasts/)
+    assert.doesNotMatch(availability, /Spotify \(HD\)/)
   })
 })

@@ -94,6 +94,40 @@ export function getHealthPayload(
   };
 }
 
+function getPodcastVideoAvailability(episodes, youtubeChannelUrl) {
+  const hostedVideo = episodes.some((episode) => episode?.hasVideo);
+  const platforms = [];
+
+  if (hostedVideo) {
+    platforms.push('Site officiel');
+    if (episodes.some((episode) => episode?.videoFormats?.hls)) {
+      platforms.push('Apple Podcasts');
+    }
+    platforms.push('Spotify (HD)');
+  }
+  if (youtubeChannelUrl) platforms.push('YouTube');
+
+  return platforms.length > 0
+    ? { platformsText: platforms.join(' · ') }
+    : null;
+}
+
+function getEpisodeVideoAvailability(episodeData, platformLinks) {
+  const hostedVideo = Boolean(episodeData?.hasVideo);
+  const platforms = [];
+
+  if (hostedVideo && episodeData.episodeLink) platforms.push('Site officiel');
+  if (hostedVideo && episodeData.videoFormats?.hls && platformLinks?.apple_url) {
+    platforms.push('Apple Podcasts');
+  }
+  if (hostedVideo && platformLinks?.spotify_url) platforms.push('Spotify (HD)');
+  if (platformLinks?.youtube_url) platforms.push('YouTube');
+
+  return platforms.length > 0
+    ? { platformsText: platforms.join(' · ') }
+    : null;
+}
+
 /**
  * Builds and configures the Fastify application instance.
  * 
@@ -1071,7 +1105,8 @@ app.get("/podcast", {
     episodeData: null,
     popularEpisode,
     podcastSocialImage,
-    youtubeChannelUrl
+    youtubeChannelUrl,
+    podcastVideoAvailability: getPodcastVideoAvailability(episodes, youtubeChannelUrl)
   });
 });
 
@@ -1239,6 +1274,8 @@ app.get("/podcast/:season/:episode", {
       episode
     },
     platformLinks,
+    episodeVideoAvailability: getEpisodeVideoAvailability(episodeData, platformLinks),
+    spotifyVideoAvailable: Boolean(episodeData.hasVideo && platformLinks?.spotify_url),
     youtubeChannelUrl,
     youtubeResolutionPending: Boolean(
       youtubeChannelUrl
