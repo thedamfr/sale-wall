@@ -103,7 +103,7 @@
                 {{#unless episodeData}}
                 {{#unless popularEpisode}}
                 <p class="text-xl font-semibold text-yellow-400 mb-1">🎉 Le Podcast est sorti !</p>
-                <p class="text-gray-400 text-sm">Va l'écouter sur ta plateforme préférée</p>
+                <p class="text-gray-400 text-sm">Choisis ton format et ta plateforme</p>
                 {{/unless}}
                 {{/unless}}
             </div>
@@ -295,6 +295,55 @@
                     <span>⏱️ {{episodeData.duration}}</span>
                 </div>
             </div>
+            {{/if}}
+
+            {{#if episodeData}}
+            <section id="episode-availability" aria-labelledby="episode-availability-title" class="mb-8 rounded-2xl border border-gray-700 bg-white/10 p-5 text-white">
+                <h2 id="episode-availability-title" class="text-lg font-bold">Formats disponibles pour cet épisode</h2>
+                <div class="mt-4 space-y-4">
+                    <div>
+                        <p class="mb-1 text-sm font-semibold uppercase tracking-wide text-purple-300">Audio</p>
+                        <p class="mb-3 text-sm text-gray-300">Liens directs vers cet épisode :</p>
+                        <ul class="flex flex-wrap gap-2" aria-label="Plateformes audio avec un lien direct vers cet épisode">
+                            <li class="rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-sm">Castopod</li>
+                            {{#if platformLinks.apple_url}}
+                            <li class="rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-sm">Apple Podcasts</li>
+                            {{/if}}
+                            {{#if platformLinks.spotify_url}}
+                            <li class="rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-sm">Spotify</li>
+                            {{/if}}
+                            {{#if platformLinks.deezer_url}}
+                            <li class="rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-sm">Deezer</li>
+                            {{/if}}
+                            {{#if platformLinks.podcast_addict_url}}
+                            <li class="rounded-full border border-gray-700 bg-gray-800 px-3 py-1 text-sm">Podcast Addict</li>
+                            {{/if}}
+                        </ul>
+                    </div>
+                    {{#if platformLinks.youtube_url}}
+                    <div class="rounded-xl border border-gray-700 bg-gray-800 p-4">
+                        <p class="mb-1 text-sm font-semibold uppercase tracking-wide text-red-200">Vidéo</p>
+                        <p class="text-sm text-white">Cet épisode est aussi disponible en vidéo sur YouTube.</p>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
+            {{else}}
+            <section id="podcast-availability" aria-labelledby="podcast-availability-title" class="mb-8 rounded-2xl border border-gray-700 bg-white/10 p-5 text-white">
+                <h2 id="podcast-availability-title" class="text-lg font-bold">Écouter ou regarder Charbon &amp; Wafer</h2>
+                <div class="mt-4 space-y-3">
+                    <div class="rounded-xl bg-gray-800 p-4">
+                        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-purple-300">Audio</p>
+                        <p class="text-sm text-gray-200">Disponible sur Castopod, Apple Podcasts, Spotify, Deezer et Podcast Addict, ainsi que via le flux RSS.</p>
+                    </div>
+                    {{#if youtubeChannelUrl}}
+                    <div class="rounded-xl border border-gray-700 bg-gray-800 p-4">
+                        <p class="mb-2 text-sm font-semibold uppercase tracking-wide text-red-200">Vidéo</p>
+                        <p class="text-sm text-white">Les épisodes filmés sont disponibles en vidéo sur YouTube.</p>
+                    </div>
+                    {{/if}}
+                </div>
+            </section>
             {{/if}}
             
             <!-- Liste des liens -->

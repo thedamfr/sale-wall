@@ -1,6 +1,6 @@
 # PRD — Épisodes vidéo YouTube sur les pages podcast
 
-**Version :** 1.0  
+**Version :** 1.1
 **Date :** 2026-09-04  
 **Statut :** implémenté et validé localement, activation production à réaliser
 
@@ -13,7 +13,13 @@ correspondante sans imposer une association manuelle fragile dans le code.
 ## Expérience attendue
 
 - `/podcast` affiche une carte YouTube vers la chaîne publique.
+- `/podcast` distingue explicitement l'écoute audio sur Castopod, Apple
+  Podcasts, Spotify, Deezer et Podcast Addict des épisodes filmés disponibles
+  sur YouTube.
 - `/podcast/:season/:episode` ouvre la vidéo précise si elle a été résolue.
+- Une page épisode annonce la vidéo uniquement lorsqu'un lien YouTube direct a
+  été résolu. Elle nomme séparément les plateformes disposant déjà d'un lien
+  audio direct vers cet épisode.
 - Tant que la vidéo n'est pas résolue, la même carte ouvre la chaîne et indique
   que son référencement est en cours lorsque l'API est active.
 - L'absence de PostgreSQL, de `pg-boss` ou de configuration YouTube ne doit pas
@@ -90,6 +96,11 @@ la colonne ; cette dernière opération perd les liens déjà résolus.
 ## Critères d'acceptation
 
 - La page générale affiche la chaîne lorsque son URL est configurée.
+- La page générale nomme les plateformes audio et indique que les épisodes
+  filmés sont disponibles en vidéo sur YouTube.
+- Une page épisode ne présente la vidéo comme disponible que si
+  `episode_links.youtube_url` est renseigné ; les plateformes audio sans lien
+  direct résolu ne figurent pas dans son récapitulatif de disponibilité.
 - Une vidéo contenant le bon lien canonique est résolue, y compris après
   pagination.
 - Les titres similaires, les autres numéros d'épisode, les réponses en erreur et
@@ -127,6 +138,19 @@ la colonne ; cette dernière opération perd les liens déjà résolus.
 - le pictogramme YouTube dédié a été contrôlé visuellement sur la page locale et
   conserve un libellé décoratif vide puisque le nom de la plateforme est adjacent.
 - `git diff --check` : réussi.
+
+Extension d'interface 1.1 :
+
+- 13 tests ciblés des routes podcast, YouTube et mode dégradé passent.
+- `npm test` exécute 141 tests : 128 passent, 12 intégrations externes sont
+  ignorées et le test mémoire Jimp fluctuant échoue à 58,83 Mo de croissance.
+  Les deux tests mémoire passent isolément avec GC explicite.
+- `npm run build` réussit. Le CSS généré par Tailwind 4.1.11 n'est pas conservé,
+  car l'artefact du dépôt vient de Tailwind 4.3.3 et toutes les classes utilisées
+  par le nouveau récapitulatif y sont déjà présentes.
+- `/podcast` et `/podcast/3/1` avec une vidéo résolue ont été contrôlés dans le
+  navigateur local : hiérarchie accessible, libellés visibles et aucune erreur
+  console.
 
 À ce stade, aucun changement de production, de variable Clever Cloud ou de base
 de données distante n'a été fait.
