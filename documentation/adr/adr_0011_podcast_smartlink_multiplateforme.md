@@ -24,6 +24,18 @@ fail-hard plus bas sont conservés uniquement comme historique de la décision d
 autrefois copiée dans cet ADR doit être considérée comme compromise et remplacée
 avant la prochaine activation concernée.
 
+**Amendement 2026-09-04 — ajout des épisodes vidéo YouTube.** `/podcast`
+référence la chaîne vidéo et `/podcast/:season/:episode` utilise le lien direct
+mis en cache lorsqu'il existe. Le worker `resolve-episode` existant parcourt la
+playlist d'uploads avec `playlistItems.list`; il ne fait pas de recherche par
+titre ou par date. Le contrat d'association est la présence de l'URL canonique
+exacte `https://saletesincere.fr/podcast/:season/:episode` dans la description
+YouTube. Cette méthode évite un second worker et les ambiguïtés de titres. La
+colonne additive `episode_links.youtube_url` est introduite par la migration 009.
+Si la clé API ou la playlist manque, YouTube n'entre pas dans le critère de cache
+complet et la page conserve le lien de chaîne. La spécification d'activation est
+dans [`../prd_youtube_podcast.md`](../prd_youtube_podcast.md).
+
 ---
 
 ## Contexte

@@ -28,6 +28,7 @@ import {
   getEpisodeStatsForGuids,
   selectPopularEpisode
 } from "./server/services/op3Service.js";
+import { isYouTubeEpisodeResolutionConfigured } from "./server/services/platformAPIs.js";
 import {
   EpisodeQueueReason,
   initializeEpisodeWorker,
@@ -114,6 +115,8 @@ export async function buildApp({
   op3EpisodeStatsReader = getEpisodeStats,
   op3StatsListReader = getEpisodeStatsForGuids,
   op3PublicStatsEnabled = process.env.OP3_PUBLIC_STATS_ENABLED === 'true',
+  youtubeChannelUrl = process.env.YOUTUBE_CHANNEL_URL || null,
+  youtubeEpisodeResolutionEnabled = isYouTubeEpisodeResolutionConfigured(),
   now = () => new Date(),
   episodeQueuer = queueEpisodeResolution,
   episodeIntentBuffer: episodeIntentBufferOverride,
@@ -1067,7 +1070,8 @@ app.get("/podcast", {
   return reply.view("podcast.hbs", {
     episodeData: null,
     popularEpisode,
-    podcastSocialImage
+    podcastSocialImage,
+    youtubeChannelUrl
   });
 });
 
@@ -1142,7 +1146,7 @@ app.get("/podcast/:season/:episode", {
     try {
       client = await database.connect();
       const cacheResult = await client.query(
-        `SELECT spotify_url, apple_url, deezer_url, podcast_addict_url,
+        `SELECT spotify_url, apple_url, deezer_url, podcast_addict_url, youtube_url,
                 og_image_url, feed_last_build, generated_at
          FROM episode_links WHERE season = $1 AND episode = $2`,
         [season, episode]
@@ -1163,7 +1167,9 @@ app.get("/podcast/:season/:episode", {
           episodeData.feedLastBuildDate,
           expectedOgImageS3Key
         );
-        shouldQueueJob = !platformLinks.spotify_url || needsOGRegeneration;
+        shouldQueueJob = !platformLinks.spotify_url
+          || (youtubeEpisodeResolutionEnabled && !platformLinks.youtube_url)
+          || needsOGRegeneration;
       }
     } catch (error) {
       if (!reportDatabaseError(error, 'podcast_episode_cache')) throw error;
@@ -1217,6 +1223,7 @@ app.get("/podcast/:season/:episode", {
   const episodeContentPartial = !platformLinks?.spotify_url
     || !platformLinks?.apple_url
     || !platformLinks?.deezer_url
+    || (youtubeEpisodeResolutionEnabled && !platformLinks?.youtube_url)
     || databaseState === DatabaseState.UNAVAILABLE
     || databaseState === DatabaseState.UNKNOWN;
 
@@ -1232,6 +1239,12 @@ app.get("/podcast/:season/:episode", {
       episode
     },
     platformLinks,
+    youtubeChannelUrl,
+    youtubeResolutionPending: Boolean(
+      youtubeChannelUrl
+      && youtubeEpisodeResolutionEnabled
+      && !platformLinks?.youtube_url
+    ),
     ogImageUrl: platformLinks?.og_image_url || null, // Pass OG image for player cover
     episodeStats, // OP3 badge data (ADR-0015)
   });

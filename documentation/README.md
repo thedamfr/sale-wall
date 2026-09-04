@@ -28,6 +28,7 @@ Documentation technique et décisions architecturales du projet Saleté Sincère
 - **Homepage** : [`./prd_homepage.md`](./prd_homepage.md)
 - **Mode dégradé sans base de données** : [`./prd_mode_degrade_sans_bdd.md`](./prd_mode_degrade_sans_bdd.md) - Résilience HTTP, fallback podcast et reconnexion singleton de `pg-boss`
 - **Traction podcast et OP3** : [`./prd_traction_podcast_op3.md`](./prd_traction_podcast_op3.md) - Preuve sociale, cache quotidien et activation progressive
+- **Épisodes vidéo YouTube** : [`./prd_youtube_podcast.md`](./prd_youtube_podcast.md) - Chaîne publique, résolution des vidéos et cache `pg-boss`
 
 ### � Sécurité & Audits
 - **Guide d'audit** : [`./audit_guide.md`](./audit_guide.md) - Comment lancer les audits OWASP

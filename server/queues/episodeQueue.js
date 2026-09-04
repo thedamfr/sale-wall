@@ -7,7 +7,9 @@ import PgBoss from 'pg-boss'
 import { 
   searchSpotifyEpisode, 
   searchAppleEpisode, 
-  searchDeezerEpisode
+  searchDeezerEpisode,
+  searchYouTubeEpisode,
+  isYouTubeEpisodeResolutionConfigured
 } from '../services/platformAPIs.js'
 import {
   getOGImageS3Key,
@@ -27,6 +29,36 @@ export const EpisodeQueueReason = Object.freeze({
   SHUTTING_DOWN: 'SHUTTING_DOWN',
   QUEUE_ERROR: 'QUEUE_ERROR'
 })
+
+export function isEpisodeCacheComplete(cached, {
+  expectedOgImageS3Key,
+  feedLastBuildDate,
+  youtubeResolutionEnabled = false,
+  now = Date.now()
+}) {
+  const cachedFeedDate = cached?.feed_last_build
+    ? new Date(cached.feed_last_build).getTime()
+    : Number.NEGATIVE_INFINITY
+  const requestedFeedDate = feedLastBuildDate
+    ? new Date(feedLastBuildDate).getTime()
+    : Number.NEGATIVE_INFINITY
+  const generatedAt = cached?.generated_at
+    ? new Date(cached.generated_at).getTime()
+    : Number.NEGATIVE_INFINITY
+  const imageIsFresh = now - generatedAt <= 7 * 24 * 60 * 60 * 1000
+  const feedIsFresh = cachedFeedDate >= requestedFeedDate
+
+  return Boolean(
+    cached?.spotify_url
+    && cached?.apple_url
+    && cached?.deezer_url
+    && (!youtubeResolutionEnabled || cached?.youtube_url)
+    && cached?.og_image_url
+    && imageIsFresh
+    && feedIsFresh
+    && isExpectedOGImageUrl(cached?.og_image_url, expectedOgImageS3Key)
+  )
+}
 
 function getConnectionString() {
   return process.env.DATABASE_URL
@@ -173,6 +205,7 @@ export async function startWorker(fastify, options = {}, queue = boss) {
     teamSize: options.teamSize || 1, // Nombre de jobs en parallèle (2+ pour tests)
     ...options
   }
+  const youtubeResolutionEnabled = isYouTubeEpisodeResolutionConfigured()
   
   await queue.work('resolve-episode', workerOptions, async (jobs) => {
     // pg-boss v9 passe un array de jobs (batch mode par défaut)
@@ -195,33 +228,18 @@ export async function startWorker(fastify, options = {}, queue = boss) {
     const cacheClient = await fastify.pg.connect()
     try {
       const cacheResult = await cacheClient.query(
-        `SELECT spotify_url, apple_url, deezer_url, og_image_url,
+        `SELECT spotify_url, apple_url, deezer_url, youtube_url, og_image_url,
                 feed_last_build, generated_at
          FROM episode_links
          WHERE season = $1 AND episode = $2`,
         [season, episode]
       )
       const cached = cacheResult.rows[0]
-      const cachedFeedDate = cached?.feed_last_build
-        ? new Date(cached.feed_last_build).getTime()
-        : Number.NEGATIVE_INFINITY
-      const requestedFeedDate = feedLastBuildDate
-        ? new Date(feedLastBuildDate).getTime()
-        : Number.NEGATIVE_INFINITY
-      const generatedAt = cached?.generated_at
-        ? new Date(cached.generated_at).getTime()
-        : Number.NEGATIVE_INFINITY
-      const imageIsFresh = Date.now() - generatedAt <= 7 * 24 * 60 * 60 * 1000
-      const feedIsFresh = cachedFeedDate >= requestedFeedDate
-      const cacheIsComplete = Boolean(
-        cached?.spotify_url
-        && cached?.apple_url
-        && cached?.deezer_url
-        && cached?.og_image_url
-        && imageIsFresh
-        && feedIsFresh
-        && isExpectedOGImageUrl(cached?.og_image_url, expectedOgImageS3Key)
-      )
+      const cacheIsComplete = isEpisodeCacheComplete(cached, {
+        expectedOgImageS3Key,
+        feedLastBuildDate,
+        youtubeResolutionEnabled
+      })
 
       if (cacheIsComplete) {
         console.log(`[Worker ${job.id}] Cache already complete, skipping enrichment`)
@@ -257,10 +275,11 @@ export async function startWorker(fastify, options = {}, queue = boss) {
     }
     
     // Appeler les APIs en parallèle
-    const [spotifyResult, appleResult, deezerResult] = await Promise.allSettled([
+    const [spotifyResult, appleResult, deezerResult, youtubeResult] = await Promise.allSettled([
       searchSpotifyEpisode(episodeDate),
       searchAppleEpisode(episodeDate),
-      searchDeezerEpisode(episodeDate)
+      searchDeezerEpisode(episodeDate),
+      youtubeResolutionEnabled ? searchYouTubeEpisode(season, episode) : Promise.resolve(null)
     ])
     
     // Podcast Addict: Pas d'API publique connue
@@ -276,6 +295,7 @@ export async function startWorker(fastify, options = {}, queue = boss) {
       spotify: spotifyResult.status === 'fulfilled' ? spotifyResult.value : null,
       apple: appleResult.status === 'fulfilled' ? appleResult.value : null,
       deezer: deezerResult.status === 'fulfilled' ? deezerResult.value : null,
+      youtube: youtubeResult.status === 'fulfilled' ? youtubeResult.value : null,
       podcastAddict: podcastAddictLink
     }
     
@@ -307,17 +327,18 @@ export async function startWorker(fastify, options = {}, queue = boss) {
         await client.query(`
           INSERT INTO episode_links (
             season, episode, 
-            spotify_url, apple_url, deezer_url, podcast_addict_url,
+            spotify_url, apple_url, deezer_url, podcast_addict_url, youtube_url,
             og_image_url, og_image_s3_key, feed_last_build, generated_at,
             resolved_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
           ON CONFLICT (season, episode) 
           DO UPDATE SET
             spotify_url = COALESCE(EXCLUDED.spotify_url, episode_links.spotify_url),
             apple_url = COALESCE(EXCLUDED.apple_url, episode_links.apple_url),
             deezer_url = COALESCE(EXCLUDED.deezer_url, episode_links.deezer_url),
             podcast_addict_url = COALESCE(EXCLUDED.podcast_addict_url, episode_links.podcast_addict_url),
+            youtube_url = COALESCE(EXCLUDED.youtube_url, episode_links.youtube_url),
             og_image_url = COALESCE(EXCLUDED.og_image_url, episode_links.og_image_url),
             og_image_s3_key = COALESCE(EXCLUDED.og_image_s3_key, episode_links.og_image_s3_key),
             feed_last_build = COALESCE(EXCLUDED.feed_last_build, episode_links.feed_last_build),
@@ -333,6 +354,7 @@ export async function startWorker(fastify, options = {}, queue = boss) {
           links.apple, 
           links.deezer,
           links.podcastAddict,
+          links.youtube,
           ogImageUrl,
           ogImageS3Key,
           feedLastBuildDate
