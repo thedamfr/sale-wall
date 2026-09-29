@@ -57,8 +57,8 @@ Les Golden Journeys ouvrent le vrai serveur et Chromium avec sa sandbox :
 accueil/podcast → auteur → téléchargement exact du portrait → référence éditoriale
 → contact ; auteur → livre Taleez avec son paramètre de campagne → retour ;
 puis lecture sans JavaScript à 320, 390 et 1440 px, redirection
-canonique, JSON-LD, robots et sitemap. Le flux local est une fixture vide et la
-les destinations Medium et Taleez sont simulées : ils ne valident pas la disponibilité des éditeurs
+canonique, JSON-LD, robots et sitemap. Le flux local est une fixture vide et
+les destinations Medium et Taleez sont simulées : ces tests ne valident pas la disponibilité des éditeurs
 externes. Aucun formulaire n’est envoyé. Les tests de service vérifient panne,
 cache et reprise. Aucune persistance ou permission d’écriture n’est ajoutée.
 Les captures sont écrites dans `/tmp/site-author-e2e` ou `E2E_OUTPUT` et conservées
