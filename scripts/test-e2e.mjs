@@ -41,7 +41,7 @@ try {
   ])
   const interviews = page.locator('.author-section').filter({ has: page.getByRole('heading', { name: 'Interviews et mentions', exact: true }) })
   assert.deepEqual(await interviews.locator('li a').evaluateAll(links => links.map(link => link.href)), [
-    'https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas',
+    'https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas?utm_campaign=MKT-Partner-HrSingularity',
     'https://estamitech.fr/episode/4907ac1d-aaf2-4078-8a69-6a406548c5eb',
     'https://www.youtube.com/watch?v=LPsWR4d4TKg',
     'https://alliance-emploi.org/podcast-ressources#ep17',
@@ -49,6 +49,12 @@ try {
     'https://podcast.ausha.co/tech-rocks/et-si-les-developpeurs-avaient-le-droit-au-bonheur-damien-cavailles-welovedevs-youen-chene-webvert-s05ep18'
   ])
   assert.match(await interviews.locator('li').first().textContent(), /Interviewé.*Sylvain Colas.*À paraître/s)
+  await context.route('https://taleez.com/**', route => route.fulfill({ contentType: 'text/html', body: '<h1>Livre de Sylvain Colas</h1>' }))
+  await interviews.getByRole('link', { name: 'Le futur du travail s’écrit aujourd’hui', exact: true }).click()
+  assert.equal(page.url(), 'https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas?utm_campaign=MKT-Partner-HrSingularity')
+  await page.goBack()
+  await page.getByRole('heading', { name: 'Damien Cavaillès', exact: true }).waitFor()
+  console.log('Golden Journey — auteur → livre Taleez avec suivi de campagne → retour : OK')
   // Follow a real editorial link; only the external publisher is simulated.
   const article = page.locator('.author-prose a[href^="https://medium.com/"]').first()
   const destination = await article.getAttribute('href')
