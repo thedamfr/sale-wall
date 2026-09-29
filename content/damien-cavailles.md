@@ -58,7 +58,7 @@ Une sélection de textes publiés sur le Medium leboncoin tech, sur lesquels j�
 
 - [Le futur du travail s’écrit aujourd’hui](https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas?utm_campaign=MKT-Partner-HrSingularity)\
   Interviewé · Livre de Sylvain Colas · À paraître\
-  Publication annoncée sur Taleez, puis sur Amazon.
+  [Lire sur Taleez](https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas?utm_campaign=MKT-Partner-HrSingularity) · [Voir sur Amazon](https://amzn.eu/d/023n3GF4)
 - [Météo de l’emploi #2](https://estamitech.fr/episode/4907ac1d-aaf2-4078-8a69-6a406548c5eb)\
   Invité · L’EstamiTech · 19 août 2026
 - [Réenchanter le recrutement et la marque employeur](https://www.youtube.com/watch?v=LPsWR4d4TKg)\

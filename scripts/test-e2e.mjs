@@ -40,7 +40,7 @@ try {
     'Travail d’éditeur', 'Articles signés', 'Interviews et mentions', 'Webinars et tables rondes'
   ])
   const interviews = page.locator('.author-section').filter({ has: page.getByRole('heading', { name: 'Interviews et mentions', exact: true }) })
-  assert.deepEqual(await interviews.locator('li a').evaluateAll(links => links.map(link => link.href)), [
+  assert.deepEqual(await interviews.locator('li > a:first-child').evaluateAll(links => links.map(link => link.href)), [
     'https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas?utm_campaign=MKT-Partner-HrSingularity',
     'https://estamitech.fr/episode/4907ac1d-aaf2-4078-8a69-6a406548c5eb',
     'https://www.youtube.com/watch?v=LPsWR4d4TKg',
@@ -49,12 +49,20 @@ try {
     'https://podcast.ausha.co/tech-rocks/et-si-les-developpeurs-avaient-le-droit-au-bonheur-damien-cavailles-welovedevs-youen-chene-webvert-s05ep18'
   ])
   assert.match(await interviews.locator('li').first().textContent(), /Interviewé.*Sylvain Colas.*À paraître/s)
-  await context.route('https://taleez.com/**', route => route.fulfill({ contentType: 'text/html', body: '<h1>Livre de Sylvain Colas</h1>' }))
-  await interviews.getByRole('link', { name: 'Le futur du travail s’écrit aujourd’hui', exact: true }).click()
-  assert.equal(page.url(), 'https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas?utm_campaign=MKT-Partner-HrSingularity')
-  await page.goBack()
-  await page.getByRole('heading', { name: 'Damien Cavaillès', exact: true }).waitFor()
-  console.log('Golden Journey — auteur → livre Taleez avec suivi de campagne → retour : OK')
+  const bookLinks = [
+    ['Lire sur Taleez', 'https://taleez.com/guide/e-book-le-futur-du-travail-secrit-aujourdhui-sylvain-colas?utm_campaign=MKT-Partner-HrSingularity'],
+    ['Voir sur Amazon', 'https://amzn.eu/d/023n3GF4']
+  ]
+  for (const [name, destination] of bookLinks) {
+    const link = interviews.locator('li').first().getByRole('link', { name, exact: true })
+    assert.equal(await link.isVisible(), true, `Book destination must be explicitly visible: ${name}`)
+    await context.route(destination, route => route.fulfill({ contentType: 'text/html', body: '<h1>Livre de Sylvain Colas</h1>' }))
+    await link.click()
+    assert.equal(page.url(), destination)
+    await page.goBack()
+    await page.getByRole('heading', { name: 'Damien Cavaillès', exact: true }).waitFor()
+  }
+  console.log('Golden Journey — auteur → liens explicites Taleez et Amazon → retour : OK')
   // Follow a real editorial link; only the external publisher is simulated.
   const article = page.locator('.author-prose a[href^="https://medium.com/"]').first()
   const destination = await article.getAttribute('href')
@@ -77,6 +85,9 @@ try {
   for (const width of [320, 390, 1440]) {
     await staticPage.setViewportSize({ width, height: 960 })
     await staticPage.goto(`${base}/damien-cavailles`)
+    for (const [name] of bookLinks) {
+      assert.equal(await staticPage.getByRole('link', { name, exact: true }).isVisible(), true, `${name} must remain visible without JavaScript at ${width}px`)
+    }
     await staticPage.locator('.author-work-photo').scrollIntoViewIfNeeded()
     await staticPage.waitForFunction(() => [...document.images].every(img => img.complete && img.naturalWidth > 0))
     assert.equal(await staticPage.evaluate(() => document.documentElement.scrollWidth), width)
