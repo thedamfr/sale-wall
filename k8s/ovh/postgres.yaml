@@ -125,5 +125,6 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 4Gi
+            # Budget par base ; voir documentation/dimensionnement-stockage.md.
+            storage: 1Gi
         storageClassName: microk8s-hostpath

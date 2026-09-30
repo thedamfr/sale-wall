@@ -112,7 +112,10 @@ Une demande manuelle `production` est refusée hors `main`. Les anciens tags
 
 [Staging](https://staging.saletesincere.fr) utilise le Deployment
 `site-saletesincere-staging`, PostgreSQL `site-saletesincere-staging-postgres`,
-un PVC de 4 GiB et des identifiants dédiés. Ses règles réseau bloquent l’accès
+un PVC et des identifiants dédiés. Le budget cible du PVC est de 1 Gio ; les
+volumes historiques demandent encore 4 Gio tant que la
+[migration de stockage](dimensionnement-stockage.md) n'est pas effectuée.
+Ses règles réseau bloquent l’accès
 au PostgreSQL de production. Le worker est actif. Les migrations sont appliquées
 sur une base neuve, sans copie des données ni des jobs de production.
 
@@ -156,8 +159,12 @@ vérifie `normal/read_write/ready` ; `/health` reste une liveness HTTP en 200.
 Le nouveau pod doit rester prêt 10 secondes et le hook `preStop` laisse 15 secondes
 aux routes et connexions avant l’arrêt du processus.
 Le quota du namespace couvre 5 CPU et 6 GiB de limites, 2 CPU et 3 GiB de demandes,
-deux PVC et 8 GiB de stockage. Il laisse une marge pour les deux rollouts sans
-arrêter staging. La publication vérifie cette marge avant mutation.
+avec un budget cible de trois PVC et 3 Gio de stockage (deux bases de 1 Gio et
+une restauration temporaire). Le quota historique de deux PVC / 8 Gio reste
+en place jusqu'à la [migration des volumes](dimensionnement-stockage.md).
+La marge CPU/mémoire permet les deux rollouts applicatifs sans arrêter staging ;
+ces rollouts réutilisent les PVC existants. La publication vérifie la marge
+CPU/mémoire avant mutation, pas la capacité de créer un volume de restauration.
 
 Le service compare l’empreinte des migrations à celle validée dans sa configuration.
 Une migration nouvelle ou modifiée bloque avant activation. Il n’exécute aucune
