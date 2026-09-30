@@ -1,6 +1,6 @@
 # Dimensionnement et réduction du stockage PostgreSQL
 
-État du 30 septembre 2026 : **cible préparée, migration OVH non exécutée**.
+État du 30 septembre 2026 : **migration OVH en cours ; staging migré et vérifié, production en cours**.
 Suivi : [issue 52](https://github.com/thedamfr/site-saletesincere/issues/52).
 Décision : [ADR 0023](adr/adr_0023_dimensionnement_stockage_postgresql.md).
 
@@ -108,3 +108,22 @@ reprise demandés par l'issue 52 doivent être testés en environnement isolé ;
 ils ne sont pas couverts par les tests unitaires applicatifs. Le projet n'a pas
 encore de commande npm dédiée à cette recette. Aucun résultat de cette recette
 ni réduction effective des PVC OVH n'est revendiqué par cette préparation.
+
+
+## Recette isolée reproductible
+
+Pendant une maintenance autorisée, depuis le dépôt avec l'accès SSH habituel :
+
+```bash
+npm run test:storage
+```
+
+Cette commande exige le quota final de 3 Gio / 3 PVC, les deux bases à 1 Gio et
+le timer de livraison arrêté. Elle prend le verrou commun. Elle crée un PVC et
+un pod PostgreSQL de test, sans Service ni accès aux Secrets applicatifs, sous
+l'isolation réseau du namespace. Les données sont entièrement synthétiques.
+Elle vérifie l'écriture, la sauvegarde/restauration, la lecture et les droits
+après recréation du pod, ainsi que le refus d'une allocation hors quota et sa
+reprise après nettoyage. Les refus sont testés avec `--dry-run=server`.
+Le pod, le PVC et le PV de test sont supprimés puis leur nettoyage est vérifié.
+Ne pas exécuter cette commande en parallèle d'une migration de volumes.
