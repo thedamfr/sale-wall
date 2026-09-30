@@ -42,8 +42,8 @@ migration de production.
 
 Pour le dimensionnement des PVC et leur réduction, suivre le
 [guide de stockage PostgreSQL](dimensionnement-stockage.md). Les manifests
-prévoient désormais 1 Gio par base ; les PVC historiques ne sont pas réduits
-automatiquement par une livraison applicative.
+prévoient 1 Gio par base ; les deux PVC actifs ont été migrés à cette taille
+le 30 septembre 2026. Une livraison applicative ne modifie pas les PVC.
 
 Sur le poste de travail vérifié, l’alias SSH est `penthouse`, utilisateur `ubuntu`.
 Le nom d’hôte Linux renvoyé est encore `game-prod-ovh-gra`. L’ancien nom Tailscale
