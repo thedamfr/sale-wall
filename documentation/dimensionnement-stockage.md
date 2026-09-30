@@ -125,13 +125,16 @@ nouvelle interruption contrôlée. Ne pas simplement réactiver l'ancienne copie
 - La livraison automatique a été réactivée. Les sondes Prometheus sont récentes
   et saines ; les alertes de quota du namespace ont disparu au contrôle final.
 
-Les deux anciens PV sont **Released / Retain**, sans PVC associé. Leurs fichiers
-et les archives privées restent conservés pour retour arrière ; ils ne comptent
-plus dans le quota des PVC actifs. Les nouveaux PV sont également en `Retain`.
-Le contrôle automatique d'approbation a refusé le retrait des anciens objets PV,
-considéré comme une suppression distincte nécessitant une autorisation explicite.
-Aucun ancien fichier de données n'a été supprimé. Leur retrait ultérieur doit
-vérifier les sauvegardes, cibler les objets exacts et faire l'objet de cet accord.
+Les deux anciens objets PV ont été retirés après autorisation explicite du
+propriétaire, vérification de leur état `Released / Retain`, de l'absence de
+PVC associé et de l'intégrité des archives. Leurs fichiers et les archives
+privées restent conservés pour retour arrière ; aucun ancien fichier de données
+n'a été supprimé. Les deux PV actifs de 1 Gio sont en `Retain`.
+
+Le contrôle automatique avait initialement refusé ce retrait faute d'autorisation
+explicite. Cette étape est désormais terminée. Un retour vers un ancien volume
+exigerait de recréer son objet PV à partir du snapshot privé et de préserver les
+écritures intervenues depuis la bascule.
 
 Les archives, exports et snapshots de configuration restent uniquement dans le
 répertoire privé du Site sur OVH, avec accès restreint ; aucun contenu de base ou
