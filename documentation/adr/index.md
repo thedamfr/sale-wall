@@ -50,6 +50,7 @@ de livraison et les résultats de recette restent dans les guides opérationnels
 | [ADR-0020](./adr_0020_livraison_continue_et_staging.md) | Livraison continue et staging complet | 🚀 **Implémenté** | 2026-09 | CI/CD, Kubernetes | Critique |
 
 | [ADR-0021](./adr_0021_page_auteur_et_sitemap.md) | Page auteur et sitemap | ✅ **Accepté** | 2026-09 | Contenu, SEO | Feature |
+| [ADR-0023](./adr_0023_dimensionnement_stockage_postgresql.md) | Dimensionnement du stockage PostgreSQL | **Proposé — migration à réaliser** | 2026-09 | Kubernetes, PostgreSQL | Infrastructure |
 
 ## 📊 Statistiques
 

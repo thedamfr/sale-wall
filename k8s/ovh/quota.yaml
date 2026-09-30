@@ -8,8 +8,10 @@ spec:
     requests.memory: 3Gi
     limits.cpu: "5"
     limits.memory: 6Gi
-    persistentvolumeclaims: "2"
-    requests.storage: 8Gi
+    # Cible après migration : deux bases de 1Gi et une restauration de 1Gi.
+    # Ne pas appliquer aux PVC historiques de 4Gi avant leur migration.
+    persistentvolumeclaims: "3"
+    requests.storage: 3Gi
 ---
 apiVersion: v1
 kind: LimitRange
