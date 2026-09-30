@@ -1,6 +1,7 @@
 # ADR 0023 — Dimensionnement du stockage PostgreSQL
 
-Date : 2026-09-30. Statut : proposé ; migration des volumes existants à réaliser.
+Date : 2026-09-30. Statut : accepté et mis en œuvre sur OVH.
+Statut initial conservé : proposé, migration des volumes existants à réaliser.
 
 ## Décision
 
@@ -21,6 +22,8 @@ Un changement YAML ne réduit pas les PVC existants : Kubernetes ne permet pas
 leur réduction en place. Leur remplacement exige une copie cohérente, une
 validation des données, une maintenance planifiée et un retour arrière préparé.
 Le quota final ne doit être appliqué qu'après la migration des deux bases.
+La migration et cette réduction du quota ont été vérifiées le 30 septembre 2026 ;
+les preuves et la conservation des anciens volumes sont consignées dans le guide.
 
 `microk8s-hostpath` ne fait pas respecter la capacité déclarée comme une limite
 physique. Ce budget contrôle l'allocation Kubernetes, pas l'isolement disque des

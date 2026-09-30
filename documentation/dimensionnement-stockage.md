@@ -1,6 +1,6 @@
 # Dimensionnement et réduction du stockage PostgreSQL
 
-État du 30 septembre 2026 : **migration OVH en cours ; staging migré et vérifié, production en cours**.
+État du 30 septembre 2026 : **migration OVH effectuée et vérifiée sur staging et production**.
 Suivi : [issue 52](https://github.com/thedamfr/site-saletesincere/issues/52).
 Décision : [ADR 0023](adr/adr_0023_dimensionnement_stockage_postgresql.md).
 
@@ -39,10 +39,10 @@ manifests d'amorçage sur la production pour effectuer cette opération.
 
 ## Transition des volumes historiques
 
-Cette procédure définit les étapes de maintenance à préparer, pas un script à
-exécuter sans recette. Les PVC existants demandent encore 4 Gio chacun ; leur
-réduction en place et celle du `volumeClaimTemplates` d'un StatefulSet existant
-ne sont pas des mises à jour Kubernetes ordinaires.
+Cette procédure conserve le chemin de transition des anciens PVC de 4 Gio.
+Elle a été appliquée aux deux environnements le 30 septembre 2026. Une réduction
+en place du PVC ou du `volumeClaimTemplates` d’un StatefulSet existant n’est
+pas une mise à jour Kubernetes ordinaire.
 
 1. Vérifier la cible OVH et le namespace du Site selon le
    [guide d'hébergement](hebergement-deploiement.md). Relever les volumes,
@@ -100,15 +100,44 @@ le même Service. Après la reprise des écritures, l'ancien volume est périmé
 un retour exige de préserver et retransférer les nouvelles écritures, avec une
 nouvelle interruption contrôlée. Ne pas simplement réactiver l'ancienne copie.
 
-## Vérifications restantes
+## Résultats vérifiés le 30 septembre 2026
 
-Les rendus Kustomize et le budget cible peuvent être vérifiés hors cluster.
-La persistance, la restauration, les droits et le scénario de quota refusé puis
-reprise demandés par l'issue 52 doivent être testés en environnement isolé ;
-ils ne sont pas couverts par les tests unitaires applicatifs. Le projet n'a pas
-encore de commande npm dédiée à cette recette. Aucun résultat de cette recette
-ni réduction effective des PVC OVH n'est revendiqué par cette préparation.
+- Les deux PVC actifs et les deux `volumeClaimTemplates` demandent **1 Gio**.
+  Le quota final est **3 PVC / 3 Gio**, dont **2 PVC / 2 Gio** utilisés.
+- Les noms des PVC, StatefulSets, Services et les références aux Secrets sont
+  conservés. Les images applicatives et PostgreSQL sont restées identiques.
+- Les consommateurs ont été arrêtés avant sauvegarde logique, puis PostgreSQL
+  avant archive physique. L'archive de chaque environnement a été restaurée
+  sur son nouveau volume : les empreintes des fichiers étaient identiques.
+- La copie isolée a démarré sans worker ni Service. Les exports SQL complets
+  étaient identiques avant copie, après restauration, après le test de
+  persistance/droits et après rattachement au PVC définitif. Seules les lignes
+  de contrôle aléatoires `\restrict` / `\unrestrict` des exports ont été
+  exclues de cette comparaison ; les données, rôles et droits ont été comparés.
+- Staging, puis production ont réussi les parcours publics et une fenêtre de
+  60 secondes de santé `normal/read_write/ready`. La sonde de production a
+  observé environ **50 secondes d'indisponibilité planifiée**, puis le retour
+  stable du service. Il ne s'agit pas d'une migration sans interruption.
+- `npm run test:storage` a réussi sous le quota final : restauration, droits,
+  persistance après remplacement du pod, refus/reprise de quota et nettoyage
+  des ressources synthétiques. Le garde-fou a auparavant refusé de lancer la
+  recette sous le quota transitoire.
+- La livraison automatique a été réactivée. Les sondes Prometheus sont récentes
+  et saines ; les alertes de quota du namespace ont disparu au contrôle final.
 
+Les deux anciens PV sont **Released / Retain**, sans PVC associé. Leurs fichiers
+et les archives privées restent conservés pour retour arrière ; ils ne comptent
+plus dans le quota des PVC actifs. Les nouveaux PV sont également en `Retain`.
+Le contrôle automatique d'approbation a refusé le retrait des anciens objets PV,
+considéré comme une suppression distincte nécessitant une autorisation explicite.
+Aucun ancien fichier de données n'a été supprimé. Leur retrait ultérieur doit
+vérifier les sauvegardes, cibler les objets exacts et faire l'objet de cet accord.
+
+Les archives, exports et snapshots de configuration restent uniquement dans le
+répertoire privé du Site sur OVH, avec accès restreint ; aucun contenu de base ou
+secret n'est ajouté au dépôt. Les contrôles établissent la restauration sur cet
+hôte, pas l'existence d'une sauvegarde hors serveur. La limite physique du
+stockage hostpath reste celle décrite plus haut.
 
 ## Recette isolée reproductible
 
